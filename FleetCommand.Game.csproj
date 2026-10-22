@@ -1,0 +1,10 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="game/**/*.cs" />
+    <ProjectReference Include="src/FleetCommand.Core/FleetCommand.Core.csproj" />
+  </ItemGroup>
+</Project>

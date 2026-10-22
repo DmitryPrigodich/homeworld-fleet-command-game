@@ -1,0 +1,21 @@
+# Local game content, extracted assets and development tools must never be published.
+/tmp/
+/.local/
+/imports/
+/exports/
+/.godot/
+/NuGet.Config
+**/bin/
+**/obj/
+*.user
+*.suo
+*.big
+*.hod
+*.mad
+*.dds
+*.tga
+*.pdf
+*.odt
+*.7z
+*.zip
+

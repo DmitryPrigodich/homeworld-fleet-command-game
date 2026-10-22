@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/FleetCommand.Core/FleetCommand.Core.csproj" />
+    <ProjectReference Include="../../src/FleetCommand.Import/FleetCommand.Import.csproj" />
+  </ItemGroup>
+</Project>

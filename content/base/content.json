@@ -1,0 +1,218 @@
+{
+  "abilities": [
+    {
+      "id": "core:penetrating",
+      "handler": "penetrating",
+      "value": 1
+    },
+    {
+      "id": "core:rapid-fire",
+      "handler": "rapid-fire",
+      "value": 1
+    },
+    {
+      "id": "core:fast",
+      "handler": "move-bonus",
+      "value": 1
+    }
+  ],
+  "ships": [
+    {
+      "id": "core:kushan-interceptor",
+      "name": "Kushan Interceptors",
+      "faction": "kushan",
+      "model": "hwrm:kus_interceptor",
+      "models": 6,
+      "move": 3,
+      "dicePerModel": 1,
+      "success": 5,
+      "armor": 0,
+      "range": 1,
+      "abilities": [
+        "core:rapid-fire"
+      ],
+      "visualSize": 0.24
+    },
+    {
+      "id": "core:taiidan-interceptor",
+      "name": "Taiidan Interceptors",
+      "faction": "taiidan",
+      "model": "hwrm:tai_interceptor",
+      "models": 6,
+      "move": 3,
+      "dicePerModel": 1,
+      "success": 5,
+      "armor": 0,
+      "range": 1,
+      "abilities": [
+        "core:rapid-fire"
+      ],
+      "visualSize": 0.24
+    },
+    {
+      "id": "core:kushan-frigate",
+      "name": "Kushan Assault Frigates",
+      "faction": "kushan",
+      "model": "hwrm:kus_assaultfrigate",
+      "models": 2,
+      "move": 2,
+      "dicePerModel": 3,
+      "success": 5,
+      "armor": 2,
+      "range": 3,
+      "visualSize": 0.55
+    },
+    {
+      "id": "core:taiidan-frigate",
+      "name": "Taiidan Assault Frigates",
+      "faction": "taiidan",
+      "model": "hwrm:tai_assaultfrigate",
+      "models": 2,
+      "move": 2,
+      "dicePerModel": 3,
+      "success": 5,
+      "armor": 2,
+      "range": 3,
+      "visualSize": 0.55
+    }
+  ],
+  "fleets": [
+    {
+      "id": "core:kushan-patrol",
+      "name": "Kushan Patrol",
+      "units": [
+        {
+          "ship": "core:kushan-interceptor",
+          "q": 1,
+          "r": 2
+        },
+        {
+          "ship": "core:kushan-interceptor",
+          "q": 1,
+          "r": 4
+        },
+        {
+          "ship": "core:kushan-frigate",
+          "q": 0,
+          "r": 3
+        }
+      ]
+    },
+    {
+      "id": "core:taiidan-patrol",
+      "name": "Taiidan Patrol",
+      "units": [
+        {
+          "ship": "core:taiidan-interceptor",
+          "q": 7,
+          "r": 2,
+          "facing": 3
+        },
+        {
+          "ship": "core:taiidan-interceptor",
+          "q": 7,
+          "r": 4,
+          "facing": 3
+        },
+        {
+          "ship": "core:taiidan-frigate",
+          "q": 8,
+          "r": 3,
+          "facing": 3
+        }
+      ]
+    }
+  ],
+  "objects": [
+    {
+      "id": "core:asteroids",
+      "name": "Asteroid Field",
+      "attackPenalty": 2,
+      "moveCost": 2,
+      "color": "#65717b"
+    },
+    {
+      "id": "core:planet",
+      "name": "Planet",
+      "blocksMovement": true,
+      "color": "#405f85"
+    }
+  ],
+  "maps": [
+    {
+      "id": "core:training",
+      "name": "Border Patrol",
+      "width": 10,
+      "height": 7,
+      "background": "",
+      "objects": [
+        {
+          "definition": "core:asteroids",
+          "q": 4,
+          "r": 2
+        },
+        {
+          "definition": "core:asteroids",
+          "q": 5,
+          "r": 4
+        },
+        {
+          "definition": "core:planet",
+          "q": 4,
+          "r": 4
+        }
+      ],
+      "fleets": [
+        "core:kushan-patrol",
+        "core:taiidan-patrol"
+      ],
+      "rules": "core:prototype"
+    }
+  ],
+  "rules": [
+    {
+      "id": "core:prototype",
+      "name": "Prototype Skirmish",
+      "handler": "skirmish-v1",
+      "roundLimit": 12,
+      "ordersPerSide": 3,
+      "rearShots": false
+    }
+  ],
+  "themes": [
+    {
+      "id": "core:hw1",
+      "name": "Deep Space",
+      "background": "#07121f",
+      "panel": "#102436",
+      "text": "#b4d9e7",
+      "muted": "#6c96aa",
+      "accent": "#39a4c5",
+      "highlight": "#e2b361",
+      "enemy": "#d07858",
+      "grid": "#234355"
+    }
+  ],
+  "campaigns": [
+    {
+      "id": "core:patrol",
+      "name": "Patrol - prototype campaign",
+      "start": "first",
+      "missions": [
+        {
+          "id": "first",
+          "name": "Initial Contact",
+          "map": "core:training",
+          "onVictory": "second",
+          "onDefeat": "first"
+        },
+        {
+          "id": "second",
+          "name": "Return to the Border",
+          "map": "core:training",
+          "onDefeat": "second"
+        }
+      ]
+    }
+  ]
+}

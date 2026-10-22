@@ -1,0 +1,5 @@
+{
+  "themes": [
+    { "id": "example:amber", "name": "Amber Terminal", "background": "#15110b", "panel": "#292116", "text": "#efdbb0", "muted": "#a18a62", "accent": "#dcad50", "highlight": "#fff0b5", "enemy": "#da775e", "grid": "#544329" }
+  ]
+}
