@@ -20,12 +20,12 @@ public sealed record ModManifest(string Id, string Version, int SchemaVersion = 
     string[]? Requires = null, string[]? Overrides = null);
 public sealed record ShipDefinition(string Id, string Name, string Faction, string Model,
     int Models, int Move, int DicePerModel, int Success, int Armor, int Range,
-    string[]? Abilities = null, float VisualSize = 0.55f, string Color = "");
+    string[]? Abilities = null, float VisualSize = 0.55f, string Color = "", string TacticalIcon = "", string Label = "");
 public sealed record AbilityDefinition(string Id, string Handler, int Value = 1);
 public sealed record FleetUnit(string Ship, int Q, int R, int Facing = 0);
 public sealed record FleetDefinition(string Id, string Name, FleetUnit[] Units);
 public sealed record ObjectDefinition(string Id, string Name, string Model = "", bool BlocksMovement = false,
-    int AttackPenalty = 0, int MoveCost = 1, string Color = "#8792a2");
+    int AttackPenalty = 0, int MoveCost = 1, string Color = "#8792a2", string Label = "");
 public sealed record MapObject(string Definition, int Q, int R);
 public sealed record MapDefinition(string Id, string Name, int Width, int Height,
     string Background, MapObject[] Objects, string[] Fleets, string Rules);

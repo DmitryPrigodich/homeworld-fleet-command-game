@@ -4,8 +4,10 @@ using FleetCommand.Core;
 
 namespace FleetCommand.Game;
 
-public sealed record AppSettings(string Theme = "core:hw1", string[]? EnabledMods = null);
-public sealed record SavedGame(BattleState State, GenerationOptions? Generation = null, CampaignProgress? Campaign = null, bool ComputerOpponent = true);
+public sealed record AppSettings(string Theme = "core:hw1", string[]? EnabledMods = null, PlayerProfile? Player = null,
+    string HwrmInstallation = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Homeworld", bool ShowLabels = true);
+public sealed record SavedGame(BattleState State, GenerationOptions? Generation = null, CampaignProgress? Campaign = null,
+    bool ComputerOpponent = true, CommanderAppearance[]? Commanders = null);
 
 public partial class Main : Node3D
 {
@@ -41,11 +43,15 @@ public partial class Main : Node3D
         {
             var settings = System.IO.Path.Combine(_data, "settings.json");
             if (System.IO.File.Exists(settings)) _settings = JsonData.Read<AppSettings>(settings);
+            _settings = _settings with { Player = FleetPresentation.Normalize(_settings.Player) };
             LoadContent();
+            LoadEmblems();
             MainMenu();
             if (_args.Contains("--capture-battle")) StartBattle("core:training", false);
             if (_args.Contains("--capture-generator")) GeneratorMenu();
             if (_args.Contains("--capture-tutorial")) StartTutorial();
+            if (_args.Contains("--capture-player")) PlayerMenu();
+            if (_args.Contains("--capture-identification")) StartBattle("core:training", true, persist: false);
             if (_args.Contains("--smoke-host"))
             {
                 bool coop = _args.Contains("--smoke-coop");
@@ -142,6 +148,7 @@ public partial class Main : Node3D
     {
         _frames++;
         if (_frames == 5 && _args.Contains("--check-controls")) _ = CheckControls();
+        if (_frames == 5 && _args.Contains("--check-presentation")) _ = CheckPresentation();
         if (_world != null && _state == null) _world.RotateY((float)delta * 0.08f);
         if (_frames == 40)
         {

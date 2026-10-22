@@ -89,13 +89,17 @@ public partial class Main
     }
     private void OptionsMenu()
     {
-        ClearScreen(); Heading("Опции"); var box = Panel(70, 230, 550, 330);
+        ClearScreen(); Heading("Опции"); var box = Panel(70, 190, 550, 520);
+        Button(box, "ИГРОК: ИМЯ, ЦВЕТ, ЭМБЛЕМА", PlayerMenu);
+        Text(box, "Текущий игрок: " + FleetPresentation.Normalize(_settings.Player).Name, 16, _colors.Muted);
         Text(box, "ТЕМА ИНТЕРФЕЙСА", 16, _colors.Highlight);
         var themes = _content.Themes.Values.ToArray(); var dropdown = new OptionButton();
         foreach (var theme in themes) dropdown.AddItem(theme.Name);
         dropdown.Select(Math.Max(0, Array.FindIndex(themes, t => t.Id == _colors.Id))); box.AddChild(dropdown);
         dropdown.ItemSelected += i => { _settings = _settings with { Theme = themes[(int)i].Id }; SaveSettings(); LoadContent(); OptionsMenu(); };
         Text(box, "Все цвета загружаются из theme-определения мода. Для альтернативной палитры включи example в разделе «Моды».", 16, _colors.Muted);
+        var labels = new CheckBox { Text = "Подписи на поле", ButtonPressed = _settings.ShowLabels };
+        labels.Toggled += enabled => { _settings = _settings with { ShowLabels = enabled }; SaveSettings(); }; box.AddChild(labels);
         Button(box, "НАЗАД", MainMenu); MenuScene();
     }
     private void ModsMenu()

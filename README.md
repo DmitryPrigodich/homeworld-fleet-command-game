@@ -15,6 +15,9 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - Direct ENet host/join, PvP or cooperative shared control of the blue side against AI. The host validates commands and owns saves. Joining peers receive the current battle and campaign snapshot.
 - JSON content mods, dependencies, explicit overrides, versioned manifests and a content fingerprint checked by network peers.
 - Theme colors supplied by mods, including an optional amber example theme.
+- Readable ship/object labels, object-effect inspection and Homeworld-style tactical class symbols.
+- Player name, color and emblem in **Options → Player**. Flattened cube footprints use the player's color; NPCs and neutral objects use reserved gray. PvP color collisions are resolved by the host.
+- Optional local import of Kushan, Taiidan and five kiith emblems from an owned HWRM installation. Only the importer code is distributed.
 
 **This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Command-card hands, leaders, initiative bidding, interrupts, CAP/defensive-fire timing, boarding, production, full scenario objectives and the supplied book campaigns are not implemented yet. The current combat module is explicitly named `skirmish-v1`.
 
@@ -30,11 +33,13 @@ On the original development machine `Play.cmd` also finds the portable engine in
 
 Start with **ОБУЧЕНИЕ** in the main menu. Controls: left-click a unit from the roster or board, choose **Movement** or **Attack**, then left-click a destination hex or enemy. **End turn** passes the remainder of that side's orders. Activated units darken. Hold **right mouse button** over the battlefield and drag to orbit; the **wheel** zooms and **F** resets the view. Camera orientation and zoom persist through selections and orders. Saves are under `.local/`.
 
+Board labels show ship type, remaining models, owner and emblem. Click an object label to read its movement/attack effects. Triangle denotes fighters and diamond denotes frigates; mods can choose other supported tactical shapes. Labels can be hidden in Options while retaining symbols and hover details. Player colors affect ownership projections, while cube hull colors still distinguish the placeholder fleets.
+
 ## Multiplayer
 
 The prototype uses direct ENet on **UDP 24560**. LAN peers enter the host's reachable address. Internet play requires reachable hosting or a suitable tunnel; a built-in relay and invitation-code lobby are still planned. No router/firewall settings are changed by the application.
 
-Co-op currently means shared control of the blue fleet. Individual ownership of subfleets, named persistent player identities, robust reconnect UX and automatic host migration are future work. To continue a co-op campaign, the host loads its campaign save, then other players join again with the same enabled mods. All mods, including themes, currently participate in the content fingerprint.
+Co-op currently means shared control of one fleet with the host's appearance. Individual ownership of subfleets, authenticated persistent player identities, robust reconnect UX and automatic host migration are future work. Player names/colors/emblem IDs are synchronized separately from game definitions and saved with the match. To continue a co-op campaign, the host loads its campaign save, then other players join again with the same enabled mods. All content mods, including themes, currently participate in the content fingerprint; local player preferences and imported badge pixels do not.
 
 ## Mods and design
 
@@ -51,9 +56,15 @@ The dependency-free check runner covers turn authorization, immutable state tran
 
 The engine can also run `-- --check-controls` to exercise the tutorial through menu signals and viewport mouse/key events, including camera persistence and save isolation.
 
-## Resource importer (deferred from the current UI)
+`-- --check-presentation` exercises profile settings, gray-color rejection, battlefield labels, object inspection and appearance serialization. Use an isolated `FLEET_COMMAND_DATA_DIR` for these checks. UI captures and imported badge images are ignored local files.
 
-An isolated, read-only importer module can list local HWRM ship archives and convert supported pooled HOD 2 static geometry and DXT textures into a private cache. It was checked against four locally installed ship files. It is not used by the cube prototype and has no in-game import screen yet. Joints, animation, original shaders, team-color masks, patch-archive precedence and backgrounds are not supported yet. See [importer notes](docs/IMPORTER.md).
+## Resource importer
+
+**Options → Player** can read seven badge images from `HomeworldRM/Data/Homeworld2.big`, placing them under the ignored local cache. If a standard installation is present, badges are read on first startup. Without the game, procedural placeholder emblems are available.
+
+The separate ship importer can list local HWRM ship archives and convert supported pooled HOD 2 static geometry and DXT textures into a private cache. It was checked against four locally installed ship files. Ship-model import is still deferred from the cube UI. Joints, animation, original shaders, team-color masks, patch-archive precedence and backgrounds are not supported yet. See [importer notes](docs/IMPORTER.md).
+
+The user's current rule/campaign/card reference collection is catalogued in [reference sources](docs/REFERENCE_SOURCES.md). Original PDFs and rendered card art remain local.
 
 ## Project status and rights
 

@@ -6,5 +6,6 @@
   <ItemGroup>
     <Compile Include="game/**/*.cs" />
     <ProjectReference Include="src/FleetCommand.Core/FleetCommand.Core.csproj" />
+    <ProjectReference Include="src/FleetCommand.Import/FleetCommand.Import.csproj" />
   </ItemGroup>
 </Project>

@@ -33,9 +33,11 @@ public partial class Main
         if (error != Error.Ok) throw new InvalidOperationException("Network: " + error);
         _networkActive = true; _isHost = host; _cooperative = cooperative; _localSide = host || cooperative ? 0 : 1;
         _bot = cooperative && host; Multiplayer.MultiplayerPeer = peer;
+        if (host) InitializeCommanders();
         if (!_networkSignalsBound)
         {
-            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), _content.Fingerprint);
+            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "appearance-v1:" + _content.Fingerprint,
+                JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
             Multiplayer.ConnectionFailed += () => { _status = "Не удалось подключиться."; StopNetwork(); DrawBattle(); };
             Multiplayer.ServerDisconnected += () => { _status = "Хост отключился. Продолжение — из сохранения у хоста."; StopNetwork(); DrawBattle(); };
             Multiplayer.PeerDisconnected += id => { _sideByPeer.Remove(id); };
@@ -51,14 +53,24 @@ public partial class Main
         Multiplayer.MultiplayerPeer = new OfflineMultiplayerPeer();
     }
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-    private void RegisterPeer(string fingerprint)
+    private void RegisterPeer(string fingerprint, string profileJson)
     {
         if (!_networkActive || !_isHost) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (fingerprint != _content.Fingerprint) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        if (fingerprint != "appearance-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        PlayerProfile profile;
+        try { profile = FleetPresentation.Normalize(JsonSerializer.Deserialize<PlayerProfile>(profileJson, JsonData.Options)); }
+        catch (JsonException) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
         _sideByPeer[sender] = _cooperative ? 0 : 1;
+        if (!_cooperative)
+        {
+            var opponent = Commander(1);
+            var color = FleetPresentation.DistinctColor(profile.Color, [Commander(0).Color]);
+            _commanders[1] = opponent with { Name = profile.Name, Color = color,
+                Emblem = profile.Emblem == "auto" ? FleetPresentation.DefaultEmblem(opponent.Faction) : profile.Emblem, IsNpc = false };
+        }
         if (_campaign != null) _campaign = _campaign with { Participants = (_campaign.Participants ?? []).Append("peer-" + sender).Distinct().ToArray() };
-        Broadcast();
+        DrawBattle(); Broadcast(); SaveGame();
         if (_args.Contains("--smoke-host") && !_cooperative) ApplyCommand(0, new("pass"));
     }
     private void Submit(BattleCommand command)
@@ -86,7 +98,7 @@ public partial class Main
     private void Broadcast()
     {
         if (_state == null) return;
-        var saved = new SavedGame(_state, _generation, _campaign);
+        var saved = new SavedGame(_state, _generation, _campaign, _cooperative, _commanders);
         var json = JsonSerializer.Serialize(saved, JsonData.Options);
         foreach (var peer in _sideByPeer.Keys) RpcId(peer, nameof(ReceiveSnapshot), json, _cooperative);
     }
@@ -100,11 +112,16 @@ public partial class Main
             if (saved.Generation != null) MapGenerator.Generate(_content, saved.Generation);
             _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
             _generation = saved.Generation; _campaign = saved.Campaign; _cooperative = cooperative; _localSide = cooperative ? 0 : 1;
+            _commanders = ValidateCommanders(saved.Commanders);
             _status = "Синхронизация с хостом: действие " + _state.Sequence; DrawBattle();
             if (_args.Contains("--smoke-client") && _state.Sequence == (_cooperative ? 0 : 1) && !_smokeRequestSent) { _smokeRequestSent = true; Submit(new("pass")); }
             if (_args.Contains("--smoke-client") && _state.Sequence == (_cooperative ? 1 : 2))
             {
                 if (_cooperative && _campaign?.Participants?.Length < 2) throw new InvalidDataException("Co-op campaign metadata missing.");
+                if (_cooperative ? !Commander(1).IsNpc || Commander(1).Color != FleetPresentation.NeutralColor :
+                    Commander(0).Color == Commander(1).Color || Commander(1).IsNpc)
+                    throw new InvalidDataException("Commander identities were not synchronized.");
+                GD.Print("NETWORK_IDENTITIES_OK");
                 GD.Print((_cooperative ? "COOP_" : "") + "NETWORK_SNAPSHOT_OK"); GetTree().Quit();
             }
         }

@@ -95,6 +95,8 @@ public sealed class ContentCatalog
                 || s.Success is < 2 or > 6 || s.Armor < 0 || s.Range < 0 || !float.IsFinite(s.VisualSize) || s.VisualSize is <= 0 or > 2)
                 throw new InvalidDataException($"Invalid ship statistics: {s.Id}");
             foreach (var a in s.Abilities ?? []) if (!Abilities.ContainsKey(a)) throw new InvalidDataException($"{s.Id}: missing ability {a}");
+            if (!string.IsNullOrEmpty(s.TacticalIcon) && !FleetPresentation.TacticalIcons.Contains(s.TacticalIcon))
+                throw new InvalidDataException($"Unknown tactical icon: {s.TacticalIcon}");
         }
         foreach (var f in Fleets.Values)
             foreach (var u in f.Units)

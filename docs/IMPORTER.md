@@ -1,6 +1,14 @@
 # Local HWRM import module
 
-The importer is separate from the game core. The current cube application does not load or require any game resources. Import UI integration and background conversion are deferred.
+The importer is separate from the game core. The cube application optionally reads faction/kiith badges; it does not require the game to run. Ship-model UI integration and background conversion remain deferred.
+
+## Emblems in the application
+
+**Options → Player** accepts a local HWRM installation path and reads seven whitelisted TGA entries from `HomeworldRM/Data/Homeworld2.big`: Kushan, Taiidan, S'jet, Naabal, Manaan, Paktu and Soban. The Taiidan white variant is used for visibility on the dark UI. A standard installation is detected on first launch; other paths can be entered manually. Missing images fall back to procedural placeholder symbols.
+
+`BadgeImporter` writes only to the private `imported/badges` cache inside the configured data directory. `provenance.json` records source archive entries and SHA-256 hashes. The game installation is read-only. Cached badges can be refreshed from the same UI. No badge images are tracked in Git or transmitted to other peers.
+
+## Ship development importer
 
 The development CLI currently lives in the check runner:
 

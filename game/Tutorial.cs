@@ -47,6 +47,7 @@ public partial class Main
             DrawBattle(); return;
         }
         _selected = id;
+        _inspectedObject = null;
         _tutorial?.Select(id);
         DrawBattle();
     }

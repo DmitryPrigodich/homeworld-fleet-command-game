@@ -6,6 +6,8 @@
 - [x] HW1-menu-inspired configurable palette, without original art/fonts.
 - [x] High-level menu structure, cube battlefield and local controls.
 - [x] Dedicated interactive tutorial and right-drag orbit camera with zoom/reset.
+- [x] Battlefield names, object inspection, tactical class symbols and player identity settings.
+- [x] Ownership footprints, reserved NPC/neutral gray, synchronized PvP appearance and local faction/kiith badges.
 - [x] Seeded skirmish generation and configurable force/object counts.
 - [x] Mid-battle saves and example campaign transitions.
 - [x] Basic AI, hotseat, direct PvP and shared-fleet co-op.
@@ -33,7 +35,8 @@
 
 ## Deferred art import
 
-- [ ] Built-in importer UI and ownership/source selection.
+- [x] Built-in emblem importer and source selection.
+- [ ] Built-in ship/background importer UI and ownership/source selection.
 - [ ] HWRM patch archive precedence and more HOD variants.
 - [ ] Joint transforms, material mapping, team colors and effect reconstruction.
 - [ ] HWRM background scenes and their textures through the same local-import workflow.

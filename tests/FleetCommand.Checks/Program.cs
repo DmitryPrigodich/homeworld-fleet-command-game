@@ -30,6 +30,18 @@ void Reject(Action action, string description)
     throw new Exception("FAIL: " + description);
 }
 var engine = new BattleEngine(content);
+Check(!FleetPresentation.IsPlayerColor("#87929c") && !FleetPresentation.IsPlayerColor("#111111") && !FleetPresentation.IsPlayerColor("#abcdef00"), "neutral, dark and transparent player colors are rejected");
+Check(FleetPresentation.PlayerColors.All(FleetPresentation.IsPlayerColor), "all suggested player colors are visible and chromatic");
+var identity = FleetPresentation.Normalize(new("\nCommander", "#87929c", "../../foreign-file"));
+Check(identity.Name == "Commander" && identity.Color == FleetPresentation.PlayerColors[0] && identity.Emblem == "auto", "untrusted profile fields are normalized without allowing file paths");
+Check(FleetPresentation.DistinctColor("#39a4c5", []) == "#39a4c5"
+    && FleetPresentation.DistinctColor("#39a4c5", ["#39a4c5"]) != "#39a4c5", "player colors survive sync and collisions receive a distinct alternative");
+Check(FleetPresentation.DefaultEmblem("kushan") == "kushan" && FleetPresentation.DefaultEmblem("taiidan") == "taiidan", "default faction emblems distinguish Kushan and Taiidan");
+Check(FleetPresentation.ShipIcon(content.Ships["core:kushan-interceptor"]) == "triangle"
+    && FleetPresentation.ShipIcon(content.Ships["core:taiidan-frigate"]) == "diamond", "legacy ship definitions resolve to Homeworld tactical classes");
+Check(FleetPresentation.ShipIcon(content.Ships["core:kushan-interceptor"] with { TacticalIcon = "square" }) == "square", "mods can explicitly select a tactical symbol");
+Check(FleetPresentation.ObjectEffects(content.Objects["core:planet"]).Contains("перекрывает огонь")
+    && FleetPresentation.ObjectEffects(content.Objects["core:asteroids"]).Contains("2"), "object inspection explains movement and attack effects");
 var state = engine.Create("core:training", 17);
 var before = engine.Save(state);
 var unit = state.Units.First(u => u.Side == 0);

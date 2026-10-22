@@ -20,16 +20,20 @@ Definitions have namespaced IDs: `myfleet:ship-name`. A new definition must use 
 
 | Array | Main fields |
 | --- | --- |
-| `ships` | id, name, faction, model, models, move, dicePerModel, success, armor, range, abilities, visualSize, color |
+| `ships` | id, name, faction, model, models, move, dicePerModel, success, armor, range, abilities, visualSize, color, tacticalIcon, label |
 | `abilities` | id, handler, value |
 | `fleets` | id, name, units: ship, q, r, facing |
-| `objects` | id, name, model, blocksMovement, attackPenalty, moveCost, color |
+| `objects` | id, name, model, blocksMovement, attackPenalty, moveCost, color, label |
 | `maps` | id, name, width, height, background, objects, fleets, rules |
 | `rules` | id, name, handler, roundLimit, ordersPerSide, alternatingOrders, friendlyPassThrough, rearShots, focusFire |
 | `themes` | id, name, background, panel, text, muted, accent, highlight, enemy, grid |
 | `campaigns` | id, name, start, missions: id, name, map, onVictory, onDefeat |
 
-The C# records in `src/FleetCommand.Core/Definitions.cs` are the canonical schema. All colors use `#RRGGBB` or `#RRGGBBAA`. A ship's empty `color` selects the side color from the current theme. `visualSize` changes cube size without changing combat stats. `model` is a future visual asset reference and is not loaded by the cube renderer.
+The C# records in `src/FleetCommand.Core/Definitions.cs` are the canonical schema. All content colors use `#RRGGBB` or `#RRGGBBAA`. A ship's empty `color` selects its placeholder hull color from the current theme. Ownership footprints are separate: their color comes from the player profile, or reserved gray for NPCs/neutral objects. `visualSize` changes cube size without changing combat stats. `model` is a future visual asset reference and is not loaded by the cube renderer.
+
+`label` optionally supplies a short battlefield name, while `name` remains available in detailed tooltips. `tacticalIcon` accepts `triangle`, `square`, `diamond`, `parallelogram`, `hexagon`, `circle` or `unknown`. For example, add `"tacticalIcon": "square", "label": "Корветы"` to a corvette definition. Legacy interceptor/frigate definitions receive their known symbols without modifying their JSON files or invalidating saves.
+
+Local player profiles support faction defaults (`auto`, Kushan/Taiidan) and built-in kiith selections. Original badge pixels come from the user's installation into `.local/imported/badges`, never from content packs in this repository. The network sends validated emblem IDs, not arbitrary filesystem paths or image data. Co-op uses the host's appearance for the shared fleet.
 
 Initial ability handlers are `penetrating`, `rapid-fire`, and `move-bonus`. Combine abilities on a ship to reuse these mechanics. A wholly new ability mechanic needs a small code change; arbitrary strings are not executed.
 

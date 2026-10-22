@@ -15,6 +15,7 @@ public partial class Main
         if (!preserveGeneration) _generation = null;
         _state = _engine.Create(mapId, (uint)(_generation?.Seed ?? 12345));
         _bot = bot; _selected = ""; _action = "move"; _status = "Выбери подразделение, затем клетку назначения или цель.";
+        _inspectedObject = null; InitializeCommanders();
         ResetBattleCamera(update: false);
         DrawBattle(); if (persist) SaveGame();
     }
@@ -26,6 +27,7 @@ public partial class Main
         _cameraBaseSize = Math.Max(map.Width * 2.35f, map.Height * 2.9f);
         _camera = new Camera3D { Projection = Camera3D.ProjectionType.Orthogonal, Current = true };
         _world.AddChild(_camera); UpdateBattleCamera();
+        BeginAnnotations();
         _world.AddChild(new DirectionalLight3D { RotationDegrees = new(-50, -25, 0), LightEnergy = 1.4f });
         var environment = new WorldEnvironment { Environment = new Godot.Environment { BackgroundMode = Godot.Environment.BGMode.Color,
             BackgroundColor = C(map.Background.StartsWith('#') && Color.HtmlIsValid(map.Background) ? map.Background : _colors.Background),
@@ -47,9 +49,13 @@ public partial class Main
         foreach (var placement in map.Objects)
         {
             var def = _content.Objects[placement.Definition];
-            _world.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = def.BlocksMovement ? new(1.1f, 1.2f, 1.1f) : new(0.75f, 0.35f, 0.75f) },
-                Position = World(new(placement.Q, placement.R)) + Vector3.Up * 0.3f,
+            var size = def.BlocksMovement ? new Vector3(1.1f, 1.2f, 1.1f) : new Vector3(0.75f, 0.35f, 0.75f);
+            var position = World(new(placement.Q, placement.R));
+            AddFootprint(position, new(size.X + 0.12f, size.Z + 0.12f), 0, C(FleetPresentation.NeutralColor));
+            _world.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = size },
+                Position = position + Vector3.Up * (size.Y * 0.5f + 0.25f),
                 MaterialOverride = new StandardMaterial3D { AlbedoColor = C(def.Color), Roughness = 0.9f } });
+            ObjectAnnotation(placement, def, size.Y);
         }
         foreach (var unit in _state.Units)
         {
@@ -60,28 +66,31 @@ public partial class Main
             for (int i = 0; i < Math.Min(unit.Models, 6); i++)
             {
                 var offset = unit.Models > 1 ? new Vector3((i % 3 - 1) * size * 1.3f, 0, (i / 3 - 0.5f) * size * 1.3f) : Vector3.Zero;
-                _world.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new(size, size, size * 1.25f) }, Position = point + offset + Vector3.Up * (size * 0.5f + 0.05f),
+                AddFootprint(point + offset, new(size + 0.1f, size * 1.25f + 0.1f), -60 * unit.Facing, C(Commander(unit.Side).Color));
+                _world.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new(size, size, size * 1.25f) }, Position = point + offset + Vector3.Up * (size * 0.5f + 0.3f),
                     RotationDegrees = new(0, -60 * unit.Facing, 0), MaterialOverride = new StandardMaterial3D { AlbedoColor = color, Metallic = 0.2f, Roughness = 0.5f } });
             }
-            var label = new Label3D { Text = $"{unit.Id}  [{unit.Models}]", Position = point + Vector3.Up * 1.1f, FontSize = 22,
-                PixelSize = 0.008f, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Modulate = C(unit.Id == _selected ? _colors.Highlight : _colors.Text) };
-            _world.AddChild(label);
+            UnitAnnotation(unit, def, size + 0.9f);
             if (unit.Id == _selected)
                 _world.AddChild(new MeshInstance3D { Mesh = new TorusMesh { InnerRadius = 0.8f, OuterRadius = 0.86f, Rings = 6, RingSegments = 24 },
                     Position = point + Vector3.Up * 0.05f, MaterialOverride = new StandardMaterial3D { AlbedoColor = C(_colors.Highlight), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded } });
         }
         DrawTutorialMarker();
         var top = Panel(30, 22, 1380, 68);
-        Text(top, $"{map.Name.ToUpperInvariant()}     /     РАУНД {_state.Round}     /     ХОД: {(_state.ActiveSide == 0 ? "СИНИЕ" : "КРАСНЫЕ")}", 22, _colors.Accent);
+        Text(top, $"{map.Name.ToUpperInvariant()}     /     РАУНД {_state.Round}     /     ХОД: {SideName(_state.ActiveSide)}", 22, _colors.Accent);
         var left = Panel(30, 112, 260, 650);
         Text(left, _tutorial != null ? "ОБУЧЕНИЕ" : _campaign == null ? "СКИРМИШ" : "КАМПАНИЯ", 18, _colors.Highlight);
         Text(left, _tutorial != null ? "СИНИЕ — МЫ / КРАСНЫЕ — ВРАГ" : _generation == null ? "Сценарий из данных" : $"Seed: {_generation.Seed}", 13, _colors.Muted);
-        var scroll = new ScrollContainer { CustomMinimumSize = new(0, 450), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        OwnerLegend(left);
+        var scroll = new ScrollContainer { CustomMinimumSize = new(0, 320), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         left.AddChild(scroll); var roster = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; scroll.AddChild(roster);
         foreach (var unit in _state.Units.OrderBy(u => u.Side).ThenBy(u => u.Id))
         {
-            var b = Button(roster, $"{(unit.Side == 0 ? "СИНИЕ" : "КРАСНЫЕ")}  {unit.Id}  ×{unit.Models}", () => SelectUnit(unit.Id));
-            b.CustomMinimumSize = new(0, 34);
+            var ship = _content.Ships[unit.Definition]; var owner = Commander(unit.Side);
+            var b = Button(roster, $"{FleetPresentation.ShipName(ship)} ×{unit.Models}\n{owner.Name} · {unit.Id}" + (unit.Activated ? " · ✓" : ""), () => SelectUnit(unit.Id));
+            b.Icon = TacticalTextures.Icon(FleetPresentation.ShipIcon(ship), C(owner.Color)); b.ExpandIcon = true;
+            b.AddThemeConstantOverride("icon_max_width", 20); b.AddThemeFontSizeOverride("font_size", 13);
+            b.CustomMinimumSize = new(0, 54);
             b.TooltipText = _content.Ships[unit.Definition].Name + (unit.Activated ? " — приказ уже выполнен" : " — готово к приказу");
         }
         Text(left, "ЛКМ — выбор / приказ\nПКМ + мышь — обзор\nКолёсико — масштаб\nF — исходный ракурс", 15, _colors.Muted);
@@ -90,7 +99,12 @@ public partial class Main
         DrawTutorial(right);
         var selected = _state.Units.Find(u => u.Id == _selected);
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
-            Text(right, selected == null ? "ПРИКАЗЫ" : _content.Ships[selected.Definition].Name, 19, _colors.Highlight);
+            Text(right, _inspectedObject != null ? FleetPresentation.ObjectName(_content.Objects[_inspectedObject.Definition]) : selected == null ? "ПРИКАЗЫ" : FleetPresentation.ShipName(_content.Ships[selected.Definition]), 19, _colors.Highlight);
+        if (_inspectedObject != null && _tutorial == null)
+        {
+            Text(right, "НЕЙТРАЛЬНЫЙ ОБЪЕКТ", 13, FleetPresentation.NeutralColor);
+            Text(right, FleetPresentation.ObjectEffects(_content.Objects[_inspectedObject.Definition]), 16);
+        }
         if (selected != null && _tutorial == null)
         {
             var def = _content.Ships[selected.Definition];
@@ -105,7 +119,7 @@ public partial class Main
         if (_tutorial == null) Button(right, "СОХРАНИТЬ", () => { SaveGame(); _status = "Сохранено."; DrawBattle(); }, _networkActive && !_isHost);
         if (_state.Finished)
         {
-            Text(right, _state.Winner == null ? "Лимит раундов. Ничья." : $"Победа: {(_state.Winner == 0 ? "синие" : "красные")}", 18, _colors.Highlight);
+            Text(right, _state.Winner == null ? "Лимит раундов. Ничья." : $"Победа: {SideName(_state.Winner.Value)}", 18, _colors.Highlight);
             if (_campaign != null)
                 Button(right, "ДАЛЕЕ ПО КАМПАНИИ", AdvanceCampaign, _networkActive && !_isHost);
         }
@@ -126,6 +140,8 @@ public partial class Main
         }
         if (tile == null || distance > 1.05f) return;
         var target = _state.Units.Find(u => u.Q == tile.Value.Q && u.R == tile.Value.R);
+        var obj = map.Objects.FirstOrDefault(o => o.Q == tile.Value.Q && o.R == tile.Value.R);
+        if (obj != null && target == null && (_selected == "" || _content.Objects[obj.Definition].BlocksMovement)) { InspectObject(obj); return; }
         if (target != null && (target.Side == _state.ActiveSide || string.IsNullOrEmpty(_selected))) { SelectUnit(target.Id); return; }
         if (string.IsNullOrEmpty(_selected)) return;
         if (_action == "attack" && target != null) Submit(new("attack", _selected, target.Id));
@@ -170,7 +186,7 @@ public partial class Main
     private void SaveGame()
     {
         if (_state == null || _tutorial != null || _networkActive && !_isHost) return;
-        var saved = new SavedGame(_state, _generation, _campaign == null ? null : _campaign with { Battle = _state }, _bot);
+        var saved = new SavedGame(_state, _generation, _campaign == null ? null : _campaign with { Battle = _state }, _bot, _commanders);
         string path = SavePath(_campaign != null), temp = path + ".pending";
         System.IO.File.WriteAllText(temp, JsonSerializer.Serialize(saved, JsonData.Options));
         System.IO.File.Move(temp, path, true);
@@ -183,6 +199,7 @@ public partial class Main
         if (_generation != null) MapGenerator.Generate(_content, _generation);
         _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
         _tutorial = null; _campaign = saved.Campaign; _bot = saved.ComputerOpponent; _selected = ""; _action = "move"; _status = "Партия восстановлена.";
+        _inspectedObject = null; _commanders = ValidateCommanders(saved.Commanders);
         ResetBattleCamera(update: false);
         if (_campaign?.Completed == true) { ShowCampaignEnd(); return; }
         DrawBattle(); QueueBot();
