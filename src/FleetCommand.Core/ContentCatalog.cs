@@ -16,6 +16,21 @@ public sealed class ContentCatalog
     public List<ModManifest> Mods { get; } = [];
     public string Fingerprint { get; private set; } = "";
 
+    // Definitions are records; a separate set of dictionaries isolates temporary scenarios.
+    public ContentCatalog CopyForRuntime()
+    {
+        var copy = new ContentCatalog { Fingerprint = Fingerprint };
+        void Copy<T>(Dictionary<string, T> source, Dictionary<string, T> target)
+        {
+            foreach (var pair in source) target.Add(pair.Key, pair.Value);
+        }
+        Copy(Ships, copy.Ships); Copy(Abilities, copy.Abilities); Copy(Fleets, copy.Fleets);
+        Copy(Objects, copy.Objects); Copy(Maps, copy.Maps); Copy(Rules, copy.Rules);
+        Copy(Themes, copy.Themes); Copy(Campaigns, copy.Campaigns);
+        copy.Mods.AddRange(Mods);
+        return copy;
+    }
+
     public static ContentCatalog Load(IEnumerable<string> directories)
     {
         var catalog = new ContentCatalog();

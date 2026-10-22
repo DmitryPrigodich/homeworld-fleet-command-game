@@ -64,6 +64,7 @@ public partial class Main
     private void Submit(BattleCommand command)
     {
         if (_state == null) return;
+        if (ApplyTutorialCommand(command)) return;
         if (_networkActive && !_isHost)
             RpcId(1, nameof(RequestCommand), JsonSerializer.Serialize(command, JsonData.Options), _state.Sequence);
         else ApplyCommand(_networkActive ? _localSide : _bot ? 0 : _state.ActiveSide, command);

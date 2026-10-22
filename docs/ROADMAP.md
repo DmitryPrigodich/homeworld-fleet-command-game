@@ -5,6 +5,7 @@
 - [x] Independent core, JSON content and checks.
 - [x] HW1-menu-inspired configurable palette, without original art/fonts.
 - [x] High-level menu structure, cube battlefield and local controls.
+- [x] Dedicated interactive tutorial and right-drag orbit camera with zoom/reset.
 - [x] Seeded skirmish generation and configurable force/object counts.
 - [x] Mid-battle saves and example campaign transitions.
 - [x] Basic AI, hotseat, direct PvP and shared-fleet co-op.

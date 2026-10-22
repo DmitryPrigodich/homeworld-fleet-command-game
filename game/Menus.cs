@@ -7,10 +7,11 @@ public partial class Main
 {
     private void MainMenu()
     {
-        StopNetwork(); _state = null; _campaign = null; _generation = null; ClearScreen();
+        StopNetwork(); EndTutorial(); _state = null; _campaign = null; _generation = null; ClearScreen();
         Heading("ТАКТИЧЕСКАЯ СИМУЛЯЦИЯ ФЛОТА");
         var menu = Panel(70, 245, 385, 420);
         Text(menu, "ГЛАВНОЕ МЕНЮ", 15, _colors.Highlight);
+        Button(menu, "ОБУЧЕНИЕ", StartTutorial);
         Button(menu, "ОДИНОЧНАЯ ИГРА", SinglePlayerMenu);
         Button(menu, "СОВМЕСТНАЯ ИГРА", NetworkMenu);
         Button(menu, "ОПЦИИ", OptionsMenu);

@@ -6,7 +6,8 @@ The current version uses differently sized blue and red cubes for ships, with gr
 
 ## Current playable slice
 
-- Russian main menu: single player, multiplayer, options, mods, exit.
+- Russian main menu: tutorial, single player, multiplayer, options, mods, exit.
+- A seven-step interactive tutorial with highlighted selection, movement, round reset and shooting. It uses a passive opponent and keeps existing saves untouched.
 - Skirmish with a simple computer opponent or local hotseat.
 - Hex movement, terrain movement costs, shortest-path cover, dice attacks, armor, model losses, focus fire and three configurable ability handlers.
 - Random skirmish setup: width, height, force counts, object count, seed and procedural background color. Friendly and enemy forces deploy at opposite edges.
@@ -27,7 +28,7 @@ Install the .NET SDK (8 or newer) and extract the official **Godot 4.7.2 .NET** 
 
 On the original development machine `Play.cmd` also finds the portable engine in `tmp/tools/godot`. The engine and build cache are not tracked in Git. The launch script uses project-local NuGet and save directories, and can use the package feed bundled with Godot for an offline build.
 
-Controls: select a unit from the roster or board, choose **Movement** or **Attack**, then click a destination hex or enemy. **End turn** passes the remainder of that side's orders. Activated units darken. Saves are under `.local/`.
+Start with **ОБУЧЕНИЕ** in the main menu. Controls: left-click a unit from the roster or board, choose **Movement** or **Attack**, then left-click a destination hex or enemy. **End turn** passes the remainder of that side's orders. Activated units darken. Hold **right mouse button** over the battlefield and drag to orbit; the **wheel** zooms and **F** resets the view. Camera orientation and zoom persist through selections and orders. Saves are under `.local/`.
 
 ## Multiplayer
 
@@ -47,6 +48,8 @@ dotnet tests/FleetCommand.Checks/bin/Debug/net8.0/FleetCommand.Checks.dll check 
 ```
 
 The dependency-free check runner covers turn authorization, immutable state transitions, save compatibility, reproducible combat, mod validation, campaign progress and deterministic map generation.
+
+The engine can also run `-- --check-controls` to exercise the tutorial through menu signals and viewport mouse/key events, including camera persistence and save isolation.
 
 ## Resource importer (deferred from the current UI)
 

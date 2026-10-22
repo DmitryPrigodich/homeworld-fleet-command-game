@@ -45,6 +45,7 @@ public partial class Main : Node3D
             MainMenu();
             if (_args.Contains("--capture-battle")) StartBattle("core:training", false);
             if (_args.Contains("--capture-generator")) GeneratorMenu();
+            if (_args.Contains("--capture-tutorial")) StartTutorial();
             if (_args.Contains("--smoke-host"))
             {
                 bool coop = _args.Contains("--smoke-coop");
@@ -140,6 +141,7 @@ public partial class Main : Node3D
     public override void _Process(double delta)
     {
         _frames++;
+        if (_frames == 5 && _args.Contains("--check-controls")) _ = CheckControls();
         if (_world != null && _state == null) _world.RotateY((float)delta * 0.08f);
         if (_frames == 40)
         {

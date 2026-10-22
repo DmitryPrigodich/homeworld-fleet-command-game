@@ -8,22 +8,24 @@ public partial class Main
 {
     private Label? _battleStatus;
     private static Vector3 World(Hex h) => new(h.Q * 1.5f, 0, (h.R + h.Q * 0.5f) * 1.73205f);
-    private void StartBattle(string mapId, bool bot, bool preserveCampaign = false, bool preserveGeneration = false, bool persist = true)
+    private void StartBattle(string mapId, bool bot, bool preserveCampaign = false, bool preserveGeneration = false, bool persist = true, bool preserveTutorial = false)
     {
+        if (!preserveTutorial) EndTutorial();
         if (!preserveCampaign) _campaign = null;
         if (!preserveGeneration) _generation = null;
         _state = _engine.Create(mapId, (uint)(_generation?.Seed ?? 12345));
-        _bot = bot; _selected = ""; _status = "Выбери подразделение, затем клетку назначения или цель.";
+        _bot = bot; _selected = ""; _action = "move"; _status = "Выбери подразделение, затем клетку назначения или цель.";
+        ResetBattleCamera(update: false);
         DrawBattle(); if (persist) SaveGame();
     }
     private void DrawBattle()
     {
         if (_state == null) return;
         ClearScreen(); var map = _content.Maps[_state.Map];
-        var center = World(new(map.Width - 1, map.Height - 1)) * 0.5f;
-        _camera = new Camera3D { Projection = Camera3D.ProjectionType.Orthogonal, Size = Math.Max(map.Width * 2.35f, map.Height * 2.9f),
-            Position = center + new Vector3(1, 24, 16), Current = true };
-        _world.AddChild(_camera); _camera.LookAt(center);
+        _cameraTarget = World(new(map.Width - 1, map.Height - 1)) * 0.5f;
+        _cameraBaseSize = Math.Max(map.Width * 2.35f, map.Height * 2.9f);
+        _camera = new Camera3D { Projection = Camera3D.ProjectionType.Orthogonal, Current = true };
+        _world.AddChild(_camera); UpdateBattleCamera();
         _world.AddChild(new DirectionalLight3D { RotationDegrees = new(-50, -25, 0), LightEnergy = 1.4f });
         var environment = new WorldEnvironment { Environment = new Godot.Environment { BackgroundMode = Godot.Environment.BGMode.Color,
             BackgroundColor = C(map.Background.StartsWith('#') && Color.HtmlIsValid(map.Background) ? map.Background : _colors.Background),
@@ -68,30 +70,39 @@ public partial class Main
                 _world.AddChild(new MeshInstance3D { Mesh = new TorusMesh { InnerRadius = 0.8f, OuterRadius = 0.86f, Rings = 6, RingSegments = 24 },
                     Position = point + Vector3.Up * 0.05f, MaterialOverride = new StandardMaterial3D { AlbedoColor = C(_colors.Highlight), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded } });
         }
+        DrawTutorialMarker();
         var top = Panel(30, 22, 1380, 68);
         Text(top, $"{map.Name.ToUpperInvariant()}     /     РАУНД {_state.Round}     /     ХОД: {(_state.ActiveSide == 0 ? "СИНИЕ" : "КРАСНЫЕ")}", 22, _colors.Accent);
         var left = Panel(30, 112, 260, 650);
-        Text(left, _campaign == null ? "СКИРМИШ" : "КАМПАНИЯ", 18, _colors.Highlight);
-        Text(left, _generation == null ? "Сценарий из данных" : $"Seed: {_generation.Seed}", 14, _colors.Muted);
+        Text(left, _tutorial != null ? "ОБУЧЕНИЕ" : _campaign == null ? "СКИРМИШ" : "КАМПАНИЯ", 18, _colors.Highlight);
+        Text(left, _tutorial != null ? "СИНИЕ — МЫ / КРАСНЫЕ — ВРАГ" : _generation == null ? "Сценарий из данных" : $"Seed: {_generation.Seed}", 13, _colors.Muted);
         var scroll = new ScrollContainer { CustomMinimumSize = new(0, 450), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         left.AddChild(scroll); var roster = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; scroll.AddChild(roster);
         foreach (var unit in _state.Units.OrderBy(u => u.Side).ThenBy(u => u.Id))
         {
-            var b = Button(roster, $"{(unit.Side == 0 ? "BLUE" : "RED")}  {unit.Id}  ×{unit.Models}", () => { _selected = unit.Id; DrawBattle(); });
+            var b = Button(roster, $"{(unit.Side == 0 ? "СИНИЕ" : "КРАСНЫЕ")}  {unit.Id}  ×{unit.Models}", () => SelectUnit(unit.Id));
             b.CustomMinimumSize = new(0, 34);
+            b.TooltipText = _content.Ships[unit.Definition].Name + (unit.Activated ? " — приказ уже выполнен" : " — готово к приказу");
         }
-        var right = Panel(1150, 112, 260, 650);
+        Text(left, "ЛКМ — выбор / приказ\nПКМ + мышь — обзор\nКолёсико — масштаб\nF — исходный ракурс", 15, _colors.Muted);
+        var right = Panel(_tutorial == null ? 1150 : 1060, 112, _tutorial == null ? 260 : 350, 650);
+        if (_tutorial != null) right.AddThemeConstantOverride("separation", 7);
+        DrawTutorial(right);
         var selected = _state.Units.Find(u => u.Id == _selected);
-        Text(right, selected == null ? "ПРИКАЗЫ" : _content.Ships[selected.Definition].Name, 19, _colors.Highlight);
-        if (selected != null)
+        if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
+            Text(right, selected == null ? "ПРИКАЗЫ" : _content.Ships[selected.Definition].Name, 19, _colors.Highlight);
+        if (selected != null && _tutorial == null)
         {
             var def = _content.Ships[selected.Definition];
             Text(right, $"Ход {def.Move} / Дальность {def.Range}\nБроня {def.Armor} / Кубики {def.DicePerModel} × {selected.Models}\nFocus Fire: {selected.FocusFire}", 15);
         }
-        Button(right, _action == "move" ? "▶ ПЕРЕМЕЩЕНИЕ" : "ПЕРЕМЕЩЕНИЕ", () => { _action = "move"; DrawBattle(); });
-        Button(right, _action == "attack" ? "▶ АТАКА" : "АТАКА", () => { _action = "attack"; DrawBattle(); });
-        Button(right, "ЗАВЕРШИТЬ ХОД", () => Submit(new("pass")));
-        Button(right, "СОХРАНИТЬ", () => { SaveGame(); _status = "Сохранено."; DrawBattle(); }, _networkActive && !_isHost);
+        if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
+        {
+            Button(right, _action == "move" ? "▶ ПЕРЕМЕЩЕНИЕ" : "ПЕРЕМЕЩЕНИЕ", () => SetBattleAction("move"), _tutorial != null && _tutorial.Step != TutorialStep.Move);
+            Button(right, _action == "attack" ? "▶ АТАКА" : "АТАКА", () => SetBattleAction("attack"), _tutorial != null && _tutorial.Step != TutorialStep.Attack);
+            Button(right, "ЗАВЕРШИТЬ ХОД", () => Submit(new("pass")), _tutorial != null && _tutorial.Step != TutorialStep.EndTurn);
+        }
+        if (_tutorial == null) Button(right, "СОХРАНИТЬ", () => { SaveGame(); _status = "Сохранено."; DrawBattle(); }, _networkActive && !_isHost);
         if (_state.Finished)
         {
             Text(right, _state.Winner == null ? "Лимит раундов. Ничья." : $"Победа: {(_state.Winner == 0 ? "синие" : "красные")}", 18, _colors.Highlight);
@@ -99,12 +110,12 @@ public partial class Main
                 Button(right, "ДАЛЕЕ ПО КАМПАНИИ", AdvanceCampaign, _networkActive && !_isHost);
         }
         Button(right, "ГЛАВНОЕ МЕНЮ", () => { SaveGame(); MainMenu(); });
-        Text(right, _networkActive ? (_cooperative ? "CO-OP / ОБЩИЙ ФЛОТ" : "PVP") : _bot ? "ОДИНОЧНАЯ / AI" : "ЛОКАЛЬНАЯ / HOTSEAT", 13, _colors.Muted);
+        if (_tutorial == null) Text(right, _networkActive ? (_cooperative ? "CO-OP / ОБЩИЙ ФЛОТ" : "PVP") : _bot ? "ОДИНОЧНАЯ / AI" : "ЛОКАЛЬНАЯ / HOTSEAT", 13, _colors.Muted);
         var bottom = Panel(30, 795, 1380, 76); _battleStatus = Text(bottom, _status, 16, _colors.Text);
     }
     public override void _UnhandledInput(InputEvent input)
     {
-        if (_state == null || input is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click) return;
+        if (_state == null || HandleBattleCamera(input) || input is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click) return;
         var origin = _camera.ProjectRayOrigin(click.Position); var ray = _camera.ProjectRayNormal(click.Position);
         var hit = new Plane(Vector3.Up, 0).IntersectsRay(origin, ray); if (!hit.HasValue) return;
         var map = _content.Maps[_state.Map];
@@ -115,10 +126,10 @@ public partial class Main
         }
         if (tile == null || distance > 1.05f) return;
         var target = _state.Units.Find(u => u.Q == tile.Value.Q && u.R == tile.Value.R);
-        if (target != null && (target.Side == _state.ActiveSide || string.IsNullOrEmpty(_selected))) { _selected = target.Id; DrawBattle(); return; }
+        if (target != null && (target.Side == _state.ActiveSide || string.IsNullOrEmpty(_selected))) { SelectUnit(target.Id); return; }
         if (string.IsNullOrEmpty(_selected)) return;
         if (_action == "attack" && target != null) Submit(new("attack", _selected, target.Id));
-        else Submit(new("move", _selected, Q: tile.Value.Q, R: tile.Value.R));
+        else if (_action == "move") Submit(new("move", _selected, Q: tile.Value.Q, R: tile.Value.R));
     }
     private void ApplyCommand(int side, BattleCommand command)
     {
@@ -158,7 +169,7 @@ public partial class Main
     private string SavePath(bool campaign) => System.IO.Path.Combine(_data, campaign ? "campaign.json" : "skirmish.json");
     private void SaveGame()
     {
-        if (_state == null || _networkActive && !_isHost) return;
+        if (_state == null || _tutorial != null || _networkActive && !_isHost) return;
         var saved = new SavedGame(_state, _generation, _campaign == null ? null : _campaign with { Battle = _state }, _bot);
         string path = SavePath(_campaign != null), temp = path + ".pending";
         System.IO.File.WriteAllText(temp, JsonSerializer.Serialize(saved, JsonData.Options));
@@ -166,11 +177,13 @@ public partial class Main
     }
     private void LoadGame(bool campaign)
     {
+        EndTutorial();
         var saved = JsonData.Read<SavedGame>(SavePath(campaign));
         _generation = saved.Generation;
         if (_generation != null) MapGenerator.Generate(_content, _generation);
         _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
-        _campaign = saved.Campaign; _bot = saved.ComputerOpponent; _selected = ""; _status = "Партия восстановлена.";
+        _tutorial = null; _campaign = saved.Campaign; _bot = saved.ComputerOpponent; _selected = ""; _action = "move"; _status = "Партия восстановлена.";
+        ResetBattleCamera(update: false);
         if (_campaign?.Completed == true) { ShowCampaignEnd(); return; }
         DrawBattle(); QueueBot();
     }
