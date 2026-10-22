@@ -15,7 +15,8 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - Direct ENet host/join, PvP or cooperative shared control of the blue side against AI. The host validates commands and owns saves. Joining peers receive the current battle and campaign snapshot.
 - JSON content mods, dependencies, explicit overrides, versioned manifests and a content fingerprint checked by network peers.
 - Theme colors supplied by mods, including an optional amber example theme.
-- Readable ship/object labels, object-effect inspection and Homeworld-style tactical class symbols.
+- Ship/object names while holding Alt, object-effect inspection and always-visible Homeworld-style tactical symbols/emblems.
+- A scrollable bottom battle log: movement, dice, losses, passing orders, new rounds and victory. The last 200 entries are saved with the battle and synchronized by the host.
 - Player name, color and emblem in **Options → Player**. Flattened cube footprints use the player's color; NPCs and neutral objects use reserved gray. PvP color collisions are resolved by the host.
 - Optional local import of Kushan, Taiidan and five kiith emblems from an owned HWRM installation. Only the importer code is distributed.
 
@@ -33,7 +34,9 @@ On the original development machine `Play.cmd` also finds the portable engine in
 
 Start with **ОБУЧЕНИЕ** in the main menu. Controls: left-click a unit from the roster or board, choose **Movement** or **Attack**, then left-click a destination hex or enemy. **End turn** passes the remainder of that side's orders. Activated units darken. Hold **right mouse button** over the battlefield and drag to orbit; the **wheel** zooms and **F** resets the view. Camera orientation and zoom persist through selections and orders. Saves are under `.local/`.
 
-Board labels show ship type, remaining models, owner and emblem. Click an object label to read its movement/attack effects. Triangle denotes fighters and diamond denotes frigates; mods can choose other supported tactical shapes. Labels can be hidden in Options while retaining symbols and hover details. Player colors affect ownership projections, while cube hull colors still distinguish the placeholder fleets.
+Hold **Alt** to show battlefield names, model counts, owners and object hover details; release it to return to compact symbols/emblems. Click an object symbol or label to read its movement/attack effects. Triangle denotes fighters and diamond denotes frigates; mods can choose other supported tactical shapes. The roster uses readable per-fleet unit numbers rather than internal IDs. Player colors affect ownership projections, while cube hull colors still distinguish the placeholder fleets.
+
+The bottom **battle log** records accepted orders, dice and actual casualties, turn/round transitions and the result. Scroll over it to read earlier events. A status line above the history explains rejected orders and tutorial instructions. History is retained in saves and network snapshots; older saves without a history remain compatible and begin recording at the next order. The previous `showLabels` setting is accepted when loading old settings but no longer overrides the Alt control.
 
 ## Multiplayer
 

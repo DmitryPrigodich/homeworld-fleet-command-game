@@ -1,5 +1,7 @@
 # Architecture
 
+`BattleState.Log` holds the last 200 public battle messages. `BattleEngine.Apply` appends an accepted command's message and turn/round/result transitions to a new list, preserving prior snapshots. Rule modules supply their result message; the current module includes final dice and actual model losses. History travels with saves and authoritative network snapshots. Rejected commands leave history/state unchanged and return immediate UI feedback. Presentation numbers units from their original deployment, keeping labels stable after casualties; internal command IDs stay out of normal labels.
+
 ## Boundaries
 
 - `src/FleetCommand.Core`: plain .NET definitions, catalog loading, validation, battle state, rule-module interface, campaign progression and map generation. No Godot dependency.

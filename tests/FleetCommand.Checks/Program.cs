@@ -50,6 +50,11 @@ Check(!engine.Apply(state, 0, new("move", unit.Id, Q: -1)).Accepted, "off-map mo
 Check(before == engine.Save(state), "rejected commands do not mutate state");
 var moved = engine.Apply(state, 0, new("move", unit.Id, Q: unit.Q + 1, R: unit.R));
 Check(moved.Accepted && moved.State.Sequence == 1 && moved.State.ActiveSide == 1, "legal move advances authoritative sequence and turn");
+var movementLog = moved.State.Log!;
+Check(movementLog.Any(e => e.Text.Contains("перемещение")) && movementLog.Last().Side == 1
+    && state.Log!.Count == 2, "accepted movement appends immutable action and turn log entries");
+Check(!movementLog.Any(e => e.Text.Contains(unit.Id)) && FleetPresentation.UnitNumber(content, state, state.Units.First(u => u.Side == 1)) == 1,
+    "player-facing names replace technical IDs and number each fleet separately");
 Check(before == engine.Save(state), "accepted commands preserve prior snapshot");
 Check(engine.Save(engine.Load(engine.Save(moved.State))) == engine.Save(moved.State), "save/load preserves exact state");
 Reject(() => engine.Load(before.Replace(content.Fingerprint, "wrong")), "save with other mods rejected");
@@ -65,6 +70,16 @@ var attack = new BattleCommand("attack", attackState.Units[0].Id, attackState.Un
 var a = engine.Apply(attackState, 0, attack);
 var b = engine.Apply(engine.Load(engine.Save(attackState)), 0, attack);
 Check(a.Accepted && engine.Save(a.State) == engine.Save(b.State), "random state survives saves and reproduces combat");
+Check(a.State.Log!.Any(e => e.Text.Contains("Броски:") && e.Text.Contains("Потери цели:")), "attack log reports dice and actual casualties");
+Check(FleetPresentation.UnitNumber(content, state with { Units = state.Units.Skip(1).ToList() }, state.Units[1]) == 2,
+    "unit labels remain stable after earlier units are lost");
+var legacyState = state with { Log = null };
+Check(engine.Load(engine.Save(legacyState)).Log == null && engine.Apply(legacyState, 0, new("pass")).State.Log!.Count > 0,
+    "old saves without history remain loadable and begin recording new events");
+var overflowing = state with { Log = Enumerable.Range(0, BattleLog.Capacity).Select(i => new BattleLogEntry(i, 1, 0, "Prior event")).ToList() };
+var boundedLog = engine.Apply(overflowing, 0, new("pass")).State.Log!;
+Check(boundedLog.Count == BattleLog.Capacity && boundedLog.Last().Number > overflowing.Log!.Last().Number,
+    "log retention is bounded and preserves event order");
 var generated = new GenerationOptions(12, 8, 5, 7, 18, 85);
 MapGenerator.Generate(content, generated);
 var generatedMap = JsonSerializer.Serialize(content.Maps[MapGenerator.MapId], JsonData.Options);
@@ -101,6 +116,7 @@ lesson.Accepted(trainingPass);
 training = trainingEngine.Apply(training, 1, trainingPass).State;
 Check(training.Round == 2 && training.ActiveSide == 0 && !training.Units.Single(u => u.Id == TutorialLesson.ScoutId).Activated,
     "passive tutorial opponent permits a new round with refreshed units");
+Check(training.Log!.Any(e => e.Round == 2 && e.Text.Contains("Начался раунд")), "round transitions are recorded in the battle history");
 var trainingShot = new BattleCommand("attack", TutorialLesson.ScoutId, TutorialLesson.TargetId);
 var trainingFired = trainingEngine.Apply(training, 0, trainingShot);
 Check(lesson.Allows(trainingShot) && trainingFired.Accepted, "tutorial target is in range after the demonstrated move");

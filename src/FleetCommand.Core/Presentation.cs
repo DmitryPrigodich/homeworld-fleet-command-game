@@ -65,6 +65,13 @@ public static class FleetPresentation
         "core:kushan-frigate" or "core:taiidan-frigate" => "Штурмовые фрегаты",
         "tutorial:scouts" => "Учебные перехватчики", "tutorial:frigate" => "Учебный фрегат", _ => ship.Name
     };
+    public static int UnitNumber(ContentCatalog content, BattleState state, BattleUnit unit)
+    {
+        int offset = content.Maps[state.Map].Fleets.Take(unit.Side).Sum(id => content.Fleets[id].Units.Length);
+        return int.TryParse(unit.Id.AsSpan(unit.Id.LastIndexOf('-') + 1), out int index) ? Math.Max(1, index - offset + 1) : 1;
+    }
+    public static string UnitName(ContentCatalog content, BattleState state, BattleUnit unit) =>
+        $"{ShipName(content.Ships[unit.Definition])} №{UnitNumber(content, state, unit)}";
     public static string ObjectName(ObjectDefinition obj) => !string.IsNullOrWhiteSpace(obj.Label) ? obj.Label : obj.Id switch
     {
         "core:asteroids" => "Астероиды", "core:planet" => "Планета", _ => obj.Name

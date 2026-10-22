@@ -28,6 +28,13 @@ public partial class Main
 
     public override void _Input(InputEvent input)
     {
+        if (input is InputEventKey { Keycode: Key.Alt, Echo: false } alt)
+        {
+            _namesHeld = alt.Pressed;
+            if (GodotObject.IsInstanceValid(_annotations)) _annotations.ShowNames = _namesHeld;
+            if (_state != null) GetViewport().SetInputAsHandled();
+            return;
+        }
         if (!_orbitDragging) return;
         if (input is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: false })
         {
@@ -46,7 +53,11 @@ public partial class Main
 
     public override void _Notification(int what)
     {
-        if (what == NotificationWMWindowFocusOut) _orbitDragging = false;
+        if (what == NotificationWMWindowFocusOut)
+        {
+            _orbitDragging = false; _namesHeld = false;
+            if (GodotObject.IsInstanceValid(_annotations)) _annotations.ShowNames = false;
+        }
     }
 
     private bool HandleBattleCamera(InputEvent input)

@@ -36,7 +36,7 @@ public partial class Main
         if (host) InitializeCommanders();
         if (!_networkSignalsBound)
         {
-            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "appearance-v1:" + _content.Fingerprint,
+            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "battle-log-v1:" + _content.Fingerprint,
                 JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
             Multiplayer.ConnectionFailed += () => { _status = "Не удалось подключиться."; StopNetwork(); DrawBattle(); };
             Multiplayer.ServerDisconnected += () => { _status = "Хост отключился. Продолжение — из сохранения у хоста."; StopNetwork(); DrawBattle(); };
@@ -57,7 +57,7 @@ public partial class Main
     {
         if (!_networkActive || !_isHost) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (fingerprint != "appearance-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        if (fingerprint != "battle-log-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
         PlayerProfile profile;
         try { profile = FleetPresentation.Normalize(JsonSerializer.Deserialize<PlayerProfile>(profileJson, JsonData.Options)); }
         catch (JsonException) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
@@ -89,7 +89,7 @@ public partial class Main
         try
         {
             var command = JsonSerializer.Deserialize<BattleCommand>(json, JsonData.Options);
-            if (command != null) ApplyCommand(side, command);
+            if (command != null && !ApplyCommand(side, command)) RpcId(Multiplayer.GetRemoteSenderId(), nameof(ReceiveCommandFeedback), _status);
             if (_args.Contains("--smoke-host") && _state.Sequence == (_cooperative ? 1 : 2))
             { GD.Print((_cooperative ? "COOP_" : "") + "NETWORK_COMMAND_ACCEPTED"); GetTree().CreateTimer(0.5).Timeout += () => GetTree().Quit(); }
         }
@@ -101,6 +101,12 @@ public partial class Main
         var saved = new SavedGame(_state, _generation, _campaign, _cooperative, _commanders);
         var json = JsonSerializer.Serialize(saved, JsonData.Options);
         foreach (var peer in _sideByPeer.Keys) RpcId(peer, nameof(ReceiveSnapshot), json, _cooperative);
+    }
+    [Rpc(MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+    private void ReceiveCommandFeedback(string message)
+    {
+        if (_isHost || !_networkActive || message.Length > 4096) return;
+        _status = message; DrawBattle();
     }
     [Rpc(MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
     private void ReceiveSnapshot(string json, bool cooperative)
@@ -122,6 +128,9 @@ public partial class Main
                     Commander(0).Color == Commander(1).Color || Commander(1).IsNpc)
                     throw new InvalidDataException("Commander identities were not synchronized.");
                 GD.Print("NETWORK_IDENTITIES_OK");
+                if (_state.Log == null || !_state.Log.Any(entry => entry.Text.Contains("приказы пропущены")))
+                    throw new InvalidDataException("Battle log was not synchronized.");
+                GD.Print("NETWORK_LOG_OK");
                 GD.Print((_cooperative ? "COOP_" : "") + "NETWORK_SNAPSHOT_OK"); GetTree().Quit();
             }
         }

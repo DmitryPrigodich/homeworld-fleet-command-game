@@ -37,6 +37,8 @@ public partial class Main
             string objects = string.Join(',', _content.Objects.Keys.Order());
             Press("ОБУЧЕНИЕ"); await Frame(); await Frame();
             Check(_tutorial?.Step == TutorialStep.Welcome, "main menu opens dedicated tutorial");
+            Check(!_annotations.ShowNames && _annotations.GetChildren().OfType<PanelContainer>().All(p => p.TooltipText == ""),
+                "battlefield names and hover text start hidden while tactical icons remain");
             Press("НАЧАТЬ ОБУЧЕНИЕ"); await Frame(); await Frame();
             var before = _camera.Transform;
             InputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Right, Pressed = true, Position = new(650, 450) });
@@ -55,15 +57,31 @@ public partial class Main
             InputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Right, Pressed = false, Position = new(665, 442) });
             await Frame();
             before = _camera.Transform;
+            var annotationId = _annotations.GetInstanceId();
+            InputEvent(new InputEventKey { Keycode = Key.Alt, Pressed = true }); await Frame(); await Frame();
+            Check(_namesHeld && _annotations.ShowNames && _annotations.GetInstanceId() == annotationId && _state!.Sequence == 0,
+                "holding Alt reveals names in place without a battle action");
+            if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "labels-alt.png"));
             await ClickCell(new(1, 2));
             Check(_tutorial?.Step == TutorialStep.Move && _selected == TutorialLesson.ScoutId, "left click selects highlighted unit");
+            Check(_annotations.ShowNames, "labels stay visible through selection while Alt is held");
             Check(_camera.Transform == before, "camera survives selection redraw");
+            annotationId = _annotations.GetInstanceId();
+            InputEvent(new InputEventKey { Keycode = Key.Alt, Pressed = false }); await Frame(); await Frame();
+            Check(!_namesHeld && !_annotations.ShowNames && _annotations.GetInstanceId() == annotationId,
+                "releasing Alt immediately hides names without rebuilding the scene");
+            InputEvent(new InputEventKey { Keycode = Key.Alt, Pressed = true });
+            Notification((int)NotificationWMWindowFocusOut);
+            Check(!_namesHeld && !_annotations.ShowNames, "focus loss clears Alt names so Alt-Tab cannot leave them stuck");
+            InputEvent(new InputEventKey { Keycode = Key.Alt, Pressed = false }); await Frame(); await Frame();
+            if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "labels-hidden.png"));
             Submit(new("pass")); await Frame(); await Frame();
             Check(_tutorial?.Step == TutorialStep.Move && _state?.Sequence == 0, "wrong tutorial action does not advance battle");
             // Save the move-stage image for visual inspection.
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "tutorial-move.png"));
             await ClickCell(TutorialLesson.Destination);
             Check(_tutorial?.Step == TutorialStep.EndTurn && _state?.ActiveSide == 0, "highlighted move and passive opponent advance lesson");
+            Check(_eventLog.Text.Contains("перемещение") && _eventLog.Text.Contains("приказы пропущены"), "bottom log displays player and training-opponent actions");
             Check(_camera.Transform == before, "camera survives an accepted order");
             Press("ЗАВЕРШИТЬ ХОД"); await Frame(); await Frame();
             Check(_tutorial?.Step == TutorialStep.Attack && _state?.Round == 2, "end turn refreshes units for shooting");
@@ -73,6 +91,8 @@ public partial class Main
             Check(_state.Sequence == sequence, "attack mode does not move to an empty hex");
             await ClickCell(new(4, 2));
             Check(_tutorial?.Step == TutorialStep.Complete, "target click completes the guided lesson");
+            Check(_eventLog.Text.Contains("Броски:") && _eventLog.Text.Contains("Потери цели:") && !_eventLog.Text.Contains(TutorialLesson.ScoutId),
+                "battle log shows dice and losses with readable unit names");
             Check(skirmish == ReadSave(false) && campaign == ReadSave(true), "tutorial leaves existing saves untouched");
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "tutorial-complete.png"));
             Press("ГЛАВНОЕ МЕНЮ"); await Frame(); await Frame();

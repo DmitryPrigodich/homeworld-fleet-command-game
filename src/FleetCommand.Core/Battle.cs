@@ -6,7 +6,7 @@ public sealed record BattleUnit(string Id, string Definition, int Side, int Q, i
     int Models, int FocusFire = 0, bool Activated = false);
 public sealed record BattleState(string Map, string ContentFingerprint, List<BattleUnit> Units,
     int Round = 1, int ActiveSide = 0, int Orders0 = 0, int Orders1 = 0, int Sequence = 0,
-    uint RandomState = 12345, int? Winner = null, bool Finished = false);
+    uint RandomState = 12345, int? Winner = null, bool Finished = false, List<BattleLogEntry>? Log = null);
 public sealed record BattleCommand(string Kind, string Unit = "", string Target = "", int Q = 0, int R = 0, int Facing = 0);
 public sealed record CommandResult(bool Accepted, string Message, BattleState State);
 
@@ -29,13 +29,16 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
             foreach (var placement in content.Fleets[map.Fleets[side]].Units)
                 units.Add(new($"s{side}-{units.Count}", placement.Ship, side, placement.Q, placement.R, placement.Facing,
                     content.Ships[placement.Ship].Models));
-        return new(mapId, content.Fingerprint, units, RandomState: seed == 0 ? 1u : seed);
+        return new(mapId, content.Fingerprint, units, RandomState: seed == 0 ? 1u : seed,
+            Log: [new(0, 1, -1, "Бой начался."), new(1, 1, 0, "Первый приказ.")]);
     }
 
     public CommandResult Apply(BattleState state, int side, BattleCommand command)
     {
-        if (state.ContentFingerprint != content.Fingerprint) return new(false, "Content mismatch.", state);
-        return _modules[content.Rules[content.Maps[state.Map].Rules].Handler].Apply(content, state, side, command);
+        if (state.ContentFingerprint != content.Fingerprint) return new(false, "Набор игровых данных не совпадает.", state);
+        var result = _modules[content.Rules[content.Maps[state.Map].Rules].Handler].Apply(content, state, side, command);
+        if (!result.Accepted) return result;
+        return result with { State = result.State with { Log = BattleLog.AfterCommand(state, result.State, side, result.Message) } };
     }
     public string Save(BattleState state) => JsonSerializer.Serialize(state, JsonData.Options);
     public BattleState Load(string json)
@@ -51,6 +54,10 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
             if (!content.Ships.TryGetValue(u.Definition, out var d) || u.Models < 1 || u.Models > d.Models
                 || u.Side is < 0 or > 1 || u.Facing is < 0 or > 5 || u.FocusFire < 0 || u.Q < 0 || u.Q >= map.Width || u.R < 0 || u.R >= map.Height
                 || !cells.Add(new(u.Q, u.R))) throw new InvalidDataException("Invalid unit in save.");
+        if (s.Log != null && (s.Log.Count > BattleLog.Capacity || s.Log.Any(e => e.Number < 0 || e.Round < 1 || e.Round > s.Round
+                || e.Side is < -1 or > 1 || string.IsNullOrWhiteSpace(e.Text) || e.Text.Length > 4096)
+            || !s.Log.Select(e => e.Number).SequenceEqual(s.Log.Select(e => e.Number).Distinct().Order())))
+            throw new InvalidDataException("Invalid battle log in save.");
         return s;
     }
 }
@@ -62,8 +69,8 @@ public sealed class SkirmishRules : IRuleModule
     public CommandResult Apply(ContentCatalog c, BattleState original, int side, BattleCommand cmd)
     {
         CommandResult Reject(string text) => new(false, text, original);
-        if (original.Finished) return Reject("Battle finished.");
-        if (side != original.ActiveSide) return Reject("Wait for your turn.");
+        if (original.Finished) return Reject("Бой уже завершён.");
+        if (side != original.ActiveSide) return Reject("Дождись своего хода.");
         var map = c.Maps[original.Map];
         var rules = c.Rules[map.Rules];
         var state = original with { Units = [.. original.Units] };
@@ -75,18 +82,20 @@ public sealed class SkirmishRules : IRuleModule
         if (cmd.Kind == "pass")
         {
             state = side == 0 ? state with { Orders0 = rules.OrdersPerSide } : state with { Orders1 = rules.OrdersPerSide };
-            message = $"Side {side + 1} passes.";
+            message = "Оставшиеся приказы пропущены.";
         }
         else
         {
-            if (unit is null || unit.Side != side || unit.Activated || Remaining(side) <= 0) return Reject("Unit cannot receive an order.");
+            if (unit is null || unit.Side != side) return Reject("Выбери своё подразделение.");
+            if (unit.Activated) return Reject("Это подразделение уже выполнило приказ. Дождись нового раунда.");
+            if (Remaining(side) <= 0) return Reject("Приказы на этот раунд закончились.");
             var definition = c.Ships[unit.Definition];
             var abilities = (definition.Abilities ?? []).Select(a => c.Abilities[a]).ToArray();
             if (cmd.Kind == "move")
             {
                 var goal = new Hex(cmd.Q, cmd.R);
                 if (!Inside(goal) || goal == new Hex(unit.Q, unit.R) || Blocked(goal) || state.Units.Any(u => u.Q == goal.Q && u.R == goal.R))
-                    return Reject("Destination is occupied or outside the map.");
+                    return Reject("Клетка занята, непроходима или находится за границей поля.");
                 // Dijkstra includes terrain costs; range alone is not a legal-movement check.
                 var best = new Dictionary<Hex, int> { [new(unit.Q, unit.R)] = 0 };
                 var queue = new PriorityQueue<Hex, int>();
@@ -105,16 +114,16 @@ public sealed class SkirmishRules : IRuleModule
                         best[next] = total; queue.Enqueue(next, total);
                     }
                 }
-                if (!best.ContainsKey(goal)) return Reject("No legal path within movement allowance.");
+                if (!best.ContainsKey(goal)) return Reject("До этой клетки не хватает движения или нет свободного пути.");
                 unit = unit with { Q = cmd.Q, R = cmd.R, Facing = (cmd.Facing % 6 + 6) % 6 };
-                message = $"{definition.Name} moves to {cmd.Q},{cmd.R}.";
+                message = $"{FleetPresentation.UnitName(c, original, unit)}: перемещение в клетку ({cmd.Q + 1}, {cmd.R + 1}).";
             }
             else if (cmd.Kind == "attack")
             {
-                if (definition.DicePerModel == 0) return Reject("This unit has no ranged weapon.");
+                if (definition.DicePerModel == 0) return Reject("У этого подразделения нет оружия для стрельбы.");
                 var target = state.Units.Find(u => u.Id == cmd.Target);
                 if (target is null || target.Side == side || new Hex(unit.Q, unit.R).Distance(new(target.Q, target.R)) > definition.Range)
-                    return Reject("Invalid target or target out of range.");
+                    return Reject("Выбери противника в пределах дальности стрельбы.");
                 var targetDef = c.Ships[target.Definition];
                 var start = new Hex(unit.Q, unit.R);
                 var end = new Hex(target.Q, target.R);
@@ -137,7 +146,7 @@ public sealed class SkirmishRules : IRuleModule
                     return memo[h] = worst;
                 }
                 int cover = Cover(start);
-                if (cover >= 100000) return Reject("Line of sight blocked.");
+                if (cover >= 100000) return Reject("Объект перекрывает линию огня.");
                 uint random = state.RandomState;
                 int Roll() { random ^= random << 13; random ^= random >> 17; random ^= random << 5; return (int)(random % 6) + 1; }
                 int penetrating = (definition.Abilities ?? []).Select(a => c.Abilities[a]).Where(a => a.Handler == "penetrating").Sum(a => a.Value);
@@ -152,9 +161,11 @@ public sealed class SkirmishRules : IRuleModule
                 state.Units.Remove(target);
                 if (target.Models > killed) state.Units.Add(target with { Models = target.Models - killed, FocusFire = Math.Max(0, target.FocusFire + focus - killed) });
                 state = state with { RandomState = random };
-                message = $"{definition.Name}: [{string.Join(",", rolls)}], {killed} losses, {focus} focus fire.";
+                message = $"{FleetPresentation.UnitName(c, original, unit)} → противник: {FleetPresentation.UnitName(c, original, target)}. " +
+                    $"Броски: [{string.Join(", ", rolls)}]. Потери цели: {Math.Min(killed, target.Models)}; осталось: {Math.Max(0, target.Models - killed)}." +
+                    (focus > 0 ? $" Метки сосредоточенного огня: +{focus}." : "") + (killed >= target.Models ? " Подразделение уничтожено." : "");
             }
-            else return Reject("Unknown command.");
+            else return Reject("Неизвестный приказ.");
             state.Units.RemoveAll(u => u.Id == unit.Id);
             state.Units.Add(unit with { Activated = true });
             state = side == 0 ? state with { Orders0 = state.Orders0 + 1 } : state with { Orders1 = state.Orders1 + 1 };

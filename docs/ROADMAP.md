@@ -7,6 +7,7 @@
 - [x] High-level menu structure, cube battlefield and local controls.
 - [x] Dedicated interactive tutorial and right-drag orbit camera with zoom/reset.
 - [x] Battlefield names, object inspection, tactical class symbols and player identity settings.
+- [x] Hold-Alt battlefield names, readable unit numbers and a saved/synchronized bottom event log.
 - [x] Ownership footprints, reserved NPC/neutral gray, synchronized PvP appearance and local faction/kiith badges.
 - [x] Seeded skirmish generation and configurable force/object counts.
 - [x] Mid-battle saves and example campaign transitions.

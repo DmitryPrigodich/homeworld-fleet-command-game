@@ -78,28 +78,28 @@ public partial class Main
         DrawTutorialMarker();
         var top = Panel(30, 22, 1380, 68);
         Text(top, $"{map.Name.ToUpperInvariant()}     /     РАУНД {_state.Round}     /     ХОД: {SideName(_state.ActiveSide)}", 22, _colors.Accent);
-        var left = Panel(30, 112, 260, 650);
+        var left = Panel(30, 112, 260, 610);
         Text(left, _tutorial != null ? "ОБУЧЕНИЕ" : _campaign == null ? "СКИРМИШ" : "КАМПАНИЯ", 18, _colors.Highlight);
         Text(left, _tutorial != null ? "СИНИЕ — МЫ / КРАСНЫЕ — ВРАГ" : _generation == null ? "Сценарий из данных" : $"Seed: {_generation.Seed}", 13, _colors.Muted);
         OwnerLegend(left);
-        var scroll = new ScrollContainer { CustomMinimumSize = new(0, 320), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        var scroll = new ScrollContainer { CustomMinimumSize = new(0, 220), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         left.AddChild(scroll); var roster = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; scroll.AddChild(roster);
         foreach (var unit in _state.Units.OrderBy(u => u.Side).ThenBy(u => u.Id))
         {
             var ship = _content.Ships[unit.Definition]; var owner = Commander(unit.Side);
-            var b = Button(roster, $"{FleetPresentation.ShipName(ship)} ×{unit.Models}\n{owner.Name} · {unit.Id}" + (unit.Activated ? " · ✓" : ""), () => SelectUnit(unit.Id));
+            var b = Button(roster, $"{FleetPresentation.ShipName(ship)} ×{unit.Models}\n{owner.Name} · отряд №{FleetPresentation.UnitNumber(_content, _state, unit)}" + (unit.Activated ? " · ✓" : ""), () => SelectUnit(unit.Id));
             b.Icon = TacticalTextures.Icon(FleetPresentation.ShipIcon(ship), C(owner.Color)); b.ExpandIcon = true;
             b.AddThemeConstantOverride("icon_max_width", 20); b.AddThemeFontSizeOverride("font_size", 13);
             b.CustomMinimumSize = new(0, 54);
             b.TooltipText = _content.Ships[unit.Definition].Name + (unit.Activated ? " — приказ уже выполнен" : " — готово к приказу");
         }
-        Text(left, "ЛКМ — выбор / приказ\nПКМ + мышь — обзор\nКолёсико — масштаб\nF — исходный ракурс", 15, _colors.Muted);
-        var right = Panel(_tutorial == null ? 1150 : 1060, 112, _tutorial == null ? 260 : 350, 650);
+        Text(left, "ЛКМ — выбор / приказ\nПКМ + мышь — обзор\nКолёсико — масштаб\nAlt — названия на поле\nF — исходный ракурс", 14, _colors.Muted);
+        var right = Panel(_tutorial == null ? 1150 : 1060, 112, _tutorial == null ? 260 : 350, 610);
         if (_tutorial != null) right.AddThemeConstantOverride("separation", 7);
         DrawTutorial(right);
         var selected = _state.Units.Find(u => u.Id == _selected);
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
-            Text(right, _inspectedObject != null ? FleetPresentation.ObjectName(_content.Objects[_inspectedObject.Definition]) : selected == null ? "ПРИКАЗЫ" : FleetPresentation.ShipName(_content.Ships[selected.Definition]), 19, _colors.Highlight);
+            Text(right, _inspectedObject != null ? FleetPresentation.ObjectName(_content.Objects[_inspectedObject.Definition]) : selected == null ? "ПРИКАЗЫ" : FleetPresentation.UnitName(_content, _state, selected), 19, _colors.Highlight);
         if (_inspectedObject != null && _tutorial == null)
         {
             Text(right, "НЕЙТРАЛЬНЫЙ ОБЪЕКТ", 13, FleetPresentation.NeutralColor);
@@ -125,7 +125,7 @@ public partial class Main
         }
         Button(right, "ГЛАВНОЕ МЕНЮ", () => { SaveGame(); MainMenu(); });
         if (_tutorial == null) Text(right, _networkActive ? (_cooperative ? "CO-OP / ОБЩИЙ ФЛОТ" : "PVP") : _bot ? "ОДИНОЧНАЯ / AI" : "ЛОКАЛЬНАЯ / HOTSEAT", 13, _colors.Muted);
-        var bottom = Panel(30, 795, 1380, 76); _battleStatus = Text(bottom, _status, 16, _colors.Text);
+        DrawEventLog();
     }
     public override void _UnhandledInput(InputEvent input)
     {
@@ -147,12 +147,13 @@ public partial class Main
         if (_action == "attack" && target != null) Submit(new("attack", _selected, target.Id));
         else if (_action == "move") Submit(new("move", _selected, Q: tile.Value.Q, R: tile.Value.R));
     }
-    private void ApplyCommand(int side, BattleCommand command)
+    private bool ApplyCommand(int side, BattleCommand command)
     {
-        if (_state == null) return;
+        if (_state == null) return false;
         var result = _engine.Apply(_state, side, command); _status = result.Message;
         if (result.Accepted) { _state = result.State; SaveGame(); }
         DrawBattle(); if (_networkActive && _isHost) Broadcast(); QueueBot();
+        return result.Accepted;
     }
     private void QueueBot()
     {

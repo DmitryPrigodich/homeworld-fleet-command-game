@@ -5,6 +5,7 @@ using FleetCommand.Core;
 namespace FleetCommand.Game;
 
 public sealed record AppSettings(string Theme = "core:hw1", string[]? EnabledMods = null, PlayerProfile? Player = null,
+    // ShowLabels remains readable for older settings files; holding Alt now controls battlefield names.
     string HwrmInstallation = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Homeworld", bool ShowLabels = true);
 public sealed record SavedGame(BattleState State, GenerationOptions? Generation = null, CampaignProgress? Campaign = null,
     bool ComputerOpponent = true, CommanderAppearance[]? Commanders = null);

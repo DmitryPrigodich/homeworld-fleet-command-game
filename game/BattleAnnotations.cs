@@ -7,11 +7,12 @@ public partial class Main
 {
     private MapObject? _inspectedObject;
     private BattleAnnotations _annotations = null!;
+    private bool _namesHeld;
 
     private void BeginAnnotations()
     {
-        _annotations = new BattleAnnotations { Camera = _camera, ShowNames = _settings.ShowLabels,
-            FieldBounds = new Rect2(300, 100, _tutorial == null ? 835 : 745, 680) };
+        _annotations = new BattleAnnotations { Camera = _camera, ShowNames = _namesHeld,
+            FieldBounds = new Rect2(300, 100, _tutorial == null ? 835 : 745, 625) };
         _annotations.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         _ui.AddChild(_annotations);
     }
@@ -37,17 +38,17 @@ public partial class Main
         string effects = FleetPresentation.ObjectEffects(obj);
         _annotations.Marker(World(new(placement.Q, placement.R)) + Vector3.Up * (height + 0.3f),
             FleetPresentation.ObjectName(obj), "НЕЙТРАЛЬНЫЙ ОБЪЕКТ", TacticalTextures.Icon(obj.BlocksMovement ? "circle" : "hexagon", color), null,
-            color, effects + $"\nКлетка {placement.Q}, {placement.R}. Нажми для подробностей.", () => InspectObject(placement));
+            color, effects + $"\nКлетка {placement.Q + 1}, {placement.R + 1}. Нажми для подробностей.", () => InspectObject(placement));
     }
 
     private void UnitAnnotation(BattleUnit unit, ShipDefinition ship, float height)
     {
         var owner = Commander(unit.Side);
         var color = C(owner.Color);
-        string details = $"{ship.Name}\n{owner.Name} · {unit.Id}\nХод {ship.Move} · Дальность {ship.Range} · Броня {ship.Armor}\n" +
+        string details = $"{FleetPresentation.UnitName(_content, _state!, unit)}\n{owner.Name}\nХод {ship.Move} · Дальность {ship.Range} · Броня {ship.Armor}\n" +
             (unit.Activated ? "Приказ в этом раунде уже выполнен." : "Подразделение готово к приказу.");
         _annotations.Marker(World(new(unit.Q, unit.R)) + Vector3.Up * height,
-            $"{FleetPresentation.ShipName(ship)} ×{unit.Models}", $"{owner.Name} · {unit.Id}" + (unit.Activated ? " · ✓" : ""),
+            $"{FleetPresentation.ShipName(ship)} ×{unit.Models}", $"{owner.Name} · отряд №{FleetPresentation.UnitNumber(_content, _state!, unit)}" + (unit.Activated ? " · ✓" : ""),
             TacticalTextures.Icon(FleetPresentation.ShipIcon(ship), color), EmblemTexture(owner.Emblem), color, details, () => ClickUnit(unit.Id));
     }
 
@@ -80,37 +81,49 @@ public partial class Main
 
 public partial class BattleAnnotations : Control
 {
-    private sealed record Annotation(PanelContainer Panel, Vector3 Point, Color Color);
+    private sealed record Annotation(PanelContainer Panel, VBoxContainer Names, string Tooltip, Vector3 Point, Color Color);
     private readonly List<Annotation> _markers = [];
     private readonly List<(Vector2 From, Vector2 To, Color Color)> _links = [];
     public Camera3D Camera { get; set; } = null!;
-    public bool ShowNames { get; set; } = true;
+    private bool _showNames;
+    public bool ShowNames
+    {
+        get => _showNames;
+        set
+        {
+            if (_showNames == value) return;
+            _showNames = value;
+            foreach (var marker in _markers)
+            {
+                marker.Names.Visible = value;
+                marker.Panel.TooltipText = value ? marker.Tooltip : "";
+                marker.Panel.ResetSize();
+            }
+        }
+    }
     public Rect2 FieldBounds { get; set; }
 
     public BattleAnnotations() { MouseFilter = MouseFilterEnum.Ignore; }
 
     public void Marker(Vector3 point, string name, string owner, Texture2D symbol, Texture2D? emblem, Color color, string tooltip, Action click)
     {
-        var panel = new PanelContainer { MouseFilter = MouseFilterEnum.Pass, TooltipText = tooltip };
+        var panel = new PanelContainer { MouseFilter = MouseFilterEnum.Pass, TooltipText = ShowNames ? tooltip : "" };
         var style = new StyleBoxFlat { BgColor = new Color("#07121feb"), BorderColor = new Color(color, 0.65f),
             BorderWidthLeft = 2, ContentMarginLeft = 4, ContentMarginRight = 5, ContentMarginTop = 3, ContentMarginBottom = 3 };
         panel.AddThemeStyleboxOverride("panel", style); AddChild(panel);
         var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore }; row.AddThemeConstantOverride("separation", 4); panel.AddChild(row);
         row.AddChild(new TextureRect { Texture = symbol, CustomMinimumSize = new(23, 23), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore });
-        if (ShowNames)
-        {
-            var text = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore }; text.AddThemeConstantOverride("separation", 0); row.AddChild(text);
-            var title = new Label { Text = name, MouseFilter = MouseFilterEnum.Ignore }; title.AddThemeFontSizeOverride("font_size", 13); text.AddChild(title);
-            var subtitle = new Label { Text = owner, MouseFilter = MouseFilterEnum.Ignore, Modulate = color }; subtitle.AddThemeFontSizeOverride("font_size", 11); text.AddChild(subtitle);
-        }
+        var text = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, Visible = ShowNames }; text.AddThemeConstantOverride("separation", 0); row.AddChild(text);
+        var title = new Label { Text = name, MouseFilter = MouseFilterEnum.Ignore }; title.AddThemeFontSizeOverride("font_size", 13); text.AddChild(title);
+        var subtitle = new Label { Text = owner, MouseFilter = MouseFilterEnum.Ignore, Modulate = color }; subtitle.AddThemeFontSizeOverride("font_size", 11); text.AddChild(subtitle);
         if (emblem != null) row.AddChild(new TextureRect { Texture = emblem, CustomMinimumSize = new(22, 22),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore });
         panel.GuiInput += input =>
         {
             if (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { panel.AcceptEvent(); click(); }
         };
-        _markers.Add(new(panel, point, color));
+        _markers.Add(new(panel, text, tooltip, point, color));
     }
 
     public override void _Process(double delta)
@@ -123,6 +136,7 @@ public partial class BattleAnnotations : Control
             marker.Panel.Visible = !Camera.IsPositionBehind(marker.Point) && FieldBounds.HasPoint(anchor);
             if (!marker.Panel.Visible) continue;
             var size = marker.Panel.GetCombinedMinimumSize();
+            marker.Panel.Size = size;
             var pos = anchor - new Vector2(size.X * 0.5f, size.Y + 8);
             pos.X = Mathf.Clamp(pos.X, FieldBounds.Position.X, Math.Max(FieldBounds.Position.X, FieldBounds.End.X - size.X));
             for (int attempt = 0; attempt < 8 && occupied.Any(r => r.Intersects(new Rect2(pos, size).Grow(2))); attempt++) pos.Y -= size.Y + 4;

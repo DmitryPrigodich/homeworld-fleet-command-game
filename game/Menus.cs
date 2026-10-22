@@ -7,7 +7,7 @@ public partial class Main
 {
     private void MainMenu()
     {
-        StopNetwork(); EndTutorial(); _state = null; _campaign = null; _generation = null; ClearScreen();
+        StopNetwork(); EndTutorial(); _state = null; _campaign = null; _generation = null; _namesHeld = false; ClearScreen();
         Heading("ТАКТИЧЕСКАЯ СИМУЛЯЦИЯ ФЛОТА");
         var menu = Panel(70, 245, 385, 420);
         Text(menu, "ГЛАВНОЕ МЕНЮ", 15, _colors.Highlight);
@@ -98,8 +98,7 @@ public partial class Main
         dropdown.Select(Math.Max(0, Array.FindIndex(themes, t => t.Id == _colors.Id))); box.AddChild(dropdown);
         dropdown.ItemSelected += i => { _settings = _settings with { Theme = themes[(int)i].Id }; SaveSettings(); LoadContent(); OptionsMenu(); };
         Text(box, "Все цвета загружаются из theme-определения мода. Для альтернативной палитры включи example в разделе «Моды».", 16, _colors.Muted);
-        var labels = new CheckBox { Text = "Подписи на поле", ButtonPressed = _settings.ShowLabels };
-        labels.Toggled += enabled => { _settings = _settings with { ShowLabels = enabled }; SaveSettings(); }; box.AddChild(labels);
+        Text(box, "Названия на поле показываются при удержании Alt. Значки ТО и эмблемы видны постоянно.", 16, _colors.Muted);
         Button(box, "НАЗАД", MainMenu); MenuScene();
     }
     private void ModsMenu()

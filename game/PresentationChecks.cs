@@ -37,6 +37,7 @@ public partial class Main
             Check(_world.GetChildren().OfType<MeshInstance3D>().Count(n => n.Mesh is PlaneMesh) >= _state!.Units.Count,
                 "ship and object footprints are rendered on the board");
             Check(Nodes<Label>(_annotations).Any(l => l.Text == "Астероиды") && Nodes<Label>(_annotations).Any(l => l.Text.Contains("Перехватчики")), "ship and terrain names are visible annotations");
+            GetViewport().PushInput(new InputEventKey { Keycode = Key.Alt, Pressed = true }, true); await Frame();
             var annotation = Nodes<PanelContainer>(_annotations).First(p => p.TooltipText.Contains("Стоимость движения"));
             annotation.EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Left });
             await Frame(); await Frame();
@@ -44,6 +45,7 @@ public partial class Main
             var loadedIdentity = ValidateCommanders(JsonSerializer.Deserialize<CommanderAppearance[]>(JsonSerializer.Serialize(_commanders, JsonData.Options), JsonData.Options));
             Check(loadedIdentity.SequenceEqual(_commanders), "appearance survives save/snapshot serialization");
             Check(Nodes<Label>(_ui).Where(l => l.Text == "Пилот · игрок" || l.Text == "НПЦ · компьютер").All(l => l.Size.X > 100 && l.Size.Y < 60), "owner legend fits without character-by-character wrapping");
+            GetViewport().PushInput(new InputEventKey { Keycode = Key.Alt, Pressed = false }, true);
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "identification.png"));
             MainMenu();
             _settings = original; SaveSettings();
