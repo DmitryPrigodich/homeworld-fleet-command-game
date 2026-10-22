@@ -8,6 +8,7 @@ public partial class Main
 {
     private bool _networkActive, _isHost, _cooperative, _networkSignalsBound, _smokeRequestSent;
     private int _localSide;
+    private int LocalCommandSide => _networkActive ? _localSide : _bot || _tutorial != null ? 0 : _state?.ActiveSide ?? 0;
     private readonly Dictionary<long, int> _sideByPeer = [];
     private void NetworkMenu()
     {
@@ -79,7 +80,7 @@ public partial class Main
         if (ApplyTutorialCommand(command)) return;
         if (_networkActive && !_isHost)
             RpcId(1, nameof(RequestCommand), JsonSerializer.Serialize(command, JsonData.Options), _state.Sequence);
-        else ApplyCommand(_networkActive ? _localSide : _bot ? 0 : _state.ActiveSide, command);
+        else ApplyCommand(LocalCommandSide, command);
     }
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
     private void RequestCommand(string json, int sequence)

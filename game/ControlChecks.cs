@@ -64,6 +64,8 @@ public partial class Main
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "labels-alt.png"));
             await ClickCell(new(1, 2));
             Check(_tutorial?.Step == TutorialStep.Move && _selected == TutorialLesson.ScoutId, "left click selects highlighted unit");
+            Check(_unitActions.MoveCells.SequenceEqual(new[] { TutorialLesson.Destination }) && _unitActions.AttackTargets.Length == 0,
+                "tutorial highlights only the destination allowed by its current task");
             Check(_annotations.ShowNames, "labels stay visible through selection while Alt is held");
             Check(_camera.Transform == before, "camera survives selection redraw");
             annotationId = _annotations.GetInstanceId();
@@ -85,6 +87,8 @@ public partial class Main
             Check(_camera.Transform == before, "camera survives an accepted order");
             Press("ЗАВЕРШИТЬ ХОД"); await Frame(); await Frame();
             Check(_tutorial?.Step == TutorialStep.Attack && _state?.Round == 2, "end turn refreshes units for shooting");
+            Check(_unitActions.MoveCells.Length == 0 && _unitActions.AttackTargets.SequenceEqual(new[] { TutorialLesson.TargetId }),
+                "tutorial shooting step highlights the legal target from the current position");
             Press("АТАКА"); await Frame(); await Frame();
             int sequence = _state!.Sequence;
             await ClickCell(new(2, 2));

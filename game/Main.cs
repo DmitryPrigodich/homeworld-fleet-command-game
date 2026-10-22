@@ -150,6 +150,7 @@ public partial class Main : Node3D
         _frames++;
         if (_frames == 5 && _args.Contains("--check-controls")) _ = CheckControls();
         if (_frames == 5 && _args.Contains("--check-presentation")) _ = CheckPresentation();
+        if (_frames == 5 && _args.Contains("--check-actions")) _ = CheckActionHighlights();
         if (_world != null && _state == null) _world.RotateY((float)delta * 0.08f);
         if (_frames == 40)
         {

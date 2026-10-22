@@ -15,6 +15,7 @@ public interface IRuleModule
 {
     string Id { get; }
     CommandResult Apply(ContentCatalog content, BattleState state, int side, BattleCommand command);
+    UnitActions GetActions(ContentCatalog content, BattleState state, int side, string unitId) => UnitActions.Empty;
 }
 
 public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule>? modules = null)
@@ -39,6 +40,11 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
         var result = _modules[content.Rules[content.Maps[state.Map].Rules].Handler].Apply(content, state, side, command);
         if (!result.Accepted) return result;
         return result with { State = result.State with { Log = BattleLog.AfterCommand(state, result.State, side, result.Message) } };
+    }
+    public UnitActions GetActions(BattleState state, int side, string unitId)
+    {
+        if (state.ContentFingerprint != content.Fingerprint) return UnitActions.Empty;
+        return _modules[content.Rules[content.Maps[state.Map].Rules].Handler].GetActions(content, state, side, unitId);
     }
     public string Save(BattleState state) => JsonSerializer.Serialize(state, JsonData.Options);
     public BattleState Load(string json)
@@ -66,6 +72,15 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
 public sealed class SkirmishRules : IRuleModule
 {
     public string Id => "skirmish-v1";
+    public UnitActions GetActions(ContentCatalog content, BattleState state, int side, string unitId)
+    {
+        var unit = state.Units.Find(u => u.Id == unitId);
+        var rules = content.Rules[content.Maps[state.Map].Rules];
+        if (state.Finished || side != state.ActiveSide || unit == null || unit.Side != side || unit.Activated
+            || (side == 0 ? state.Orders0 : state.Orders1) >= rules.OrdersPerSide) return UnitActions.Empty;
+        return new(SkirmishGeometry.Movement(content, state, unit).OrderBy(h => h.Q).ThenBy(h => h.R).ToArray(),
+            state.Units.Where(target => SkirmishGeometry.Attack(content, state, unit, target).Allowed).Select(target => target.Id).ToArray());
+    }
     public CommandResult Apply(ContentCatalog c, BattleState original, int side, BattleCommand cmd)
     {
         CommandResult Reject(string text) => new(false, text, original);
@@ -75,7 +90,6 @@ public sealed class SkirmishRules : IRuleModule
         var rules = c.Rules[map.Rules];
         var state = original with { Units = [.. original.Units] };
         bool Inside(Hex h) => h.Q >= 0 && h.Q < map.Width && h.R >= 0 && h.R < map.Height;
-        bool Blocked(Hex h) => map.Objects.Any(o => o.Q == h.Q && o.R == h.R && c.Objects[o.Definition].BlocksMovement);
         var unit = state.Units.Find(u => u.Id == cmd.Unit);
         string message;
         int Remaining(int s) => s == 0 ? rules.OrdersPerSide - state.Orders0 : rules.OrdersPerSide - state.Orders1;
@@ -94,59 +108,21 @@ public sealed class SkirmishRules : IRuleModule
             if (cmd.Kind == "move")
             {
                 var goal = new Hex(cmd.Q, cmd.R);
-                if (!Inside(goal) || goal == new Hex(unit.Q, unit.R) || Blocked(goal) || state.Units.Any(u => u.Q == goal.Q && u.R == goal.R))
+                if (!Inside(goal) || goal == new Hex(unit.Q, unit.R) || SkirmishGeometry.Blocked(c, map, goal) || state.Units.Any(u => u.Q == goal.Q && u.R == goal.R))
                     return Reject("Клетка занята, непроходима или находится за границей поля.");
-                // Dijkstra includes terrain costs; range alone is not a legal-movement check.
-                var best = new Dictionary<Hex, int> { [new(unit.Q, unit.R)] = 0 };
-                var queue = new PriorityQueue<Hex, int>();
-                queue.Enqueue(new(unit.Q, unit.R), 0);
-                while (queue.TryDequeue(out var hex, out var cost))
-                {
-                    if (cost != best[hex]) continue;
-                    for (int dir = 0; dir < 6; dir++)
-                    {
-                        var next = hex.Neighbor(dir);
-                        if (!Inside(next) || Blocked(next) || state.Units.Any(u => u.Q == next.Q && u.R == next.R && (u.Side != side || !rules.FriendlyPassThrough))) continue;
-                        int moveCost = map.Objects.Where(o => o.Q == next.Q && o.R == next.R).Select(o => c.Objects[o.Definition].MoveCost).DefaultIfEmpty(1).Max();
-                        int total = cost + moveCost;
-                        if (total > definition.Move + abilities.Where(a => a.Handler == "move-bonus").Sum(a => a.Value)
-                            || best.TryGetValue(next, out var old) && old <= total) continue;
-                        best[next] = total; queue.Enqueue(next, total);
-                    }
-                }
-                if (!best.ContainsKey(goal)) return Reject("До этой клетки не хватает движения или нет свободного пути.");
+                if (!SkirmishGeometry.Movement(c, original, unit).Contains(goal)) return Reject("До этой клетки не хватает движения или нет свободного пути.");
                 unit = unit with { Q = cmd.Q, R = cmd.R, Facing = (cmd.Facing % 6 + 6) % 6 };
                 message = $"{FleetPresentation.UnitName(c, original, unit)}: перемещение в клетку ({cmd.Q + 1}, {cmd.R + 1}).";
             }
             else if (cmd.Kind == "attack")
             {
-                if (definition.DicePerModel == 0) return Reject("У этого подразделения нет оружия для стрельбы.");
                 var target = state.Units.Find(u => u.Id == cmd.Target);
-                if (target is null || target.Side == side || new Hex(unit.Q, unit.R).Distance(new(target.Q, target.R)) > definition.Range)
-                    return Reject("Выбери противника в пределах дальности стрельбы.");
+                var attack = SkirmishGeometry.Attack(c, original, unit, target);
+                if (!attack.Allowed || target is null) return Reject(attack.Error);
                 var targetDef = c.Ships[target.Definition];
                 var start = new Hex(unit.Q, unit.R);
                 var end = new Hex(target.Q, target.R);
-                // Shortest-path DAG: take the greatest penalty over all shortest paths, not a ray cast.
-                var memo = new Dictionary<Hex, int>();
-                int Cover(Hex h)
-                {
-                    if (h == end) return 0;
-                    if (memo.TryGetValue(h, out var cached)) return cached;
-                    int worst = 0;
-                    for (int d = 0; d < 6; d++)
-                    {
-                        var n = h.Neighbor(d);
-                        if (!Inside(n) || n.Distance(end) != h.Distance(end) - 1) continue;
-                        if (Blocked(n)) return memo[h] = 100000;
-                        int penalty = n == end ? 0 : state.Units.Any(u => u.Q == n.Q && u.R == n.R) ? 1 : 0;
-                        penalty += map.Objects.Where(o => o.Q == n.Q && o.R == n.R).Sum(o => c.Objects[o.Definition].AttackPenalty);
-                        worst = Math.Max(worst, penalty + Cover(n));
-                    }
-                    return memo[h] = worst;
-                }
-                int cover = Cover(start);
-                if (cover >= 100000) return Reject("Объект перекрывает линию огня.");
+                int cover = attack.Cover;
                 uint random = state.RandomState;
                 int Roll() { random ^= random << 13; random ^= random >> 17; random ^= random << 5; return (int)(random % 6) + 1; }
                 int penetrating = (definition.Abilities ?? []).Select(a => c.Abilities[a]).Where(a => a.Handler == "penetrating").Sum(a => a.Value);

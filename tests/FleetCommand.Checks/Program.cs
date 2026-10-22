@@ -30,6 +30,7 @@ void Reject(Action action, string description)
     throw new Exception("FAIL: " + description);
 }
 var engine = new BattleEngine(content);
+ActionPreviewChecks.Run(content, Check);
 Check(!FleetPresentation.IsPlayerColor("#87929c") && !FleetPresentation.IsPlayerColor("#111111") && !FleetPresentation.IsPlayerColor("#abcdef00"), "neutral, dark and transparent player colors are rejected");
 Check(FleetPresentation.PlayerColors.All(FleetPresentation.IsPlayerColor), "all suggested player colors are visible and chromatic");
 var identity = FleetPresentation.Normalize(new("\nCommander", "#87929c", "../../foreign-file"));

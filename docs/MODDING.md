@@ -41,4 +41,4 @@ Maps use axial `(q,r)` hex coordinates inside a rectangular coordinate domain. `
 
 Use `mods/example` as a minimal working theme mod. A campaign transition set to null ends the campaign; otherwise it names another mission in that campaign. Cycles are valid. The prototype treats a blue victory as campaign success and a draw as defeat.
 
-For code-based rule extensions, implement `IRuleModule` and pass the instance into `BattleEngine` from the game bootstrap. Rebuilding is currently required. This keeps the first extension point small and testable.
+For code-based rule extensions, implement `IRuleModule` and pass the instance into `BattleEngine` from the game bootstrap. Implement its optional `GetActions` method to supply legal green destination cells and red target IDs for the selected unit. It must not mutate state or advance RNG. The default returns no highlights. Rebuilding is currently required. This keeps the first extension point small and testable.

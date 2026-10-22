@@ -16,6 +16,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - JSON content mods, dependencies, explicit overrides, versioned manifests and a content fingerprint checked by network peers.
 - Theme colors supplied by mods, including an optional amber example theme.
 - Ship/object names while holding Alt, object-effect inspection and always-visible Homeworld-style tactical symbols/emblems.
+- Selected ready units show reachable destinations in green and legal enemy targets in red, from their current position. Both are shown regardless of the selected order button.
 - A scrollable bottom battle log: movement, dice, losses, passing orders, new rounds and victory. The last 200 entries are saved with the battle and synchronized by the host.
 - Player name, color and emblem in **Options → Player**. Flattened cube footprints use the player's color; NPCs and neutral objects use reserved gray. PvP color collisions are resolved by the host.
 - Optional local import of Kushan, Taiidan and five kiith emblems from an owned HWRM installation. Only the importer code is distributed.
@@ -35,6 +36,8 @@ On the original development machine `Play.cmd` also finds the portable engine in
 Start with **ОБУЧЕНИЕ** in the main menu. Controls: left-click a unit from the roster or board, choose **Movement** or **Attack**, then left-click a destination hex or enemy. **End turn** passes the remainder of that side's orders. Activated units darken. Hold **right mouse button** over the battlefield and drag to orbit; the **wheel** zooms and **F** resets the view. Camera orientation and zoom persist through selections and orders. Saves are under `.local/`.
 
 Hold **Alt** to show battlefield names, model counts, owners and object hover details; release it to return to compact symbols/emblems. Click an object symbol or label to read its movement/attack effects. Triangle denotes fighters and diamond denotes frigates; mods can choose other supported tactical shapes. The roster uses readable per-fleet unit numbers rather than internal IDs. Player colors affect ownership projections, while cube hull colors still distinguish the placeholder fleets.
+
+Selecting a unit ready for your current turn highlights **green movement hexes** and **red enemy target hexes** together. Movement includes terrain costs, obstacles, occupied cells and ability bonuses; attacks use current range and line of sight. Use Movement or Attack to issue the corresponding order. Spent activations, other players' units and finished battles have no actionable highlights. Tutorial highlights also respect its current task. Calculating the preview does not roll dice, spend orders or add history entries.
 
 The bottom **battle log** records accepted orders, dice and actual casualties, turn/round transitions and the result. Scroll over it to read earlier events. A status line above the history explains rejected orders and tutorial instructions. History is retained in saves and network snapshots; older saves without a history remain compatible and begin recording at the next order. The previous `showLabels` setting is accepted when loading old settings but no longer overrides the Alt control.
 
@@ -60,6 +63,8 @@ The dependency-free check runner covers turn authorization, immutable state tran
 The engine can also run `-- --check-controls` to exercise the tutorial through menu signals and viewport mouse/key events, including camera persistence and save isolation.
 
 `-- --check-presentation` exercises profile settings, gray-color rejection, battlefield labels, object inspection and appearance serialization. Use an isolated `FLEET_COMMAND_DATA_DIR` for these checks. UI captures and imported badge images are ignored local files.
+
+`-- --check-actions` verifies that both highlight meshes appear on selection, remain consistent across order modes and clear after activation. Core checks cover terrain costs, friendly pass-through, movement bonuses, line-of-sight blocking and agreement between previews and command validation.
 
 ## Resource importer
 

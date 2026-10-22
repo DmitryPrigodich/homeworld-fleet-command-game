@@ -15,7 +15,7 @@ public partial class Main
         _battleStatus.AutowrapMode = TextServer.AutowrapMode.Off;
         _battleStatus.ClipText = true;
         _battleStatus.TooltipText = _status;
-        Text(bottom, "ЖУРНАЛ СОБЫТИЙ  ·  Alt — названия на поле  ·  колесо над журналом — история", 12, _colors.Muted);
+        Text(bottom, "ЖУРНАЛ СОБЫТИЙ  ·  зелёный — ход  ·  красный — цель  ·  Alt — названия  ·  колесо над журналом — история", 12, _colors.Muted);
         _eventLog = new RichTextLabel { BbcodeEnabled = false, ScrollActive = true, ScrollFollowing = true,
             SelectionEnabled = true, ContextMenuEnabled = true, CustomMinimumSize = new(0, 75), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         _eventLog.AddThemeFontSizeOverride("normal_font_size", 14);

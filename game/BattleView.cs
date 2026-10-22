@@ -46,6 +46,7 @@ public partial class Main
         }
         lines.SurfaceEnd();
         _world.AddChild(new MeshInstance3D { Mesh = lines, MaterialOverride = new StandardMaterial3D { AlbedoColor = C(_colors.Grid), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded } });
+        DrawActionHighlights();
         foreach (var placement in map.Objects)
         {
             var def = _content.Objects[placement.Definition];
