@@ -6,6 +6,8 @@ The current version uses differently sized blue and red cubes for ships, with gr
 
 ## Current playable slice
 
+- Basic-order card practice: a shared deck, two-card hand, initiative commitments, card spending and replenishment. This is a separate training mode; printed special effects and interrupts are still pending.
+
 - Russian main menu: tutorial, single player, multiplayer, options, mods, exit.
 - A seven-step interactive tutorial with highlighted selection, movement, round reset and shooting. It uses a passive opponent and keeps existing saves untouched.
 - Skirmish with a simple computer opponent or local hotseat.
@@ -21,7 +23,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - Player name, color and emblem in **Options → Player**. Flattened cube footprints use the player's color; NPCs and neutral objects use reserved gray. PvP color collisions are resolved by the host.
 - Optional local import of Kushan, Taiidan and five kiith emblems from an owned HWRM installation. Only the importer code is distributed.
 
-**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Command-card hands, leaders, initiative bidding, interrupts, CAP/defensive-fire timing, boarding, production, full scenario objectives and the supplied book campaigns are not implemented yet. The current combat module is explicitly named `skirmish-v1`.
+**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Printed special-card effects, leaders, unrestricted initiative bidding, interrupts, CAP/defensive-fire timing, boarding, production, full scenario objectives and the supplied book campaigns are not implemented yet. The simplified combat module is `skirmish-v1`; basic-card practice wraps it as `cards-basic-v1`.
 
 ## Run on Windows
 
@@ -52,6 +54,8 @@ Co-op currently means shared control of one fleet with the host's appearance. In
 Read [modding](docs/MODDING.md), [architecture](docs/ARCHITECTURE.md) and [roadmap](docs/ROADMAP.md). The guiding rule is to implement existing game needs first and add extension points where they remain simple.
 
 ## Checks
+
+Run **`Test.cmd`** for the complete Windows regression suite. It runs rule checks, deterministic whole-battle scenarios with save/resume, Godot UI checks, and real ENet PvP/co-op/card-mode pairs. Reports and reproducible traces go to `tmp/test-results`. For a fast engine-free run use `./scripts/Test.ps1 -CoreOnly`. See [testing and card-practice scope](docs/TESTING.md).
 
 ```powershell
 dotnet build tests/FleetCommand.Checks/FleetCommand.Checks.csproj -m:1

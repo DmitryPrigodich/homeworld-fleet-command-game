@@ -6,8 +6,8 @@ public sealed record BattleUnit(string Id, string Definition, int Side, int Q, i
     int Models, int FocusFire = 0, bool Activated = false);
 public sealed record BattleState(string Map, string ContentFingerprint, List<BattleUnit> Units,
     int Round = 1, int ActiveSide = 0, int Orders0 = 0, int Orders1 = 0, int Sequence = 0,
-    uint RandomState = 12345, int? Winner = null, bool Finished = false, List<BattleLogEntry>? Log = null);
-public sealed record BattleCommand(string Kind, string Unit = "", string Target = "", int Q = 0, int R = 0, int Facing = 0);
+    uint RandomState = 12345, int? Winner = null, bool Finished = false, List<BattleLogEntry>? Log = null, CardRound? Cards = null);
+public sealed record BattleCommand(string Kind, string Unit = "", string Target = "", int Q = 0, int R = 0, int Facing = 0, string Card = "");
 public sealed record CommandResult(bool Accepted, string Message, BattleState State);
 
 // Rule implementations are ordinary C# modules. JSON selects/configures one; it never executes code.
@@ -20,7 +20,7 @@ public interface IRuleModule
 
 public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule>? modules = null)
 {
-    private readonly Dictionary<string, IRuleModule> _modules = (modules ?? [new SkirmishRules()]).ToDictionary(m => m.Id);
+    private readonly Dictionary<string, IRuleModule> _modules = (modules ?? [new SkirmishRules(), new BasicCardRules()]).ToDictionary(m => m.Id);
     public BattleState Create(string mapId, uint seed = 12345)
     {
         var map = content.Maps[mapId];
@@ -30,8 +30,9 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
             foreach (var placement in content.Fleets[map.Fleets[side]].Units)
                 units.Add(new($"s{side}-{units.Count}", placement.Ship, side, placement.Q, placement.R, placement.Facing,
                     content.Ships[placement.Ship].Models));
-        return new(mapId, content.Fingerprint, units, RandomState: seed == 0 ? 1u : seed,
+        var state = new BattleState(mapId, content.Fingerprint, units, RandomState: seed == 0 ? 1u : seed,
             Log: [new(0, 1, -1, "Бой начался."), new(1, 1, 0, "Первый приказ.")]);
+        return content.Rules[map.Rules].Handler == "cards-basic-v1" ? BasicCardRules.Initialize(state) : state;
     }
 
     public CommandResult Apply(BattleState state, int side, BattleCommand command)
@@ -64,6 +65,7 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
                 || e.Side is < -1 or > 1 || string.IsNullOrWhiteSpace(e.Text) || e.Text.Length > 4096)
             || !s.Log.Select(e => e.Number).SequenceEqual(s.Log.Select(e => e.Number).Distinct().Order())))
             throw new InvalidDataException("Invalid battle log in save.");
+        if (content.Rules[map.Rules].Handler == "cards-basic-v1") BasicCardRules.Validate(s);
         return s;
     }
 }

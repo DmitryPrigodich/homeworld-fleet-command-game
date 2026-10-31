@@ -13,6 +13,7 @@ public partial class Main
         if (!preserveTutorial) EndTutorial();
         if (!preserveCampaign) _campaign = null;
         if (!preserveGeneration) _generation = null;
+        if (mapId == BasicCardBattle.MapId) BasicCardBattle.Register(_content);
         _state = _engine.Create(mapId, (uint)(_generation?.Seed ?? 12345));
         _bot = bot; _selected = ""; _action = "move"; _status = "Выбери подразделение, затем клетку назначения или цель.";
         _inspectedObject = null; InitializeCommanders();
@@ -83,7 +84,8 @@ public partial class Main
         Text(left, _tutorial != null ? "ОБУЧЕНИЕ" : _campaign == null ? "СКИРМИШ" : "КАМПАНИЯ", 18, _colors.Highlight);
         Text(left, _tutorial != null ? "СИНИЕ — МЫ / КРАСНЫЕ — ВРАГ" : _generation == null ? "Сценарий из данных" : $"Seed: {_generation.Seed}", 13, _colors.Muted);
         OwnerLegend(left);
-        var scroll = new ScrollContainer { CustomMinimumSize = new(0, 220), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        DrawCards(left);
+        var scroll = new ScrollContainer { CustomMinimumSize = new(0, _state.Cards == null ? 220 : 100), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         left.AddChild(scroll); var roster = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; scroll.AddChild(roster);
         foreach (var unit in _state.Units.OrderBy(u => u.Side).ThenBy(u => u.Id))
         {
@@ -113,9 +115,9 @@ public partial class Main
         }
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
         {
-            Button(right, _action == "move" ? "▶ ПЕРЕМЕЩЕНИЕ" : "ПЕРЕМЕЩЕНИЕ", () => SetBattleAction("move"), _tutorial != null && _tutorial.Step != TutorialStep.Move);
-            Button(right, _action == "attack" ? "▶ АТАКА" : "АТАКА", () => SetBattleAction("attack"), _tutorial != null && _tutorial.Step != TutorialStep.Attack);
-            Button(right, "ЗАВЕРШИТЬ ХОД", () => Submit(new("pass")), _tutorial != null && _tutorial.Step != TutorialStep.EndTurn);
+            Button(right, _action == "move" ? "▶ ПЕРЕМЕЩЕНИЕ" : "ПЕРЕМЕЩЕНИЕ", () => SetBattleAction("move"), _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.Move);
+            Button(right, _action == "attack" ? "▶ АТАКА" : "АТАКА", () => SetBattleAction("attack"), _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.Attack);
+            Button(right, "ЗАВЕРШИТЬ ХОД", () => Submit(new("pass")), _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.EndTurn);
         }
         if (_tutorial == null) Button(right, "СОХРАНИТЬ", () => { SaveGame(); _status = "Сохранено."; DrawBattle(); }, _networkActive && !_isHost);
         if (_state.Finished)
@@ -158,19 +160,21 @@ public partial class Main
     }
     private void QueueBot()
     {
-        if (!_bot || _botQueued || _state is null || _state.Finished || _state.ActiveSide != 1 || _networkActive && !_isHost) return;
+        if (!_bot || _botQueued || _state is null || _state.Finished || (_state.Cards?.Phase == "initiative" ? _state.Cards.Ready1 : _state.ActiveSide != 1) || _networkActive && !_isHost) return;
         _botQueued = true;
         GetTree().CreateTimer(0.4).Timeout += () => { _botQueued = false; BotTurn(); };
     }
     private void BotTurn()
     {
-        if (_state == null || !_bot || _state.ActiveSide != 1 || _state.Finished) return;
+        if (_state == null || !_bot || _state.Finished) return;
+        if (_state.Cards?.Phase == "initiative") { ApplyCommand(1, new("initiative")); return; }
+        if (_state.ActiveSide != 1) return;
         foreach (var unit in _state.Units.Where(u => u.Side == 1 && !u.Activated).ToArray())
         {
             var enemies = _state.Units.Where(u => u.Side == 0).ToArray();
             foreach (var target in enemies.OrderBy(u => u.Models))
             {
-                var cmd = new BattleCommand("attack", unit.Id, target.Id);
+                var cmd = new BattleCommand("attack", unit.Id, target.Id, Card: _state.Cards?.Hand1.FirstOrDefault() ?? "");
                 if (_engine.Apply(_state, 1, cmd).Accepted) { ApplyCommand(1, cmd); return; }
             }
             var map = _content.Maps[_state.Map];
@@ -178,7 +182,7 @@ public partial class Main
                 .OrderBy(h => enemies.Min(e => h.Distance(new(e.Q, e.R)))).ThenBy(h => h.Distance(new(unit.Q, unit.R)));
             foreach (var h in cells)
             {
-                var cmd = new BattleCommand("move", unit.Id, Q: h.Q, R: h.R, Facing: 3);
+                var cmd = new BattleCommand("move", unit.Id, Q: h.Q, R: h.R, Facing: 3, Card: _state.Cards?.Hand1.FirstOrDefault() ?? "");
                 if (_engine.Apply(_state, 1, cmd).Accepted) { ApplyCommand(1, cmd); return; }
             }
         }
@@ -197,6 +201,7 @@ public partial class Main
     {
         EndTutorial();
         var saved = JsonData.Read<SavedGame>(SavePath(campaign));
+        if (saved.State.Map == BasicCardBattle.MapId) BasicCardBattle.Register(_content);
         _generation = saved.Generation;
         if (_generation != null) MapGenerator.Generate(_content, _generation);
         _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));

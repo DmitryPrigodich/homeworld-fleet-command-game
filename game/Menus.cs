@@ -39,6 +39,7 @@ public partial class Main
     {
         ClearScreen(); Heading("Одиночная игра"); var box = Panel(70, 230, 420, 380);
         Button(box, "КАМПАНИИ", CampaignMenu);
+        Button(box, "УЧЕБНЫЙ БОЙ С КАРТАМИ", StartCardBattle);
         Button(box, "СКИРМИШ / ГЕНЕРАТОР", GeneratorMenu);
         Button(box, "ПРОДОЛЖИТЬ СКИРМИШ", () => LoadGame(false), !System.IO.File.Exists(SavePath(false)));
         Button(box, "НАЗАД", MainMenu);

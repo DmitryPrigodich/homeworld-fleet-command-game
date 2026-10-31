@@ -52,12 +52,13 @@ public partial class Main : Node3D
             if (_args.Contains("--capture-generator")) GeneratorMenu();
             if (_args.Contains("--capture-tutorial")) StartTutorial();
             if (_args.Contains("--capture-player")) PlayerMenu();
+            if (_args.Contains("--capture-cards")) StartCardBattle();
             if (_args.Contains("--capture-identification")) StartBattle("core:training", true, persist: false);
             if (_args.Contains("--smoke-host"))
             {
                 bool coop = _args.Contains("--smoke-coop");
                 if (coop) _campaign = FleetCommand.Core.Campaign.Start(_content, "core:patrol", ["host"]);
-                StartBattle("core:training", false, preserveCampaign: coop); StartNetwork(true, "127.0.0.1", 25990, coop);
+                StartBattle(_args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop); StartNetwork(true, "127.0.0.1", 25990, coop);
             }
             if (_args.Contains("--smoke-client")) { StartBattle("core:training", false, persist: false); StartNetwork(false, "127.0.0.1", 25990, _args.Contains("--smoke-coop")); }
             GD.Print($"FLEET_COMMAND_READY mods={_content.Mods.Count} ships={_content.Ships.Count}");
@@ -151,6 +152,7 @@ public partial class Main : Node3D
         if (_frames == 5 && _args.Contains("--check-controls")) _ = CheckControls();
         if (_frames == 5 && _args.Contains("--check-presentation")) _ = CheckPresentation();
         if (_frames == 5 && _args.Contains("--check-actions")) _ = CheckActionHighlights();
+        if (_frames == 5 && _args.Contains("--check-cards")) _ = CheckCards();
         if (_world != null && _state == null) _world.RotateY((float)delta * 0.08f);
         if (_frames == 40)
         {

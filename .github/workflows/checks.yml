@@ -11,3 +11,9 @@ jobs:
       - run: dotnet build FleetCommand.Game.csproj --nologo -m:1
       - run: dotnet build tests/FleetCommand.Checks/FleetCommand.Checks.csproj --nologo -m:1
       - run: dotnet tests/FleetCommand.Checks/bin/Debug/net8.0/FleetCommand.Checks.dll check .
+      - run: dotnet tests/FleetCommand.Checks/bin/Debug/net8.0/FleetCommand.Checks.dll scenarios .
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scenario-traces
+          path: tmp/test-results/

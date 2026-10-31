@@ -8,15 +8,16 @@ public partial class Main
 {
     private bool _networkActive, _isHost, _cooperative, _networkSignalsBound, _smokeRequestSent;
     private int _localSide;
-    private int LocalCommandSide => _networkActive ? _localSide : _bot || _tutorial != null ? 0 : _state?.ActiveSide ?? 0;
+    private int LocalCommandSide => _networkActive ? _localSide : _bot || _tutorial != null ? 0 : _state?.Cards is { Phase: "initiative", Ready0: true, Ready1: false } ? 1 : _state?.ActiveSide ?? 0;
     private readonly Dictionary<long, int> _sideByPeer = [];
     private void NetworkMenu()
     {
         ClearScreen(); Heading("Совместная игра"); var box = Panel(70, 200, 640, 570);
         var cooperative = new CheckBox { Text = "Кооператив: общий синий флот против AI", ButtonPressed = true }; box.AddChild(cooperative);
+        var cardMode = new CheckBox { Text = "Учебный бой с картами" }; box.AddChild(cardMode);
         var address = new LineEdit { Text = "127.0.0.1", PlaceholderText = "Адрес хоста", CustomMinimumSize = new(0, 40) }; box.AddChild(address);
         Text(box, "Прототип: прямое подключение ENet, UDP-порт 24560. Комнаты по приглашению и relay — следующий этап.", 15, _colors.Muted);
-        Button(box, "СОЗДАТЬ СКИРМИШ", () => { StartBattle("core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); });
+        Button(box, "СОЗДАТЬ СКИРМИШ", () => { StartBattle(cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
         Button(box, "СОЗДАТЬ КООП-КАМПАНИЮ", () =>
         {
             _campaign = FleetCommand.Core.Campaign.Start(_content, "core:patrol", ["host"]);
@@ -37,7 +38,7 @@ public partial class Main
         if (host) InitializeCommanders();
         if (!_networkSignalsBound)
         {
-            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "battle-log-v1:" + _content.Fingerprint,
+            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "card-practice-v1:" + _content.Fingerprint,
                 JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
             Multiplayer.ConnectionFailed += () => { _status = "Не удалось подключиться."; StopNetwork(); DrawBattle(); };
             Multiplayer.ServerDisconnected += () => { _status = "Хост отключился. Продолжение — из сохранения у хоста."; StopNetwork(); DrawBattle(); };
@@ -58,7 +59,7 @@ public partial class Main
     {
         if (!_networkActive || !_isHost) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (fingerprint != "battle-log-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        if (fingerprint != "card-practice-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
         PlayerProfile profile;
         try { profile = FleetPresentation.Normalize(JsonSerializer.Deserialize<PlayerProfile>(profileJson, JsonData.Options)); }
         catch (JsonException) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
@@ -72,12 +73,13 @@ public partial class Main
         }
         if (_campaign != null) _campaign = _campaign with { Participants = (_campaign.Participants ?? []).Append("peer-" + sender).Distinct().ToArray() };
         DrawBattle(); Broadcast(); SaveGame();
-        if (_args.Contains("--smoke-host") && !_cooperative) ApplyCommand(0, new("pass"));
+        if (_args.Contains("--smoke-host") && !_cooperative) ApplyCommand(0, new(_args.Contains("--smoke-cards") ? "initiative" : "pass"));
     }
     private void Submit(BattleCommand command)
     {
         if (_state == null) return;
         if (ApplyTutorialCommand(command)) return;
+        command = WithCard(command);
         if (_networkActive && !_isHost)
             RpcId(1, nameof(RequestCommand), JsonSerializer.Serialize(command, JsonData.Options), _state.Sequence);
         else ApplyCommand(LocalCommandSide, command);
@@ -91,7 +93,13 @@ public partial class Main
         {
             var command = JsonSerializer.Deserialize<BattleCommand>(json, JsonData.Options);
             if (command != null && !ApplyCommand(side, command)) RpcId(Multiplayer.GetRemoteSenderId(), nameof(ReceiveCommandFeedback), _status);
-            if (_args.Contains("--smoke-host") && _state.Sequence == (_cooperative ? 1 : 2))
+            if (_args.Contains("--smoke-cards"))
+            {
+                if (_state.Cards is { Phase: "initiative", Ready0: false }) ApplyCommand(0, new("initiative"));
+                if (_state.Cards is { Phase: "orders" } && _state.ActiveSide == 0) ApplyCommand(0, new("pass"));
+                if (command?.Kind == "pass") { GD.Print("CARD_NETWORK_OK"); GetTree().CreateTimer(0.5).Timeout += () => GetTree().Quit(); }
+            }
+            if (!_args.Contains("--smoke-cards") && _args.Contains("--smoke-host") && _state.Sequence == (_cooperative ? 1 : 2))
             { GD.Print((_cooperative ? "COOP_" : "") + "NETWORK_COMMAND_ACCEPTED"); GetTree().CreateTimer(0.5).Timeout += () => GetTree().Quit(); }
         }
         catch (JsonException) { }
@@ -99,9 +107,13 @@ public partial class Main
     private void Broadcast()
     {
         if (_state == null) return;
-        var saved = new SavedGame(_state, _generation, _campaign, _cooperative, _commanders);
-        var json = JsonSerializer.Serialize(saved, JsonData.Options);
-        foreach (var peer in _sideByPeer.Keys) RpcId(peer, nameof(ReceiveSnapshot), json, _cooperative);
+        foreach (var peer in _sideByPeer.Keys)
+        {
+            var view = BasicCardRules.View(_state, _sideByPeer[peer]);
+            var campaign = _campaign == null ? null : _campaign with { Battle = view };
+            var saved = new SavedGame(view, _generation, campaign, _cooperative, _commanders);
+            RpcId(peer, nameof(ReceiveSnapshot), JsonSerializer.Serialize(saved, JsonData.Options), _cooperative);
+        }
     }
     [Rpc(MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
     private void ReceiveCommandFeedback(string message)
@@ -117,10 +129,20 @@ public partial class Main
         {
             var saved = JsonSerializer.Deserialize<SavedGame>(json, JsonData.Options) ?? throw new InvalidDataException("Empty snapshot.");
             if (saved.Generation != null) MapGenerator.Generate(_content, saved.Generation);
+            if (saved.State.Map == BasicCardBattle.MapId) BasicCardBattle.Register(_content);
             _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
             _generation = saved.Generation; _campaign = saved.Campaign; _cooperative = cooperative; _localSide = cooperative ? 0 : 1;
             _commanders = ValidateCommanders(saved.Commanders);
             _status = "Синхронизация с хостом: действие " + _state.Sequence; DrawBattle();
+            if (_args.Contains("--smoke-cards"))
+            {
+                if (_state.Cards is not { IsView: true } cards || cards.Deck.Length != 0 || cards.Hand0.Length != 0 || _state.RandomState != 1)
+                    throw new InvalidDataException("Private card state leaked over ENet.");
+                if (_smokeRequestSent && _state.Log!.Any(e => e.Side == 1 && e.Text.Contains("приказы пропущены"))) { GD.Print("CARD_NETWORK_OK"); GetTree().Quit(); return; }
+                if (cards.Phase == "initiative" && !cards.Ready1) Submit(new("initiative"));
+                if (cards.Phase == "orders" && _state.ActiveSide == 1 && !_smokeRequestSent) { _smokeRequestSent = true; Submit(new("pass")); }
+                return;
+            }
             if (_args.Contains("--smoke-client") && _state.Sequence == (_cooperative ? 0 : 1) && !_smokeRequestSent) { _smokeRequestSent = true; Submit(new("pass")); }
             if (_args.Contains("--smoke-client") && _state.Sequence == (_cooperative ? 1 : 2))
             {

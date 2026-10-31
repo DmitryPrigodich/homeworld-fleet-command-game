@@ -3,6 +3,7 @@ using FleetCommand.Core;
 using FleetCommand.Import;
 
 var root = Path.GetFullPath(args.Length > 1 ? args[1] : ".");
+if (args.FirstOrDefault() == "scenarios") { ScenarioRunner.Run(root); return; }
 if (args.FirstOrDefault() == "scan")
 {
     foreach (var ship in HwrmImporter.Scan(root)) Console.WriteLine($"{ship.Id} | {Path.GetFileName(ship.Archive)} | {ship.Entry.Size:N0} bytes");
