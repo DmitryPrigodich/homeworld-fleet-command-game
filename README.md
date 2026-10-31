@@ -6,7 +6,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 
 ## Current playable slice
 
-- Basic-order card practice: a shared deck, two-card hand, initiative commitments, card spending and replenishment. This is a separate training mode; printed special effects and interrupts are still pending.
+- Card practice: a shared deck, two-card hand, initiative commitments, card spending and replenishment, plus the first two special orders: **All Ahead Full** and **Stay in Formation**. Pending action sequences survive saves and network synchronization.
 
 - Russian main menu: tutorial, single player, multiplayer, options, mods, exit.
 - A seven-step interactive tutorial with highlighted selection, movement, round reset and shooting. It uses a passive opponent and keeps existing saves untouched.
@@ -23,7 +23,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - Player name, color and emblem in **Options → Player**. Flattened cube footprints use the player's color; NPCs and neutral objects use reserved gray. PvP color collisions are resolved by the host.
 - Optional local import of Kushan, Taiidan and five kiith emblems from an owned HWRM installation. Only the importer code is distributed.
 
-**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Printed special-card effects, leaders, unrestricted initiative bidding, interrupts, CAP/defensive-fire timing, boarding, production, full scenario objectives and the supplied book campaigns are not implemented yet. The simplified combat module is `skirmish-v1`; basic-card practice wraps it as `cards-basic-v1`.
+**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Other special cards, leaders, unrestricted initiative bidding, interrupts, CAP/defensive-fire timing, boarding, production, full scenario objectives and the supplied book campaigns are not implemented yet. The simplified combat module is `skirmish-v1`; card practice wraps it as `cards-basic-v1`.
 
 ## Run on Windows
 
@@ -38,6 +38,8 @@ On the original development machine `Play.cmd` also finds the portable engine in
 Start with **ОБУЧЕНИЕ** in the main menu. Controls: left-click a unit from the roster or board, choose **Movement** or **Attack**, then left-click a destination hex or enemy. **End turn** passes the remainder of that side's orders. Activated units darken. Hold **right mouse button** over the battlefield and drag to orbit; the **wheel** zooms and **F** resets the view. Camera orientation and zoom persist through selections and orders. Saves are under `.local/`.
 
 Hold **Alt** to show battlefield names, model counts, owners and object hover details; release it to return to compact symbols/emblems. Click an object symbol or label to read its movement/attack effects. Triangle denotes fighters and diamond denotes frigates; mods can choose other supported tactical shapes. The roster uses readable per-fleet unit numbers rather than internal IDs. Player colors affect ownership projections, while cube hull colors still distinguish the placeholder fleets.
+
+**ОБУЧЕНИЕ → КАРТЫ И СПЕЦПРИКАЗЫ** explains initiative and opens a card battle. After initiative, select a ready unit and a card, then press **СПЕЦПРИКАЗ**. Stay in Formation also requires selecting the second ready unit before starting. The interface selects the actor for each step and highlights its legal actions. **ПРОПУСТИТЬ ДЕЙСТВИЕ** skips one step; **ЗАВЕРШИТЬ ПРИКАЗ** skips the remainder. A multi-step order spends one card and one Play. The current training deck distribution and movement limitations are documented in [testing](docs/TESTING.md).
 
 Selecting a unit ready for your current turn highlights **green movement hexes** and **red enemy target hexes** together. Movement includes terrain costs, obstacles, occupied cells and ability bonuses; attacks use current range and line of sight. Use Movement or Attack to issue the corresponding order. Spent activations, other players' units and finished battles have no actionable highlights. Tutorial highlights also respect its current task. Calculating the preview does not roll dice, spend orders or add history entries.
 

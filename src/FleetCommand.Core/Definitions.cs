@@ -20,7 +20,7 @@ public sealed record ModManifest(string Id, string Version, int SchemaVersion = 
     string[]? Requires = null, string[]? Overrides = null);
 public sealed record ShipDefinition(string Id, string Name, string Faction, string Model,
     int Models, int Move, int DicePerModel, int Success, int Armor, int Range,
-    string[]? Abilities = null, float VisualSize = 0.55f, string Color = "", string TacticalIcon = "", string Label = "");
+    string[]? Abilities = null, float VisualSize = 0.55f, string Color = "", string TacticalIcon = "", string Label = "", int Afterburners = -1);
 public sealed record AbilityDefinition(string Id, string Handler, int Value = 1);
 public sealed record FleetUnit(string Ship, int Q, int R, int Facing = 0);
 public sealed record FleetDefinition(string Id, string Name, FleetUnit[] Units);

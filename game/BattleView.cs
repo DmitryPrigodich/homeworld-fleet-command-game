@@ -23,6 +23,7 @@ public partial class Main
     private void DrawBattle()
     {
         if (_state == null) return;
+        if (_state.Cards?.Pending is { } pending) { _selected = SpecialOrders.Actor(pending); _action = SpecialOrders.Action(pending) == "attack" ? "attack" : "move"; }
         ClearScreen(); var map = _content.Maps[_state.Map];
         _cameraTarget = World(new(map.Width - 1, map.Height - 1)) * 0.5f;
         _cameraBaseSize = Math.Max(map.Width * 2.35f, map.Height * 2.9f);
@@ -85,7 +86,7 @@ public partial class Main
         Text(left, _tutorial != null ? "СИНИЕ — МЫ / КРАСНЫЕ — ВРАГ" : _generation == null ? "Сценарий из данных" : $"Seed: {_generation.Seed}", 13, _colors.Muted);
         OwnerLegend(left);
         DrawCards(left);
-        var scroll = new ScrollContainer { CustomMinimumSize = new(0, _state.Cards == null ? 220 : 100), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        var scroll = new ScrollContainer { CustomMinimumSize = new(0, _state.Cards == null ? 220 : 60), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         left.AddChild(scroll); var roster = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; scroll.AddChild(roster);
         foreach (var unit in _state.Units.OrderBy(u => u.Side).ThenBy(u => u.Id))
         {
@@ -117,7 +118,7 @@ public partial class Main
         {
             Button(right, _action == "move" ? "▶ ПЕРЕМЕЩЕНИЕ" : "ПЕРЕМЕЩЕНИЕ", () => SetBattleAction("move"), _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.Move);
             Button(right, _action == "attack" ? "▶ АТАКА" : "АТАКА", () => SetBattleAction("attack"), _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.Attack);
-            Button(right, "ЗАВЕРШИТЬ ХОД", () => Submit(new("pass")), _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.EndTurn);
+            Button(right, "ЗАВЕРШИТЬ ХОД", () => Submit(new("pass")), _state.Cards?.Pending != null || _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.EndTurn);
         }
         if (_tutorial == null) Button(right, "СОХРАНИТЬ", () => { SaveGame(); _status = "Сохранено."; DrawBattle(); }, _networkActive && !_isHost);
         if (_state.Finished)
@@ -169,6 +170,14 @@ public partial class Main
         if (_state == null || !_bot || _state.Finished) return;
         if (_state.Cards?.Phase == "initiative") { ApplyCommand(1, new("initiative")); return; }
         if (_state.ActiveSide != 1) return;
+        if (_state.Cards?.Pending is { } order)
+        {
+            var actor = SpecialOrders.Actor(order); var options = _engine.GetActions(_state, 1, actor);
+            if (options.AttackTargets.Length > 0) ApplyCommand(1, new("attack", actor, options.AttackTargets[0]));
+            else if (options.MoveCells.Length > 0) { var h = options.MoveCells[0]; ApplyCommand(1, new("move", actor, Q: h.Q, R: h.R)); }
+            else ApplyCommand(1, new("skip"));
+            return;
+        }
         foreach (var unit in _state.Units.Where(u => u.Side == 1 && !u.Activated).ToArray())
         {
             var enemies = _state.Units.Where(u => u.Side == 0).ToArray();

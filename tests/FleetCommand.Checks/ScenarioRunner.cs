@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using FleetCommand.Core;
 
-internal sealed record Scenario(string Name, string Map, uint Seed, int MaxCommands = 400, bool CloseContact = false);
+internal sealed record Scenario(string Name, string Map, uint Seed, int MaxCommands = 400, bool CloseContact = false, bool UseSpecialOrders = false);
 internal static class ScenarioRunner
 {
     public static void Run(string root)
@@ -24,7 +24,7 @@ internal static class ScenarioRunner
             {
                 string before = engine.Save(live);
                 int side = live.Cards is { Phase: "initiative" } cards ? cards.Ready0 ? 1 : 0 : live.ActiveSide;
-                var command = Plan(engine, live, side);
+                var command = Plan(engine, live, side, scenario.UseSpecialOrders);
                 var a = engine.Apply(live, side, command); var b = engine.Apply(restored, side, command);
                 trace.Add(new { step, side, command, a.Accepted, a.Message, a.State.Round, a.State.Sequence,
                     hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(engine.Save(a.State)))) });
@@ -60,12 +60,26 @@ internal static class ScenarioRunner
         if (publicView.Cards!.Bid0 != "" || publicView.Cards.Hand0.Length != 0 || publicView.Cards.Deck.Length != 0) throw new Exception("pending bid leaked");
         if (e.Apply(committed, 0, new("initiative")).Accepted) throw new Exception("duplicate commitment accepted");
         Console.WriteLine("SCENARIO PASS rejected orders, private bids, duplicate commitment");
+        SpecialOrderScenarios.Run(root);
         File.WriteAllText(Path.Combine(output, "scenarios.json"), JsonSerializer.Serialize(reports, JsonData.Options));
     }
-    private static BattleCommand Plan(BattleEngine engine, BattleState state, int side)
+    private static BattleCommand Plan(BattleEngine engine, BattleState state, int side, bool specials)
     {
         if (state.Cards?.Phase == "initiative") return new("initiative");
+        if (state.Cards?.Pending is { } pending)
+        {
+            string actor = SpecialOrders.Actor(pending); var options = engine.GetActions(state, side, actor);
+            if (options.AttackTargets.Length > 0) return new("attack", actor, options.AttackTargets[0]);
+            if (options.MoveCells.Length > 0) { var h = options.MoveCells[0]; return new("move", actor, Q: h.Q, R: h.R); }
+            return new("skip");
+        }
         string card = (side == 0 ? state.Cards?.Hand0 : state.Cards?.Hand1)?.FirstOrDefault() ?? "";
+        if (specials && SpecialOrders.Supported(card))
+        {
+            var ready = state.Units.Where(u => u.Side == side && !u.Activated).OrderBy(u => u.Id).ToArray();
+            if (ready.Length > 0 && (!SpecialOrders.Formation(card) || ready.Length > 1))
+                return new("special", ready[0].Id, Card: card, OtherUnit: ready.Length > 1 ? ready[1].Id : "");
+        }
         var enemies = state.Units.Where(u => u.Side != side).ToArray();
         foreach (var unit in state.Units.Where(u => u.Side == side).OrderBy(u => u.Id))
         {

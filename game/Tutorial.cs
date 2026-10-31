@@ -73,7 +73,10 @@ public partial class Main
         Text(parent, title, 17, _colors.Highlight);
         Text(parent, body, 16);
         if (_tutorial.Step == TutorialStep.Welcome)
+        {
             Button(parent, "НАЧАТЬ ОБУЧЕНИЕ", () => { _tutorial.Continue(); DrawBattle(); });
+            Button(parent, "КАРТЫ И СПЕЦПРИКАЗЫ", CardGuide);
+        }
         if (_tutorial.Step == TutorialStep.Camera)
             Button(parent, "ПРОПУСТИТЬ ОБЗОР", () => { _tutorial.Continue(); DrawBattle(); });
         if (_tutorial.Step == TutorialStep.Complete)

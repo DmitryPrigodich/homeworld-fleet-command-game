@@ -2,7 +2,7 @@ namespace FleetCommand.Core;
 
 public sealed record CardRound(string[] Deck, string[] Hand0, string[] Hand1, string[] Discard,
     string Phase = "initiative", bool Ready0 = false, bool Ready1 = false, string Bid0 = "", string Bid1 = "",
-    bool IsView = false, int HiddenHandCount = 0, int DeckCount = 0);
+    bool IsView = false, int HiddenHandCount = 0, int DeckCount = 0, PendingOrder? Pending = null);
 
 public static class BasicCardBattle
 {
@@ -20,7 +20,7 @@ public sealed class BasicCardRules : IRuleModule
     public static BattleState Initialize(BattleState state) => Draw(state with
     { Cards = new(Enumerable.Range(1, 24).Select(i => $"order-{i:00}").ToArray(), [], [], []) }, true);
     private static int Roll(ref uint random) { random ^= random << 13; random ^= random >> 17; random ^= random << 5; return (int)(random % 6) + 1; }
-    private static BattleState Draw(BattleState state, bool shuffle = false)
+    internal static BattleState Draw(BattleState state, bool shuffle = false)
     {
         var cards = state.Cards!; uint random = state.RandomState;
         var deck = cards.Deck.ToList(); var discard = cards.Discard.ToList();
@@ -35,6 +35,7 @@ public sealed class BasicCardRules : IRuleModule
         return state with { RandomState = random, Cards = new(deck.ToArray(), hands[0].ToArray(), hands[1].ToArray(), discard.ToArray()) };
     }
     public UnitActions GetActions(ContentCatalog c, BattleState state, int side, string unitId) =>
+        state.Cards?.Pending != null ? SpecialOrders.Actions(c, state, side, unitId) :
         state.Cards is { Phase: "orders" } cards && (side == 0 ? cards.Hand0 : cards.Hand1).Length > 0
             ? new SkirmishRules().GetActions(c, state, side, unitId) : UnitActions.Empty;
     public CommandResult Apply(ContentCatalog c, BattleState state, int side, BattleCommand command)
@@ -42,6 +43,7 @@ public sealed class BasicCardRules : IRuleModule
         CommandResult Reject(string text) => new(false, text, state);
         var cards = state.Cards;
         if (state.Finished || side is < 0 or > 1 || cards == null || cards.IsView) return Reject("Нельзя отдать приказ в этом состоянии.");
+        if (cards.Pending != null) return SpecialOrders.Apply(c, state, side, command);
         var hand = side == 0 ? cards.Hand0 : cards.Hand1;
         if (cards.Phase == "initiative")
         {
@@ -60,6 +62,7 @@ public sealed class BasicCardRules : IRuleModule
             return new(true, $"Инициатива: {a} : {b}. " + (a == b ? "Ничья: новые ставки и переброс." : $"Первый приказ у стороны {(a > b ? 1 : 2)}."),
                 next with { Cards = cards, RandomState = random, ActiveSide = a > b ? 0 : 1 });
         }
+        if (command.Kind == "special") return SpecialOrders.Start(c, state, side, command);
         if (command.Kind != "pass" && !hand.Contains(command.Card)) return Reject("Выберите карту из своей руки для базового приказа.");
         var result = new SkirmishRules().Apply(c, state, side, command);
         if (!result.Accepted) return result;
@@ -88,5 +91,6 @@ public sealed class BasicCardRules : IRuleModule
             || (!cards.IsView && all.Length != 24) || cards.Hand0.Length > 2 || cards.Hand1.Length > 2
             || (cards.Bid0 != "" && !cards.Hand0.Contains(cards.Bid0)) || (cards.Bid1 != "" && !cards.Hand1.Contains(cards.Bid1)))
             throw new InvalidDataException("Invalid card ownership or deck conservation.");
+        SpecialOrders.Validate(state);
     }
 }

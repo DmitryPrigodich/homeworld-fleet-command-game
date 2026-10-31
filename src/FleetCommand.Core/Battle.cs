@@ -7,7 +7,7 @@ public sealed record BattleUnit(string Id, string Definition, int Side, int Q, i
 public sealed record BattleState(string Map, string ContentFingerprint, List<BattleUnit> Units,
     int Round = 1, int ActiveSide = 0, int Orders0 = 0, int Orders1 = 0, int Sequence = 0,
     uint RandomState = 12345, int? Winner = null, bool Finished = false, List<BattleLogEntry>? Log = null, CardRound? Cards = null);
-public sealed record BattleCommand(string Kind, string Unit = "", string Target = "", int Q = 0, int R = 0, int Facing = 0, string Card = "");
+public sealed record BattleCommand(string Kind, string Unit = "", string Target = "", int Q = 0, int R = 0, int Facing = 0, string Card = "", string OtherUnit = "");
 public sealed record CommandResult(bool Accepted, string Message, BattleState State);
 
 // Rule implementations are ordinary C# modules. JSON selects/configures one; it never executes code.
@@ -148,6 +148,12 @@ public sealed class SkirmishRules : IRuleModule
             state.Units.Add(unit with { Activated = true });
             state = side == 0 ? state with { Orders0 = state.Orders0 + 1 } : state with { Orders1 = state.Orders1 + 1 };
         }
+        return FinishOrder(c, original, state, side, message);
+    }
+    internal static CommandResult FinishOrder(ContentCatalog c, BattleState original, BattleState state, int side, string message)
+    {
+        var rules = c.Rules[c.Maps[state.Map].Rules];
+        int Remaining(int s) => rules.OrdersPerSide - (s == 0 ? state.Orders0 : state.Orders1);
         bool CanAct(int s) => Remaining(s) > 0 && state.Units.Any(u => u.Side == s && !u.Activated);
         if (!state.Units.Any(u => u.Side == 0) || !state.Units.Any(u => u.Side == 1))
             state = state with { Winner = state.Units.Any(u => u.Side == 0) ? 0 : 1, Finished = true };

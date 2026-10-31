@@ -14,9 +14,12 @@
 ## Menu outline
 
 ```text
+Tutorial
+  Basic interactive lesson / cards and special orders guide
 Single player
   Campaigns: new / continue
   Skirmish: generated setup / continue
+  Card practice
 Multiplayer
   Skirmish: PvP or cooperative shared fleet
   Cooperative campaign: new / continue / join
@@ -33,7 +36,9 @@ Presentation submits commands to `BattleEngine`. The selected `IRuleModule` retu
 
 `BattleEngine.GetActions` asks the rule module for a read-only `UnitActions` preview. `skirmish-v1` shares weighted movement and attack-cover geometry between that query and command validation, without simulating attacks or touching RNG/history. The game renders green destination hexes and red legal target hexes for the local command side; the tutorial filters these to its allowed task. Custom rule modules may implement `IRuleModule.GetActions`; its default returns no highlights.
 
-During multiplayer, only the host executes commands. Remote requests include an expected sequence number; stale requests trigger resynchronization. A peer must register matching content before sending commands. Current snapshots contain all prototype state: no secret cards exist yet. Before adding hands/hidden reserves, introduce per-player views and keep deck order and private RNG on the authority.
+During multiplayer, only the host executes commands. Remote requests include an expected sequence number; stale requests trigger resynchronization. A peer must register matching content before sending commands. `BasicCardRules.View` removes the opponent's hand/bid, deck order and private RNG from remote snapshots, including the battle nested in campaign progress. Views cannot execute authoritative commands. Host saves retain the complete state.
+
+`CardRound.Pending` stores a played special card, its side, preassigned actors, action index and optional straight-movement direction. Starting an order atomically spends one card and one Play and activates all assigned actors. Intermediate actions reuse skirmish resolution in an isolated snapshot, copying combat changes and RNG back while preserving real activation flags, budgets and turn ownership. `SkirmishRules.FinishOrder` shares end-of-order cleanup between basic and special orders. Cleanup/draw waits until the final step or early completion; battle victory clears the sequence immediately. Skipped actions also advance sequence numbers and synchronize normally. Pending order data is public, while the remaining hands stay private. Adding interrupts will need a separate suspended-response mechanism; it is not implied by this sequential order model.
 
 The initial transport is direct ENet. Relay/lobby integration belongs outside Core. Cooperative players currently share command rights for side zero. Campaign progress belongs to the host and is saved alongside the active battle.
 

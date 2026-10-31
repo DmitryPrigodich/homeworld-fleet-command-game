@@ -20,7 +20,7 @@ Definitions have namespaced IDs: `myfleet:ship-name`. A new definition must use 
 
 | Array | Main fields |
 | --- | --- |
-| `ships` | id, name, faction, model, models, move, dicePerModel, success, armor, range, abilities, visualSize, color, tacticalIcon, label |
+| `ships` | id, name, faction, model, models, move, dicePerModel, success, armor, range, abilities, visualSize, color, tacticalIcon, label, afterburners |
 | `abilities` | id, handler, value |
 | `fleets` | id, name, units: ship, q, r, facing |
 | `objects` | id, name, model, blocksMovement, attackPenalty, moveCost, color, label |
@@ -36,6 +36,8 @@ The C# records in `src/FleetCommand.Core/Definitions.cs` are the canonical schem
 Local player profiles support faction defaults (`auto`, Kushan/Taiidan) and built-in kiith selections. Original badge pixels come from the user's installation into `.local/imported/badges`, never from content packs in this repository. The network sends validated emblem IDs, not arbitrary filesystem paths or image data. Co-op uses the host's appearance for the shared fleet.
 
 Initial ability handlers are `penetrating`, `rapid-fire`, and `move-bonus`. Combine abilities on a ship to reuse these mechanics. A wholly new ability mechanic needs a small code change; arbitrary strings are not executed.
+
+`afterburners` supplies the distance for Lightning Move in Stay in Formation: `0` disables it, `1`–`50` gives the movement allowance without ordinary move bonuses. Its default `-1` preserves legacy definitions: the two core interceptor IDs receive 2; other ships receive 0. New mod ships should set the value explicitly. The training card distribution and action sequences currently live in `SpecialOrders.cs`; adding new card mechanics requires C#, rather than a separate rules scripting language.
 
 Maps use axial `(q,r)` hex coordinates inside a rectangular coordinate domain. `facing` is 0-5. Map objects may block movement, increase movement cost and penalize attacks. A blocking object also blocks line of sight in `skirmish-v1`. A background hex color changes the procedural sector palette. Texture/scene backgrounds are deferred.
 

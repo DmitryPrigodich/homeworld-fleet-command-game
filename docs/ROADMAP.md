@@ -19,7 +19,8 @@
 ## Rules fidelity
 
 - [x] Separate basic-card practice mode, private views and deterministic whole-battle replay checks.
-- [ ] Extend practice to printed special orders, full initiative options, leader budgets and interrupts (see TESTING.md for current limits).
+- [x] First two special orders, preassigned actors, skippable action sequences, mid-order saves, UI guide and network regression scenarios.
+- [ ] Remaining special orders, full initiative options, leader budgets and interrupts (see TESTING.md for current limits).
 
 - [ ] Freeze the reference edition and applicable errata; document ambiguous timing decisions.
 - [ ] Command deck, hands, initiative, leaders and activation budgets.
@@ -31,7 +32,7 @@
 ## Content and multiplayer
 
 - [ ] Generator fleet selectors, object density/types and map presets exposed in UI.
-- [ ] Per-player private views before any hidden-information mechanics.
+- [x] Per-player private card views, with authoritative deck/RNG retained on the host.
 - [ ] Reconnection UX, stable player identities and optional subfleet ownership in co-op.
 - [ ] Relay/invitation rooms for internet play without manual reachable hosting.
 - [ ] More capable objective-aware AI.

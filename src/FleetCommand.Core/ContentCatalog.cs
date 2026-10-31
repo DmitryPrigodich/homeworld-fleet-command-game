@@ -92,7 +92,7 @@ public sealed class ContentCatalog
         foreach (var s in Ships.Values)
         {
             if (s.Models < 1 || s.Models > 100 || s.Move < 0 || s.Move > 50 || s.DicePerModel < 0 || s.DicePerModel > 50
-                || s.Success is < 2 or > 6 || s.Armor < 0 || s.Range < 0 || !float.IsFinite(s.VisualSize) || s.VisualSize is <= 0 or > 2)
+                || s.Success is < 2 or > 6 || s.Armor < 0 || s.Range < 0 || s.Afterburners is < -1 or > 50 || !float.IsFinite(s.VisualSize) || s.VisualSize is <= 0 or > 2)
                 throw new InvalidDataException($"Invalid ship statistics: {s.Id}");
             foreach (var a in s.Abilities ?? []) if (!Abilities.ContainsKey(a)) throw new InvalidDataException($"{s.Id}: missing ability {a}");
             if (!string.IsNullOrEmpty(s.TacticalIcon) && !FleetPresentation.TacticalIcons.Contains(s.TacticalIcon))
