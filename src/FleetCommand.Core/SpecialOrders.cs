@@ -5,7 +5,7 @@ public static class SpecialOrders
 {
     public static bool Formation(string card) => card.Length >= 6 && int.TryParse(card.AsSpan(6), out int number) && number is >= 9 and <= 16;
     public static string Name(string card) => int.TryParse(card.Length >= 6 ? card.AsSpan(6) : "".AsSpan(), out int n) ? n switch
-    { <= 8 => "All Ahead Full", <= 16 => "Stay in Formation", _ => "Базовый приказ " + n } : "Неизвестная карта";
+    { <= 8 => "All Ahead Full", <= 16 => "Stay in Formation", <= 20 => "Interrupt Attack", _ => "Базовый приказ " + n } : "Неизвестная карта";
     public static bool Supported(string card) => card.StartsWith("order-") && int.TryParse(card.AsSpan(6), out int n) && n is >= 1 and <= 16;
     public static string Action(PendingOrder order) => Formation(order.Card) ? new[] { "move", "attack", "lightning", "attack" }[order.Step] : "move";
     public static string Actor(PendingOrder order) => order.Units[Formation(order.Card) && order.Step >= 2 ? 1 : 0];
@@ -14,14 +14,14 @@ public static class SpecialOrders
     public static int Lightning(ShipDefinition ship) => ship.Afterburners >= 0 ? ship.Afterburners : ship.Id is "core:kushan-interceptor" or "core:taiidan-interceptor" ? 2 : 0;
     private static BattleState Sandbox(BattleState state, PendingOrder order) => state with
     { Orders0 = 0, Orders1 = 0, ActiveSide = order.Side, Units = state.Units.Select(u => u with { Activated = false }).ToList() };
-    private static ContentCatalog Geometry(ContentCatalog content, BattleState state, PendingOrder order)
+    internal static ContentCatalog Geometry(ContentCatalog content, BattleState state, PendingOrder order)
     {
         if (Action(order) != "lightning") return content;
         var copy = content.CopyForRuntime(); var unit = state.Units.Single(u => u.Id == Actor(order)); var ship = copy.Ships[unit.Definition];
         copy.Ships[ship.Id] = ship with { Move = Lightning(ship), Abilities = (ship.Abilities ?? []).Where(id => copy.Abilities[id].Handler != "move-bonus").ToArray() };
         return copy;
     }
-    private static int StraightDirection(Hex start, Hex end)
+    internal static int StraightDirection(Hex start, Hex end)
     {
         for (int d = 0; d < 6; d++) for (int n = 1; n <= start.Distance(end); n++)
             if (new Hex(start.Q + Hex.Directions[d].Q * n, start.R + Hex.Directions[d].R * n) == end) return d;
@@ -51,7 +51,7 @@ public static class SpecialOrders
         var options = new SkirmishRules().GetActions(geometry, Sandbox(state, order), side, id);
         if (Action(order) == "attack") return new([], options.AttackTargets);
         var moves = options.MoveCells.Where(h => !Formation(order.Card) ? Straight(c, state, unit, h, order) :
-            Action(order) != "lightning" || h.Distance(new(state.Units.Single(u => u.Id == order.Units[0]).Q, state.Units.Single(u => u.Id == order.Units[0]).R)) == 1).ToArray();
+            Action(order) != "lightning" || state.Units.Any(first => first.Id == order.Units[0] && h.Distance(new(first.Q, first.R)) == 1)).ToArray();
         return new(moves, []);
     }
     public static CommandResult Start(ContentCatalog c, BattleState state, int side, BattleCommand command)
@@ -81,22 +81,22 @@ public static class SpecialOrders
             var options = Actions(c, state, side, command.Unit);
             if (command.Kind != expected || command.Unit != Actor(order) || (expected == "move" ? !options.MoveCells.Contains(new(command.Q, command.R)) : !options.AttackTargets.Contains(command.Target)))
                 return Reject("Действие не соответствует текущему шагу или цели приказа.");
-            var result = new SkirmishRules().Apply(Geometry(c, state, order), Sandbox(state, order), side, command);
-            if (!result.Accepted) return Reject(result.Message);
-            next = state with { Units = result.State.Units.Select(u => u with { Activated = state.Units.Single(old => old.Id == u.Id).Activated }).ToList(),
-                RandomState = result.State.RandomState, Finished = result.State.Finished, Winner = result.State.Winner };
-            message = result.Message;
-            if (!Formation(order.Card) && order.Direction < 0)
-            { var before = state.Units.Single(u => u.Id == command.Unit); order = order with { Direction = StraightDirection(new(before.Q, before.R), new(command.Q, command.R)) }; }
+            return InterruptRules.Start(c, state, side, command, basic: false);
         }
-        order = order with { Step = command.Kind == "finish-order" ? Steps(order) : order.Step + 1 };
+        return Advance(c, state, next, side, message, command.Kind == "finish-order");
+    }
+    internal static CommandResult Advance(ContentCatalog c, BattleState original, BattleState next, int side, string message, bool finish = false)
+    {
+        var order = next.Cards!.Pending!;
+        order = order with { Step = finish ? Steps(order) : order.Step + 1 };
+        while (order.Step < Steps(order) && !next.Units.Any(u => u.Id == Actor(order))) order = order with { Step = order.Step + 1 };
         if (next.Finished || order.Step >= Steps(order))
         {
             next = next with { Cards = next.Cards! with { Pending = null } };
-            var result = SkirmishRules.FinishOrder(c, state, next, side, message + " Приказ завершён.");
-            return result with { State = result.State.Round != state.Round && !result.State.Finished ? BasicCardRules.Draw(result.State) : result.State };
+            var result = SkirmishRules.FinishOrder(c, original, next, side, message + " Приказ завершён.");
+            return result with { State = result.State.Round != original.Round && !result.State.Finished ? BasicCardRules.Draw(result.State) : result.State };
         }
-        return new(true, message, next with { Cards = next.Cards! with { Pending = order }, Sequence = state.Sequence + 1 });
+        return new(true, message, next with { Cards = next.Cards! with { Pending = order }, Sequence = original.Sequence + 1 });
     }
     public static void Validate(BattleState state)
     {
@@ -104,8 +104,9 @@ public static class SpecialOrders
         if (order == null) return;
         if (!Supported(order.Card) || order.Side is < 0 or > 1 || state.ActiveSide != order.Side || state.Cards.Phase != "orders" || state.Finished
             || order.Units == null || order.Units.Length != (Formation(order.Card) ? 2 : 1) || order.Units.Distinct().Count() != order.Units.Length
-            || order.Units.Any(id => !state.Units.Any(u => u.Id == id && u.Side == order.Side && u.Activated))
+            || order.Units.Any(id => state.Units.Any(u => u.Id == id && (u.Side != order.Side || !u.Activated)))
             || order.Step < 0 || order.Step >= Steps(order) || order.Direction is < -1 or > 5 || !state.Cards.Discard.Contains(order.Card))
             throw new InvalidDataException("Invalid pending special order.");
+        if (!state.Units.Any(u => u.Id == Actor(order))) throw new InvalidDataException("Pending actor is missing.");
     }
 }

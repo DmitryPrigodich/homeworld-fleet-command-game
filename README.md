@@ -6,7 +6,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 
 ## Current playable slice
 
-- Card practice: a shared deck, two-card hand, initiative commitments, card spending and replenishment, plus the first two special orders: **All Ahead Full** and **Stay in Formation**. Pending action sequences survive saves and network synchronization.
+- Card practice: a shared deck, two-card hand, initiative commitments, card spending and replenishment, two special orders (**All Ahead Full**, **Stay in Formation**) and **Interrupt Attack**. Pending sequences and response windows survive saves and network synchronization.
 
 - Russian main menu: tutorial, single player, multiplayer, options, mods, exit.
 - A seven-step interactive tutorial with highlighted selection, movement, round reset and shooting. It uses a passive opponent and keeps existing saves untouched.
@@ -23,7 +23,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - Player name, color and emblem in **Options → Player**. Flattened cube footprints use the player's color; NPCs and neutral objects use reserved gray. PvP color collisions are resolved by the host.
 - Optional local import of Kushan, Taiidan and five kiith emblems from an owned HWRM installation. Only the importer code is distributed.
 
-**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Other special cards, leaders, unrestricted initiative bidding, interrupts, CAP/defensive-fire timing, boarding, production, full scenario objectives and the supplied book campaigns are not implemented yet. The simplified combat module is `skirmish-v1`; card practice wraps it as `cards-basic-v1`.
+**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Other special cards and interrupt types, leaders, unrestricted initiative bidding, CAP/defensive-fire timing, boarding, production, full scenario objectives and the supplied book campaigns are not implemented yet. The simplified combat module is `skirmish-v1`; card practice wraps it as `cards-basic-v1`.
 
 ## Run on Windows
 
@@ -40,6 +40,8 @@ Start with **ОБУЧЕНИЕ** in the main menu. Controls: left-click a unit fr
 Hold **Alt** to show battlefield names, model counts, owners and object hover details; release it to return to compact symbols/emblems. Click an object symbol or label to read its movement/attack effects. Triangle denotes fighters and diamond denotes frigates; mods can choose other supported tactical shapes. The roster uses readable per-fleet unit numbers rather than internal IDs. Player colors affect ownership projections, while cube hull colors still distinguish the placeholder fleets.
 
 **ОБУЧЕНИЕ → КАРТЫ И СПЕЦПРИКАЗЫ** explains initiative and opens a card battle. After initiative, select a ready unit and a card, then press **СПЕЦПРИКАЗ**. Stay in Formation also requires selecting the second ready unit before starting. The interface selects the actor for each step and highlights its legal actions. **ПРОПУСТИТЬ ДЕЙСТВИЕ** skips one step; **ЗАВЕРШИТЬ ПРИКАЗ** skips the remainder. A multi-step order spends one card and one Play. The current training deck distribution and movement limitations are documented in [testing](docs/TESTING.md).
+
+The same guide has **ТРЕНИРОВКА: ПРЕРЫВАНИЕ**, a repeatable response-fire lesson that preserves your match save. In a response window, select an allied unit and click the red target to use Interrupt Attack, or press **ПРОПУСТИТЬ ОКНО**. Activated units can respond; the reaction spends a card, uses no Play and leaves their activation unchanged. Only one Interrupt Attack per side per round is allowed. During movement the window opens after entering an empty hex; during an attack it opens before dice. The enemy order then resumes or cancels the destroyed actor's remaining actions. AI also responds to these windows.
 
 Selecting a unit ready for your current turn highlights **green movement hexes** and **red enemy target hexes** together. Movement includes terrain costs, obstacles, occupied cells and ability bonuses; attacks use current range and line of sight. Use Movement or Attack to issue the corresponding order. Spent activations, other players' units and finished battles have no actionable highlights. Tutorial highlights also respect its current task. Calculating the preview does not roll dice, spend orders or add history entries.
 

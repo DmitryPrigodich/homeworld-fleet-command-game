@@ -65,7 +65,7 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
                 || e.Side is < -1 or > 1 || string.IsNullOrWhiteSpace(e.Text) || e.Text.Length > 4096)
             || !s.Log.Select(e => e.Number).SequenceEqual(s.Log.Select(e => e.Number).Distinct().Order())))
             throw new InvalidDataException("Invalid battle log in save.");
-        if (content.Rules[map.Rules].Handler == "cards-basic-v1") BasicCardRules.Validate(s);
+        if (content.Rules[map.Rules].Handler == "cards-basic-v1") { BasicCardRules.Validate(s); InterruptRules.ValidateGeometry(content, s); }
         return s;
     }
 }

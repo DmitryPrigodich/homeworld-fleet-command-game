@@ -20,11 +20,12 @@
 
 - [x] Separate basic-card practice mode, private views and deterministic whole-battle replay checks.
 - [x] First two special orders, preassigned actors, skippable action sequences, mid-order saves, UI guide and network regression scenarios.
+- [x] Interrupt Attack, per-hex movement pauses, response before attack dice, per-round reaction limits and a repeatable lesson.
 - [ ] Remaining special orders, full initiative options, leader budgets and interrupts (see TESTING.md for current limits).
 
 - [ ] Freeze the reference edition and applicable errata; document ambiguous timing decisions.
 - [ ] Command deck, hands, initiative, leaders and activation budgets.
-- [ ] Suspend/resume action sequence for interrupts, terrain, CAP and defensive fire.
+- [ ] Extend saved response windows to other interrupts, terrain, CAP and defensive fire.
 - [ ] Ship classes, proper turning/arcs, boarding, ramming, bays, reinforcements and production.
 - [ ] Scenario objectives, medals, heroes/upgrades and campaign purchases.
 - [ ] Actual book campaigns as separate data packs after card coverage is complete.

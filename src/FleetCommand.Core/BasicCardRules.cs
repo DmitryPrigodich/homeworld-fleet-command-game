@@ -2,7 +2,8 @@ namespace FleetCommand.Core;
 
 public sealed record CardRound(string[] Deck, string[] Hand0, string[] Hand1, string[] Discard,
     string Phase = "initiative", bool Ready0 = false, bool Ready1 = false, string Bid0 = "", string Bid1 = "",
-    bool IsView = false, int HiddenHandCount = 0, int DeckCount = 0, PendingOrder? Pending = null);
+    bool IsView = false, int HiddenHandCount = 0, int DeckCount = 0, PendingOrder? Pending = null,
+    string[]? Interrupts0 = null, string[]? Interrupts1 = null, PendingResponse? Response = null);
 
 public static class BasicCardBattle
 {
@@ -23,7 +24,7 @@ public sealed class BasicCardRules : IRuleModule
     internal static BattleState Draw(BattleState state, bool shuffle = false)
     {
         var cards = state.Cards!; uint random = state.RandomState;
-        var deck = cards.Deck.ToList(); var discard = cards.Discard.ToList();
+        var deck = cards.Deck.ToList(); var discard = cards.Discard.Concat(cards.Interrupts0 ?? []).Concat(cards.Interrupts1 ?? []).ToList();
         var hands = new[] { cards.Hand0.ToList(), cards.Hand1.ToList() };
         int needed = hands.Sum(h => Math.Max(0, 2 - h.Count));
         if (shuffle || deck.Count < needed)
@@ -35,6 +36,7 @@ public sealed class BasicCardRules : IRuleModule
         return state with { RandomState = random, Cards = new(deck.ToArray(), hands[0].ToArray(), hands[1].ToArray(), discard.ToArray()) };
     }
     public UnitActions GetActions(ContentCatalog c, BattleState state, int side, string unitId) =>
+        state.Cards?.Response != null ? InterruptRules.Actions(c, state, side, unitId) :
         state.Cards?.Pending != null ? SpecialOrders.Actions(c, state, side, unitId) :
         state.Cards is { Phase: "orders" } cards && (side == 0 ? cards.Hand0 : cards.Hand1).Length > 0
             ? new SkirmishRules().GetActions(c, state, side, unitId) : UnitActions.Empty;
@@ -43,6 +45,7 @@ public sealed class BasicCardRules : IRuleModule
         CommandResult Reject(string text) => new(false, text, state);
         var cards = state.Cards;
         if (state.Finished || side is < 0 or > 1 || cards == null || cards.IsView) return Reject("Нельзя отдать приказ в этом состоянии.");
+        if (cards.Response != null) return InterruptRules.Apply(c, state, side, command);
         if (cards.Pending != null) return SpecialOrders.Apply(c, state, side, command);
         var hand = side == 0 ? cards.Hand0 : cards.Hand1;
         if (cards.Phase == "initiative")
@@ -64,6 +67,7 @@ public sealed class BasicCardRules : IRuleModule
         }
         if (command.Kind == "special") return SpecialOrders.Start(c, state, side, command);
         if (command.Kind != "pass" && !hand.Contains(command.Card)) return Reject("Выберите карту из своей руки для базового приказа.");
+        if (command.Kind is "move" or "attack") return InterruptRules.Start(c, state, side, command, basic: true);
         var result = new SkirmishRules().Apply(c, state, side, command);
         if (!result.Accepted) return result;
         if (command.Kind != "pass")
@@ -86,11 +90,12 @@ public sealed class BasicCardRules : IRuleModule
         var cards = state.Cards ?? throw new InvalidDataException("Card round is missing.");
         if (cards.Phase is not ("initiative" or "orders") || cards.Deck == null || cards.Hand0 == null || cards.Hand1 == null || cards.Discard == null)
             throw new InvalidDataException("Invalid card round.");
-        var all = cards.Deck.Concat(cards.Hand0).Concat(cards.Hand1).Concat(cards.Discard).ToArray();
+        var all = cards.Deck.Concat(cards.Hand0).Concat(cards.Hand1).Concat(cards.Discard).Concat(cards.Interrupts0 ?? []).Concat(cards.Interrupts1 ?? []).ToArray();
         if (all.Distinct().Count() != all.Length || all.Any(id => !Enumerable.Range(1, 24).Select(i => $"order-{i:00}").Contains(id))
             || (!cards.IsView && all.Length != 24) || cards.Hand0.Length > 2 || cards.Hand1.Length > 2
             || (cards.Bid0 != "" && !cards.Hand0.Contains(cards.Bid0)) || (cards.Bid1 != "" && !cards.Hand1.Contains(cards.Bid1)))
             throw new InvalidDataException("Invalid card ownership or deck conservation.");
         SpecialOrders.Validate(state);
+        InterruptRules.Validate(state);
     }
 }

@@ -23,7 +23,7 @@ internal static class ScenarioRunner
             for (int step = 0; step < scenario.MaxCommands && !live.Finished; step++)
             {
                 string before = engine.Save(live);
-                int side = live.Cards is { Phase: "initiative" } cards ? cards.Ready0 ? 1 : 0 : live.ActiveSide;
+                int side = live.Cards?.Response != null ? InterruptRules.Responder(live) : live.Cards is { Phase: "initiative" } cards ? cards.Ready0 ? 1 : 0 : live.ActiveSide;
                 var command = Plan(engine, live, side, scenario.UseSpecialOrders);
                 var a = engine.Apply(live, side, command); var b = engine.Apply(restored, side, command);
                 trace.Add(new { step, side, command, a.Accepted, a.Message, a.State.Round, a.State.Sequence,
@@ -61,10 +61,17 @@ internal static class ScenarioRunner
         if (e.Apply(committed, 0, new("initiative")).Accepted) throw new Exception("duplicate commitment accepted");
         Console.WriteLine("SCENARIO PASS rejected orders, private bids, duplicate commitment");
         SpecialOrderScenarios.Run(root);
+        InterruptScenarios.Run(root);
         File.WriteAllText(Path.Combine(output, "scenarios.json"), JsonSerializer.Serialize(reports, JsonData.Options));
     }
     private static BattleCommand Plan(BattleEngine engine, BattleState state, int side, bool specials)
     {
+        if (state.Cards?.Response is { } response)
+        {
+            var shooter = state.Units.FirstOrDefault(u => engine.GetActions(state, side, u.Id).AttackTargets.Length > 0);
+            return shooter == null ? new("decline") : new("interrupt", shooter.Id, response.Command.Unit,
+                Card: (side == 0 ? state.Cards.Hand0 : state.Cards.Hand1).First(InterruptRules.IsAttack));
+        }
         if (state.Cards?.Phase == "initiative") return new("initiative");
         if (state.Cards?.Pending is { } pending)
         {

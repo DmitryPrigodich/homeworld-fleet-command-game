@@ -65,6 +65,12 @@ public partial class Main : Node3D
                     string[] hand0 = ["order-17", "order-18"], hand1 = ["order-01", "order-09"];
                     _state = _state with { Cards = new(deck.Except(hand0).Except(hand1).ToArray(), hand0, hand1, []) };
                 }
+                if (_args.Contains("--smoke-interrupt"))
+                {
+                    string[] hand0 = ["order-01", "order-09"], hand1 = ["order-17", "order-18"];
+                    _state = _state! with { ActiveSide = 0, Cards = new(Enumerable.Range(1, 24).Select(i => $"order-{i:00}").Except(hand0).Except(hand1).ToArray(), hand0, hand1, [], Phase: "orders"),
+                        Units = _state.Units.Select(u => u.Id == "s0-0" ? u with { Q = 1, R = 1 } : u.Id == "s1-3" ? u with { Q = 2, R = 1, Activated = true } : u).ToList() };
+                }
                 StartNetwork(true, "127.0.0.1", 25990, coop);
             }
             if (_args.Contains("--smoke-client")) { StartBattle("core:training", false, persist: false); StartNetwork(false, "127.0.0.1", 25990, _args.Contains("--smoke-coop")); }
@@ -161,6 +167,7 @@ public partial class Main : Node3D
         if (_frames == 5 && _args.Contains("--check-actions")) _ = CheckActionHighlights();
         if (_frames == 5 && _args.Contains("--check-cards")) _ = CheckCards();
         if (_frames == 5 && _args.Contains("--check-special")) _ = CheckSpecialCards();
+        if (_frames == 5 && _args.Contains("--check-interrupt")) _ = CheckInterrupts();
         if (_world != null && _state == null) _world.RotateY((float)delta * 0.08f);
         if (_frames == 40)
         {

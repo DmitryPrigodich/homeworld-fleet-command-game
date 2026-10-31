@@ -23,7 +23,14 @@ public partial class Main
     private void DrawBattle()
     {
         if (_state == null) return;
-        if (_state.Cards?.Pending is { } pending) { _selected = SpecialOrders.Actor(pending); _action = SpecialOrders.Action(pending) == "attack" ? "attack" : "move"; }
+        if (_state.Cards?.Response != null)
+        {
+            _action = "attack";
+            if (!_state.Units.Any(u => u.Id == _selected && u.Side == LocalCommandSide))
+                _selected = _state.Units.FirstOrDefault(u => _engine.GetActions(_state, LocalCommandSide, u.Id).AttackTargets.Length > 0)?.Id
+                    ?? _state.Units.FirstOrDefault(u => u.Side == LocalCommandSide)?.Id ?? "";
+        }
+        else if (_state.Cards?.Pending is { } pending) { _selected = SpecialOrders.Actor(pending); _action = SpecialOrders.Action(pending) == "attack" ? "attack" : "move"; }
         ClearScreen(); var map = _content.Maps[_state.Map];
         _cameraTarget = World(new(map.Width - 1, map.Height - 1)) * 0.5f;
         _cameraBaseSize = Math.Max(map.Width * 2.35f, map.Height * 2.9f);
@@ -80,7 +87,7 @@ public partial class Main
         }
         DrawTutorialMarker();
         var top = Panel(30, 22, 1380, 68);
-        Text(top, $"{map.Name.ToUpperInvariant()}     /     РАУНД {_state.Round}     /     ХОД: {SideName(_state.ActiveSide)}", 22, _colors.Accent);
+        Text(top, $"{map.Name.ToUpperInvariant()}     /     РАУНД {_state.Round}     /     " + (_state.Cards?.Response != null ? "ОТВЕТ: " + SideName(InterruptRules.Responder(_state)) : "ХОД: " + SideName(_state.ActiveSide)), 22, _colors.Accent);
         var left = Panel(30, 112, 260, 610);
         Text(left, _tutorial != null ? "ОБУЧЕНИЕ" : _campaign == null ? "СКИРМИШ" : "КАМПАНИЯ", 18, _colors.Highlight);
         Text(left, _tutorial != null ? "СИНИЕ — МЫ / КРАСНЫЕ — ВРАГ" : _generation == null ? "Сценарий из данных" : $"Seed: {_generation.Seed}", 13, _colors.Muted);
@@ -97,7 +104,7 @@ public partial class Main
             b.CustomMinimumSize = new(0, 54);
             b.TooltipText = _content.Ships[unit.Definition].Name + (unit.Activated ? " — приказ уже выполнен" : " — готово к приказу");
         }
-        Text(left, "ЛКМ — выбор / приказ\nПКМ + мышь — обзор\nКолёсико — масштаб\nAlt — названия на поле\nF — исходный ракурс", 14, _colors.Muted);
+        Text(left, _state.Cards?.Response != null ? "ЛКМ — выбор / ответ\nПКМ — обзор · Alt — имена" : "ЛКМ — выбор / приказ\nПКМ + мышь — обзор\nКолёсико — масштаб\nAlt — названия на поле\nF — исходный ракурс", 14, _colors.Muted);
         var right = Panel(_tutorial == null ? 1150 : 1060, 112, _tutorial == null ? 260 : 350, 610);
         if (_tutorial != null) right.AddThemeConstantOverride("separation", 7);
         DrawTutorial(right);
@@ -116,11 +123,12 @@ public partial class Main
         }
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
         {
-            Button(right, _action == "move" ? "▶ ПЕРЕМЕЩЕНИЕ" : "ПЕРЕМЕЩЕНИЕ", () => SetBattleAction("move"), _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.Move);
+            Button(right, _action == "move" ? "▶ ПЕРЕМЕЩЕНИЕ" : "ПЕРЕМЕЩЕНИЕ", () => SetBattleAction("move"), _state.Cards?.Response != null || _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.Move);
             Button(right, _action == "attack" ? "▶ АТАКА" : "АТАКА", () => SetBattleAction("attack"), _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.Attack);
-            Button(right, "ЗАВЕРШИТЬ ХОД", () => Submit(new("pass")), _state.Cards?.Pending != null || _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.EndTurn);
+            Button(right, "ЗАВЕРШИТЬ ХОД", () => Submit(new("pass")), _state.Cards?.Response != null || _state.Cards?.Pending != null || _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.EndTurn);
         }
-        if (_tutorial == null) Button(right, "СОХРАНИТЬ", () => { SaveGame(); _status = "Сохранено."; DrawBattle(); }, _networkActive && !_isHost);
+        if (_tutorial == null && !_interruptLesson) Button(right, "СОХРАНИТЬ", () => { SaveGame(); _status = "Сохранено."; DrawBattle(); }, _networkActive && !_isHost);
+        if (_interruptLesson) { Button(right, "ПОВТОРИТЬ УРОК", StartInterruptLesson); Button(right, "К ОБУЧЕНИЮ", CardGuide); }
         if (_state.Finished)
         {
             Text(right, _state.Winner == null ? "Лимит раундов. Ничья." : $"Победа: {SideName(_state.Winner.Value)}", 18, _colors.Highlight);
@@ -128,7 +136,7 @@ public partial class Main
                 Button(right, "ДАЛЕЕ ПО КАМПАНИИ", AdvanceCampaign, _networkActive && !_isHost);
         }
         Button(right, "ГЛАВНОЕ МЕНЮ", () => { SaveGame(); MainMenu(); });
-        if (_tutorial == null) Text(right, _networkActive ? (_cooperative ? "CO-OP / ОБЩИЙ ФЛОТ" : "PVP") : _bot ? "ОДИНОЧНАЯ / AI" : "ЛОКАЛЬНАЯ / HOTSEAT", 13, _colors.Muted);
+        if (_tutorial == null) Text(right, _interruptLesson ? "УРОК / БЕЗ СОХРАНЕНИЯ" : _networkActive ? (_cooperative ? "CO-OP / ОБЩИЙ ФЛОТ" : "PVP") : _bot ? "ОДИНОЧНАЯ / AI" : "ЛОКАЛЬНАЯ / HOTSEAT", 13, _colors.Muted);
         DrawEventLog();
     }
     public override void _UnhandledInput(InputEvent input)
@@ -146,7 +154,7 @@ public partial class Main
         var target = _state.Units.Find(u => u.Q == tile.Value.Q && u.R == tile.Value.R);
         var obj = map.Objects.FirstOrDefault(o => o.Q == tile.Value.Q && o.R == tile.Value.R);
         if (obj != null && target == null && (_selected == "" || _content.Objects[obj.Definition].BlocksMovement)) { InspectObject(obj); return; }
-        if (target != null && (target.Side == _state.ActiveSide || string.IsNullOrEmpty(_selected))) { SelectUnit(target.Id); return; }
+        if (target != null && (target.Side == LocalCommandSide || string.IsNullOrEmpty(_selected))) { SelectUnit(target.Id); return; }
         if (string.IsNullOrEmpty(_selected)) return;
         if (_action == "attack" && target != null) Submit(new("attack", _selected, target.Id));
         else if (_action == "move") Submit(new("move", _selected, Q: tile.Value.Q, R: tile.Value.R));
@@ -161,13 +169,20 @@ public partial class Main
     }
     private void QueueBot()
     {
-        if (!_bot || _botQueued || _state is null || _state.Finished || (_state.Cards?.Phase == "initiative" ? _state.Cards.Ready1 : _state.ActiveSide != 1) || _networkActive && !_isHost) return;
+        if (!_bot || _botQueued || _state is null || _state.Finished || (_state.Cards?.Response != null ? InterruptRules.Responder(_state) != 1 : _state.Cards?.Phase == "initiative" ? _state.Cards.Ready1 : _state.ActiveSide != 1) || _networkActive && !_isHost) return;
         _botQueued = true;
         GetTree().CreateTimer(0.4).Timeout += () => { _botQueued = false; BotTurn(); };
     }
     private void BotTurn()
     {
         if (_state == null || !_bot || _state.Finished) return;
+        if (_state.Cards?.Response != null)
+        {
+            if (InterruptRules.Responder(_state) != 1) return;
+            var unit = _state.Units.FirstOrDefault(u => _engine.GetActions(_state, 1, u.Id).AttackTargets.Length > 0);
+            ApplyCommand(1, unit == null ? new("decline") : new("interrupt", unit.Id, _state.Cards.Response.Command.Unit, Card: _state.Cards.Hand1.First(InterruptRules.IsAttack)));
+            return;
+        }
         if (_state.Cards?.Phase == "initiative") { ApplyCommand(1, new("initiative")); return; }
         if (_state.ActiveSide != 1) return;
         if (_state.Cards?.Pending is { } order)
@@ -200,7 +215,7 @@ public partial class Main
     private string SavePath(bool campaign) => System.IO.Path.Combine(_data, campaign ? "campaign.json" : "skirmish.json");
     private void SaveGame()
     {
-        if (_state == null || _tutorial != null || _networkActive && !_isHost) return;
+        if (_state == null || _tutorial != null || _interruptLesson || _networkActive && !_isHost) return;
         var saved = new SavedGame(_state, _generation, _campaign == null ? null : _campaign with { Battle = _state }, _bot, _commanders);
         string path = SavePath(_campaign != null), temp = path + ".pending";
         System.IO.File.WriteAllText(temp, JsonSerializer.Serialize(saved, JsonData.Options));

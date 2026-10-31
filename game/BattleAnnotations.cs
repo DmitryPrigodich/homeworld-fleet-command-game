@@ -56,7 +56,7 @@ public partial class Main
     {
         var unit = _state?.Units.Find(u => u.Id == id);
         if (unit == null) return;
-        if (_action == "attack" && _selected != "" && unit.Side != _state!.ActiveSide) Submit(new("attack", _selected, id));
+        if (_action == "attack" && _selected != "" && unit.Side != LocalCommandSide) Submit(new("attack", _selected, id));
         else SelectUnit(id);
     }
     private void InspectObject(MapObject obj)

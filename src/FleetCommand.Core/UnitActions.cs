@@ -12,6 +12,17 @@ internal static class SkirmishGeometry
         map.Objects.Any(o => o.Q == hex.Q && o.R == hex.R && content.Objects[o.Definition].BlocksMovement);
 
     public static HashSet<Hex> Movement(ContentCatalog content, BattleState state, BattleUnit unit)
+        => MovementPaths(content, state, unit, out _);
+
+    public static Hex[] MovementPath(ContentCatalog content, BattleState state, BattleUnit unit, Hex goal)
+    {
+        var cells = MovementPaths(content, state, unit, out var previous);
+        if (!cells.Contains(goal)) return [];
+        var path = new List<Hex>(); var start = new Hex(unit.Q, unit.R);
+        for (var h = goal; h != start; h = previous[h]) path.Add(h);
+        path.Reverse(); return path.ToArray();
+    }
+    private static HashSet<Hex> MovementPaths(ContentCatalog content, BattleState state, BattleUnit unit, out Dictionary<Hex, Hex> previous)
     {
         var map = content.Maps[state.Map];
         var rules = content.Rules[map.Rules];
@@ -21,9 +32,11 @@ internal static class SkirmishGeometry
         bool Inside(Hex h) => h.Q >= 0 && h.Q < map.Width && h.R >= 0 && h.R < map.Height;
         var start = new Hex(unit.Q, unit.R);
         var best = new Dictionary<Hex, int> { [start] = 0 };
-        var queue = new PriorityQueue<Hex, int>(); queue.Enqueue(start, 0);
-        while (queue.TryDequeue(out var hex, out int cost))
+        previous = [];
+        var queue = new PriorityQueue<Hex, (int Cost, int Q, int R)>(); queue.Enqueue(start, (0, start.Q, start.R));
+        while (queue.TryDequeue(out var hex, out var priority))
         {
+            int cost = priority.Cost;
             if (cost != best[hex]) continue;
             for (int direction = 0; direction < 6; direction++)
             {
@@ -33,7 +46,7 @@ internal static class SkirmishGeometry
                 int moveCost = map.Objects.Where(o => o.Q == next.Q && o.R == next.R).Select(o => content.Objects[o.Definition].MoveCost).DefaultIfEmpty(1).Max();
                 int total = cost + moveCost;
                 if (total > allowance || best.TryGetValue(next, out int old) && old <= total) continue;
-                best[next] = total; queue.Enqueue(next, total);
+                best[next] = total; previous[next] = hex; queue.Enqueue(next, (total, next.Q, next.R));
             }
         }
         return best.Keys.Where(h => h != start && !occupied.ContainsKey(h)).ToHashSet();

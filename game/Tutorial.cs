@@ -6,11 +6,12 @@ namespace FleetCommand.Game;
 public partial class Main
 {
     private TutorialLesson? _tutorial;
+    private bool _interruptLesson;
     private ContentCatalog? _contentBeforeTutorial;
 
     private void EndTutorial()
     {
-        _tutorial = null; _orbitDragging = false;
+        _tutorial = null; _interruptLesson = false; _orbitDragging = false;
         if (_contentBeforeTutorial == null) return;
         _content = _contentBeforeTutorial; _contentBeforeTutorial = null;
         _engine = new(_content);

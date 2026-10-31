@@ -38,6 +38,7 @@ internal static class SpecialOrderScenarios
                 Require(view.Cards!.Deck.Length == 0 && (viewer == 0 ? view.Cards.Hand1 : view.Cards.Hand0).Length == 0 && view.RandomState == 1, "Hidden state leaked during pending order");
                 Require(!Engine.Apply(view, viewer, command).Accepted, "Client view acted as authority");
             }
+            if (State.Cards!.Response != null) Do(new("decline"), side: InterruptRules.Responder(State));
         }
     }
     public static void Run(string root)
