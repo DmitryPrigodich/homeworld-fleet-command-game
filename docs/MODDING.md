@@ -24,7 +24,7 @@ Definitions have namespaced IDs: `myfleet:ship-name`. A new definition must use 
 | `abilities` | id, handler, value |
 | `fleets` | id, name, units: ship, q, r, facing |
 | `objects` | id, name, model, blocksMovement, attackPenalty, moveCost, color, label |
-| `maps` | id, name, width, height, background, objects, fleets, rules |
+| `maps` | id, name, width, height, background, objects, fleets, rules, captureTargets |
 | `rules` | id, name, handler, roundLimit, ordersPerSide, alternatingOrders, friendlyPassThrough, rearShots, focusFire, tabletop |
 | `leaders` | id, name, faction, classes, hand, play, stars, coolUnderPressure, attackDice |
 | `themes` | id, name, background, panel, text, muted, accent, highlight, enemy, grid |
@@ -34,7 +34,9 @@ The C# records in `src/FleetCommand.Core/Definitions.cs` are the canonical schem
 
 `tabletop: true` currently enables the implemented rulebook foundations on `cards-basic-v1` maps; it does not imply every rule is complete. Use the coverage audit. Ship `class` is one of `fighter`, `corvette`, `platform`, `frigate`, `capital`, `station` and supplies a default tactical symbol. A fleet placement's optional `leader` must match faction and allowed classes. Round Hand/Play budgets freeze until cleanup, then are recomputed from surviving leaders. Existing definitions remain compatible.
 
-Optional weapon listings contain `id`, `name`, `dicePerModel`, `range`, `kind`, `arc`, `targets`, `penetrating`, `rapidFire`, `rapidTargets`, `powerDice`, `powerPenetrating`, `defensiveFire`. Arcs: `all`, `turret`, `spinal`. Target arrays contain ship classes; omitted `targets` permits all classes. `rapidTargets` conditions only the rerolls, not whether the weapon can fire. Power/defensive fields are reserved for corresponding handlers; a basic attack cannot grant itself a Power Attack. Omitting `weapons` preserves the old main-weapon stats; an empty array gives no ranged weapons.
+Optional weapon listings contain `id`, `name`, `dicePerModel`, `range`, `kind`, `arc`, `targets`, `penetrating`, `rapidFire`, `rapidTargets`, `powerDice`, `powerPenetrating`, `defensiveFire`, `barrage`. Arcs: `all`, `turret`, `spinal`. Target arrays contain ship classes; omitted `targets` permits all classes. `rapidTargets` conditions only rerolls. `defensiveFire: true` enables free pre-attack defense, including a defense-only `range: 0` weapon. Incoming `fighter`, `close`, `missile`, `torpedo`, `bomb` and `drone` kinds supply threat handling, along with fighter units/ram/boarding. A positive `barrage` (2–6) supplies that weapon's success threshold and target-count pool; zero disables it. A basic attack cannot grant itself a Power Attack. Omitting `weapons` preserves old main-weapon stats; an empty array gives no ranged weapons.
+
+Map `captureTargets` is an optional list of battle unit IDs or ship definition IDs that a successful boarding action may capture. It does not itself define medal objectives. Ship `stars` and a destroyed leader's `stars` feed the saved destroyed-star ledger; prototype victory conditions remain separate.
 
 Terrain `kind` can identify `asteroid` or `planet` for rulebook movement costs. Gravity costs extra when leaving the well; an asteroid costs one move in tabletop mode. Entry attacks/mines are tracked separately in the coverage audit.
 

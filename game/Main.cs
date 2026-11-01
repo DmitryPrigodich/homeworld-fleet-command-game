@@ -49,6 +49,7 @@ public partial class Main : Node3D
             ReloadCardStyles();
             LoadEmblems();
             MainMenu();
+            if (_args.Contains("--smoke-defense")) ConfigureDefenseContent();
             if (_args.Contains("--capture-battle")) StartBattle("core:training", false);
             if (_args.Contains("--capture-generator")) GeneratorMenu();
             if (_args.Contains("--capture-tutorial")) StartTutorial();
@@ -59,7 +60,8 @@ public partial class Main : Node3D
             {
                 bool coop = _args.Contains("--smoke-coop");
                 if (coop) _campaign = FleetCommand.Core.Campaign.Start(_content, "core:patrol", ["host"]);
-                StartBattle(_args.Contains("--smoke-tabletop") ? BasicCardBattle.TabletopMapId : _args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop);
+                StartBattle(_args.Contains("--smoke-tabletop") || _args.Contains("--smoke-defense") ? BasicCardBattle.TabletopMapId : _args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop);
+                if (_args.Contains("--smoke-defense")) ConfigureDefenseBattle();
                 if (_args.Contains("--smoke-special"))
                 {
                     var deck = _state!.Cards!.Deck.Concat(_state.Cards.Hand0).Concat(_state.Cards.Hand1).ToArray();
@@ -185,6 +187,8 @@ public partial class Main : Node3D
         if (_frames == 5 && _args.Contains("--check-special")) _ = CheckSpecialCards();
         if (_frames == 5 && _args.Contains("--check-interrupt")) _ = CheckInterrupts();
         if (_frames == 5 && _args.Contains("--check-tabletop")) _ = CheckTabletop();
+        if (_frames == 5 && _args.Contains("--check-close")) _ = CheckCloseCombat();
+        if (_frames == 5 && _args.Contains("--check-defense")) _ = CheckDefense();
         if (_world != null && _state == null) _world.RotateY((float)delta * 0.08f);
         if (_frames == 40)
         {

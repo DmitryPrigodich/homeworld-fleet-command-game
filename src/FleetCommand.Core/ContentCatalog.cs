@@ -103,7 +103,7 @@ public sealed class ContentCatalog
                 throw new InvalidDataException($"Unknown tactical icon: {s.TacticalIcon}");
             if (s.Class != "" && !FleetRuleTools.Classes.Contains(s.Class)) throw new InvalidDataException($"Unknown ship class: {s.Class}");
             if (s.Weapons != null && (s.Weapons.Select(w => w.Id).Distinct().Count() != s.Weapons.Length || s.Weapons.Any(w => string.IsNullOrWhiteSpace(w.Id)
-                || w.DicePerModel < 0 || w.Range < 1 || w.Arc is not ("all" or "turret" or "spinal") || w.Kind is not ("gun" or "fighter" or "missile" or "torpedo" or "bomb" or "drone" or "close")
+                || w.DicePerModel < 0 || w.Range < 0 || w.Range == 0 && !w.DefensiveFire || w.Barrage != 0 && w.Barrage is < 2 or > 6 || w.Arc is not ("all" or "turret" or "spinal") || w.Kind is not ("gun" or "fighter" or "missile" or "torpedo" or "bomb" or "drone" or "close")
                 || w.Penetrating < 0 || w.RapidFire < 0 || w.PowerDice < 0 || w.PowerPenetrating < 0 || (w.Targets ?? []).Any(t => !FleetRuleTools.Classes.Contains(t)) || (w.RapidTargets ?? []).Any(t => !FleetRuleTools.Classes.Contains(t)))))
                 throw new InvalidDataException($"Invalid weapons: {s.Id}");
         }

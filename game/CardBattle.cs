@@ -5,6 +5,7 @@ public partial class Main
 {
     private string _selectedCard = "";
     private string _secondOrderUnit = "";
+    private string _formationLines = "both";
     private void CardGuide()
     {
         EndTutorial(); _state = null; ClearScreen(); Heading("Обучение: карты и специальные приказы");
@@ -40,7 +41,7 @@ public partial class Main
     {
         if (FleetBattle)
         {
-            if (command.Kind is "attack" or "interrupt") command = command with { Weapon = _weaponChoice };
+            if (command.Kind is "attack" or "interrupt") command = command with { Weapon = _weaponChoice, AttackKind = _attackKindChoice };
             if (command.Kind == "move" && command.AutoFacing) command = command with { AutoFacing = _facingChoice < 0, Facing = Math.Max(0, _facingChoice) };
         }
         if (_state?.Cards?.Response != null && command.Kind == "attack")
@@ -103,17 +104,24 @@ public partial class Main
         }
         if (cards.Phase == "orders" && SpecialOrders.Supported(_selectedCard))
         {
-            var selected = _state.Units.Find(u => u.Id == _selected && u.Side == side && !u.Activated);
-            if (SpecialOrders.Formation(_selectedCard) && selected != null)
+            var selected = _state.Units.Find(u => u.Id == _selected && u.Side == side && !u.Activated && !u.Hulk);
+            if (FleetBattle && SpecialOrders.Formation(_selectedCard))
             {
-                var others = _state.Units.Where(u => u.Side == side && !u.Activated && u.Id != selected.Id).ToArray();
+                string[] modes = ["both", "first", "second"]; var lines = new OptionButton(); lines.AddItem("Обе строки приказа"); lines.AddItem("Только первая строка"); lines.AddItem("Только вторая строка");
+                lines.Select(Array.IndexOf(modes, _formationLines)); lines.ItemSelected += i => { _formationLines = modes[(int)i]; DrawBattle(); }; parent.AddChild(lines);
+            }
+            if (SpecialOrders.Formation(_selectedCard) && selected != null && (!FleetBattle || _formationLines == "both"))
+            {
+                var others = _state.Units.Where(u => u.Side == side && !u.Activated && !u.Hulk && u.Id != selected.Id).ToArray();
                 if (!others.Any(u => u.Id == _secondOrderUnit)) _secondOrderUnit = others.FirstOrDefault()?.Id ?? "";
                 var other = new OptionButton();
                 foreach (var u in others) other.AddItem("Второй: " + FleetPresentation.UnitName(_content, _state, u));
                 if (others.Length > 0) other.Select(Array.FindIndex(others, u => u.Id == _secondOrderUnit));
                 other.ItemSelected += index => _secondOrderUnit = others[(int)index].Id; parent.AddChild(other);
             }
-            var play = Button(parent, "СПЕЦПРИКАЗ", () => Submit(new("special", _selected, Card: _selectedCard, OtherUnit: _secondOrderUnit, Repair: _repairChoice, OtherRepair: _repairOtherChoice)), selected == null || side != _state.ActiveSide);
+            var play = Button(parent, "СПЕЦПРИКАЗ", () => Submit(new("special", FleetBattle && SpecialOrders.Formation(_selectedCard) && _formationLines == "second" ? "" : _selected,
+                Card: _selectedCard, OtherUnit: FleetBattle && SpecialOrders.Formation(_selectedCard) && _formationLines == "first" ? "" : FleetBattle && SpecialOrders.Formation(_selectedCard) && _formationLines == "second" ? _selected : _secondOrderUnit,
+                Repair: _repairChoice, OtherRepair: _repairOtherChoice)), selected == null || side != _state.ActiveSide);
             play.CustomMinimumSize = new(0, 32);
         }
         Text(parent, $"Рука {(side == 0 ? cards.HandLimit0 : cards.HandLimit1)} / Play {(side == 0 ? cards.PlayLimit0 : cards.PlayLimit1)} · Move/Attack = базовый приказ", 11, _colors.Muted);

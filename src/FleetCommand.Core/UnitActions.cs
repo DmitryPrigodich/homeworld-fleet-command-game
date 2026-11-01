@@ -43,7 +43,7 @@ internal static class SkirmishGeometry
             {
                 var next = hex.Neighbor(direction);
                 if (!Inside(next) || Blocked(content, map, next)
-                    || occupied.TryGetValue(next, out var other) && (other.Side != unit.Side || !rules.FriendlyPassThrough)) continue;
+                    || occupied.TryGetValue(next, out var other) && (other.Hulk || other.Side != unit.Side || !rules.FriendlyPassThrough)) continue;
                 int moveCost = map.Objects.Where(o => o.Q == next.Q && o.R == next.R).Select(o => content.Objects[o.Definition].MoveCost).DefaultIfEmpty(1).Max();
                 int total = cost + moveCost;
                 if (total > allowance || best.TryGetValue(next, out int old) && old <= total) continue;
@@ -58,7 +58,7 @@ internal static class SkirmishGeometry
         if (FleetRuleTools.Enabled(content, state)) return FleetWeapons.Attack(content, state, unit, target);
         return CoverGeometry(content, state, unit, target);
     }
-    internal static (bool Allowed, int Cover, string Error) CoverGeometry(ContentCatalog content, BattleState state, BattleUnit unit, BattleUnit? target, int? range = null)
+    internal static (bool Allowed, int Cover, string Error) CoverGeometry(ContentCatalog content, BattleState state, BattleUnit unit, BattleUnit? target, int? range = null, bool ignoreNebula = false)
     {
         var ship = content.Ships[unit.Definition];
         if (ship.DicePerModel == 0 && range == null) return (false, 0, "У этого подразделения нет оружия для стрельбы.");
@@ -80,7 +80,7 @@ internal static class SkirmishGeometry
                 if (!Inside(next) || next.Distance(end) != h.Distance(end) - 1) continue;
                 if (Blocked(content, map, next)) return memo[h] = 100000;
                 int penalty = next == end ? 0 : state.Units.Any(u => u.Q == next.Q && u.R == next.R) ? 1 : 0;
-                penalty += map.Objects.Where(o => o.Q == next.Q && o.R == next.R).Sum(o => content.Objects[o.Definition].AttackPenalty);
+                penalty += map.Objects.Where(o => o.Q == next.Q && o.R == next.R && (!ignoreNebula || content.Objects[o.Definition].Kind != "nebula")).Sum(o => content.Objects[o.Definition].AttackPenalty);
                 worst = Math.Max(worst, penalty + Cover(next));
             }
             return memo[h] = worst;

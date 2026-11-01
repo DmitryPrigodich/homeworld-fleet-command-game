@@ -31,10 +31,13 @@ internal static class TabletopScenarios
                 Check(!E.Apply(view, viewer, command).Accepted, "Client view executed tabletop command");
             }
         }
-        public void Attack()
+        public void Abilities()
+        { while (S.Combat is { AbilityRerolls: > 0 } a) Do(FleetCombat.DecisionSide(a), new("ability-reroll", Dice: FleetCombat.EligibleDice(C, S).Take(a.AbilityRerolls).ToArray())); }
+        public void Attack(bool abilities = true)
         {
             Do(0, new("attack", "s0-0", "s1-3", Card: "order-01"));
             if (S.Cards!.Response != null && S.Combat == null) Do(1, new("decline"));
+            if (abilities) Abilities();
             Check(S.Combat != null, "Post-roll decision was not opened");
         }
     }
@@ -111,7 +114,7 @@ internal static class TabletopScenarios
         {
             s.Attack(); s.Do(1, new("resolve"), false); var before = s.S.Combat!.Rolls.ToArray();
             s.Do(0, new("valor")); s.Check(s.S.ValorOwner == 1 && s.S.ValorUsedMask == 1 && s.S.Combat!.Rerolled, "Valor ownership was not passed");
-            s.Do(0, new("valor"), false); s.Do(0, new("faction-reroll"), false); s.Do(0, new("resolve"));
+            s.Do(0, new("valor"), false); s.Do(0, new("faction-reroll"), false); s.Abilities(); s.Do(0, new("resolve"));
             s.Check(s.S.Combat == null && s.S.Cards!.Response == null && s.S.Orders0 == 1, "Combat did not resume its paid order");
         });
         Case("rapid-evasive-cancellation", s =>
@@ -121,7 +124,8 @@ internal static class TabletopScenarios
             s.C.Ships[target.Id] = target with { Evasive = 1 }; s.S = s.S with { RandomState = 1 };
             uint expected = 1; int[] rolls = Enumerable.Range(0, 6).Select(_ => FleetRuleTools.Roll(ref expected)).ToArray();
             int failure = Array.FindIndex(rolls, d => d < ship.Success); if (failure >= 0) rolls[failure] = FleetRuleTools.Roll(ref expected);
-            s.Attack(); s.Check(s.S.Combat!.Rolls.SequenceEqual(rolls) && s.S.RandomState == expected, "Rapid Fire and Evasive did not cancel first");
+            s.Attack(abilities: false); s.Do(0, new("ability-reroll", Dice: failure < 0 ? [] : new[] { failure }));
+            s.Check(s.S.Combat!.Rolls.SequenceEqual(rolls) && s.S.RandomState == expected, "Rapid Fire and Evasive did not cancel first");
         });
         Case("armor-prow-focus-and-buff-expiry", s =>
         {
@@ -143,7 +147,7 @@ internal static class TabletopScenarios
             // Separate fixture: faction repair can affect an activated unit and costs no card/Play.
             s.S = s.S with { ActiveSide = 0, Cards = s.S.Cards! with { Phase = "orders" } };
             int count = s.S.Cards.Hand0.Length;
-            s.Do(0, new("faction", "s0-0", Repair: "focus")); s.Check(s.S.FactionUsed0 && s.S.Orders0 == 0 && s.S.Cards!.Hand0.Length == count, "Faction repair spent an order");
+            s.Do(0, new("faction", "s0-0", Repair: "focus")); s.Check(s.S.FactionUsed0 && s.S.Orders0 == 0 && s.S.Cards!.Hand0.Length == count && s.S.Units.Single(u => u.Id == "s0-0").FocusFire == 0, "Faction repair spent an order or failed to remove the whole -2 token");
             s.Do(0, new("faction", "s0-0", Repair: "focus"), false);
         });
         Case("optional-card-design-is-independent", s =>
@@ -175,6 +179,30 @@ internal static class TabletopScenarios
             s.Check(s.S.Repairs is { Length: 1 } && s.S.Cards!.Pending != null, "Attack ended before choosing its repair");
             s.Do(0, new("repair-choice", Repair: "weapons"));
             s.Check(s.S.Repairs == null && s.S.Cards!.Pending == null && s.S.Orders0 == 1 && !FleetRuleTools.Has(s.S.Units.Single(u => u.Id == "s0-0"), "weapons"), "Converted attack failed to finish after repair");
+        });
+        Case("formation-can-assign-only-one-line", s =>
+        {
+            s.Do(0, new("special", Card: "order-09", OtherUnit: "s0-1"));
+            s.Check(s.S.Cards!.Pending is { Step: 2 } && !s.S.Units.Single(u => u.Id == "s0-0").Activated && s.S.Units.Single(u => u.Id == "s0-1").Activated, "Omitted first line activated an unrelated unit");
+            s.Check(s.E.GetActions(s.S, 0, "s0-1").MoveCells.Length == 0, "Lightning move used an unassigned adjacency anchor");
+            s.Do(0, new("skip")); s.Do(0, new("skip"));
+            s.Check(s.S.Cards!.Pending == null && s.S.Cards.Discard.Length == 1 && s.S.Orders0 == 1, "A partial order spent more than one card/Play");
+        });
+        Case("defender-chooses-evasive-die", s =>
+        {
+            var ship = s.C.Ships["core:kushan-interceptor"]; s.C.Ships[ship.Id] = ship with { Weapons = [new("main", "Main", 1, 3)] };
+            s.C.Ships["core:taiidan-interceptor"] = s.C.Ships["core:taiidan-interceptor"] with { Evasive = 1 }; s.S = s.S with { RandomState = 1 };
+            s.Attack(abilities: false); s.Check(s.S.Combat is { AbilityRerolls: 1, RerollSide: 1 }, "Evasive was assigned to the attacking player");
+            var eligible = FleetCombat.EligibleDice(s.C, s.S); int invalid = Enumerable.Range(0, s.S.Combat!.Rolls.Length).First(i => !eligible.Contains(i));
+            s.Do(0, new("ability-reroll", Dice: [eligible[0]]), false); s.Do(1, new("ability-reroll", Dice: [invalid]), false);
+            s.Do(1, new("ability-reroll", Dice: [eligible[^1]])); s.Check(s.S.Combat!.AbilityRerolls == 0 && FleetCombat.CanValor(s.S, 0), "Evasive consumed the later Valor decision");
+        });
+        Case("rapid-fire-respects-selected-result", s =>
+        {
+            var ship = s.C.Ships["core:kushan-interceptor"]; s.C.Ships[ship.Id] = ship with { Weapons = [new("main", "Main", 1, 3, RapidFire: 2)] }; s.S = s.S with { RandomState = 1 };
+            s.Attack(abilities: false); var before = s.S.Combat!.Rolls.ToArray(); int chosen = FleetCombat.EligibleDice(s.C, s.S).Last(); uint expected = s.S.RandomState;
+            int result = FleetRuleTools.Roll(ref expected); s.Do(0, new("ability-reroll", Dice: [chosen]));
+            s.Check(s.S.Combat!.Rolls[chosen] == result && s.S.RandomState == expected && before.Where((_, i) => i != chosen).SequenceEqual(s.S.Combat.Rolls.Where((_, i) => i != chosen)), "Rapid Fire rerolled an unselected die");
         });
     }
 }

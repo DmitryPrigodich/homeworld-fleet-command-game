@@ -9,8 +9,9 @@ public static class InterruptRules
     public static int Responder(BattleState state) => 1 - state.Cards!.Response!.Side;
     public static string[] Played(CardRound cards, int side) => (side == 0 ? cards.Interrupts0 : cards.Interrupts1) ?? [];
     public static bool Available(CardRound cards, int side) => !Played(cards, side).Any(IsAttack);
-    private static bool CanShoot(ContentCatalog c, BattleState state, BattleUnit unit, string target) =>
-        SkirmishGeometry.Attack(c, state, unit, state.Units.Find(u => u.Id == target)).Allowed;
+    private static bool CanShoot(ContentCatalog c, BattleState state, BattleUnit unit, string target) => !unit.Hulk &&
+        (SkirmishGeometry.Attack(c, state, unit, state.Units.Find(u => u.Id == target)).Allowed || FleetRuleTools.Enabled(c, state)
+            && (FleetClose.Allowed(c, state, unit, state.Units.Find(u => u.Id == target), "ram") || FleetClose.Allowed(c, state, unit, state.Units.Find(u => u.Id == target), "board")));
     public static UnitActions Actions(ContentCatalog c, BattleState state, int side, string id)
     {
         if (state.Finished || state.Cards?.Response is not { } pause || side != 1 - pause.Side
@@ -36,9 +37,9 @@ public static class InterruptRules
             turning = !FleetRuleTools.Has(acting!, "engines") && SpecialOrders.Lightning(c.Ships[acting!.Definition]) > 0
                 && state.Units.Any(u => u.Id == pendingOrder.Units[0] && new Hex(u.Q, u.R).Distance(new(command.Q, command.R)) == 1);
         if (command.Kind == "move" ? (!options.MoveCells.Contains(new(command.Q, command.R)) && !turning) || tabletop && steps == null : !options.AttackTargets.Contains(command.Target)
-            || tabletop && !FleetWeapons.Attack(c, state, acting!, state.Units.Find(u => u.Id == command.Target), command.Weapon).Allowed)
+            || tabletop && !FleetCombat.Allowed(c, state, acting!, state.Units.Find(u => u.Id == command.Target), command))
             return new(false, "Действие не соответствует текущему шагу или цели приказа.", state);
-        if (turning && (acting!.Side != side || state.ActiveSide != side || basic && (acting.Activated || (side == 0 ? state.Orders0 : state.Orders1) >= FleetRuleTools.PlayLimit(c, state, side))))
+        if (turning && (acting!.Hulk || acting.Side != side || state.ActiveSide != side || basic && (acting.Activated || (side == 0 ? state.Orders0 : state.Orders1) >= FleetRuleTools.PlayLimit(c, state, side))))
             return new(false, "Отряд не может получить приказ на поворот.", state);
         var unit = state.Units.Single(u => u.Id == command.Unit);
         var next = state;
@@ -95,7 +96,7 @@ public static class InterruptRules
         {
             if (offerAttack && Offer(c, next, pause)) return Paused(original, next, "Атака объявлена.");
             var result = Attack(c, next, pause.Side, pause.Command);
-            if (result.State.Combat != null) return result with { Message = message + " " + result.Message, State = result.State with { Sequence = original.Sequence + 1 } };
+            if (result.State.Combat != null || result.State.Defense != null || result.State.Overrun != null) return result with { Message = message + " " + result.Message, State = result.State with { Sequence = original.Sequence + 1 } };
             return Complete(c, original, result.State, message + " " + result.Message);
         }
         var remaining = pause.RemainingPath.ToList();
@@ -106,7 +107,7 @@ public static class InterruptRules
             int facing = facings?.FirstOrDefault() ?? (pause.Command.Facing % 6 + 6) % 6; if (facings != null) facings.RemoveAt(0);
             // A pause cannot leave two units sharing a cell: pass through allies first.
             if (next.Units.Any(u => u.Id != unit.Id && u.Q == cell.Q && u.R == cell.R)) continue;
-            unit = unit with { Q = cell.Q, R = cell.R, Facing = facing };
+            unit = unit with { Q = cell.Q, R = cell.R, Facing = facing, LastAction = "move", LastTarget = "", LastActionRound = next.Round };
             pause = pause with { RemainingPath = remaining.ToArray(), PathFacings = facings?.ToArray() };
             next = next with { Units = next.Units.Select(u => u.Id == unit.Id ? unit : u).ToList(), Cards = next.Cards! with { Response = pause } };
             if (Offer(c, next, pause)) return Paused(original, next, message + $" {FleetPresentation.UnitName(c, next, unit)}: перемещение в клетку ({cell.Q + 1}, {cell.R + 1}).");
@@ -135,7 +136,7 @@ public static class InterruptRules
             Interrupts1 = side == 1 ? Played(cards, side).Append(command.Card).ToArray() : cards.Interrupts1 };
         var result = Attack(c, state with { Cards = cards }, side, command with { Kind = "attack" }, interrupt: true);
         if (!result.Accepted) return Reject(result.Message);
-        if (result.State.Combat != null) return result with { State = result.State with { Sequence = state.Sequence + 1 } };
+        if (result.State.Combat != null || result.State.Defense != null || result.State.Overrun != null) return result with { State = result.State with { Sequence = state.Sequence + 1 } };
         return Continue(c, state, result.State, "Interrupt Attack: " + result.Message);
     }
     internal static CommandResult CombatResolved(ContentCatalog c, BattleState original, BattleState next, string message, bool interrupt) =>
@@ -169,8 +170,10 @@ public static class InterruptRules
         if (state.Cards?.Response is not { } pause) return;
         var map = c.Maps[state.Map]; var rules = c.Rules[map.Rules];
         if (pause.RemainingPath.Any(h => h.Q >= map.Width || h.R >= map.Height || SkirmishGeometry.Blocked(c, map, h)
-            || state.Units.Any(u => u.Q == h.Q && u.R == h.R && (u.Side != pause.Side || !rules.FriendlyPassThrough)))
-            || pause.Command.Kind == "attack" && !SkirmishGeometry.Attack(c, state, state.Units.Single(u => u.Id == pause.Command.Unit), state.Units.Find(u => u.Id == pause.Command.Target)).Allowed)
+            || state.Units.Any(u => u.Q == h.Q && u.R == h.R && (u.Hulk || u.Side != pause.Side || !rules.FriendlyPassThrough)))
+            || pause.Command.Kind == "attack" && state.Combat?.Kind != "collision" && state.Overrun == null && !(FleetRuleTools.Enabled(c, state)
+                ? FleetCombat.Allowed(c, state, state.Units.Single(u => u.Id == pause.Command.Unit), state.Units.Find(u => u.Id == pause.Command.Target), pause.Command)
+                : SkirmishGeometry.Attack(c, state, state.Units.Single(u => u.Id == pause.Command.Unit), state.Units.Find(u => u.Id == pause.Command.Target)).Allowed))
             throw new InvalidDataException("Invalid suspended action geometry.");
     }
 }

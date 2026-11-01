@@ -28,9 +28,12 @@ public partial class Main
             GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = point }, true);
             GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = point }, true); await Frames();
             Press("ПРОПУСТИТЬ ОКНО"); await Frames(); Require(_state!.Combat != null, "Board attack pauses for a post-roll choice");
+            while (_state!.Combat is { AbilityRerolls: > 0 }) { Press("ПРИМЕНИТЬ ПЕРЕБРОСЫ"); await Frames(); }
             string snapshot = _engine.Save(_state); SaveGame(); LoadGame(false); await Frames(); Require(_engine.Save(_state!) == snapshot, "UI save restores the actual rolled dice and decision");
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "tabletop-dice.png"));
-            Press("ПЕРЕБРОС: VALOR"); await Frames(); Press("ПРИНЯТЬ БРОСОК"); await Frames();
+            Press("ПЕРЕБРОС: VALOR"); await Frames();
+            while (_state!.Combat is { AbilityRerolls: > 0 }) { Press("ПРИМЕНИТЬ ПЕРЕБРОСЫ"); await Frames(); }
+            Press("ПРИНЯТЬ БРОСОК"); await Frames();
             Require(_state!.Combat == null && _state.Cards!.Response == null && _state.Cards.Pending == null && _state.ValorOwner == 1, "Reroll resumes the paid order and transfers Valor");
             ApplyCommand(1, new("pass")); await Frames(); Require(_state!.Cards!.Phase == "cleanup", "Cleanup has an explicit UI phase");
             Press("ПОДТВЕРДИТЬ СБРОС"); await Frames(); Press("ПОДТВЕРДИТЬ СБРОС"); await Frames();

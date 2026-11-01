@@ -14,7 +14,8 @@ public partial class Main
         if (!preserveCampaign) _campaign = null;
         if (!preserveGeneration) _generation = null;
         if (mapId is BasicCardBattle.MapId or BasicCardBattle.TabletopMapId) BasicCardBattle.Register(_content);
-        _state = _engine.Create(mapId, (uint)(_generation?.Seed ?? 12345));
+        uint battleSeed = _args.Any(a => a.StartsWith("--check-") || a.StartsWith("--smoke-")) ? 12345u : BitConverter.ToUInt32(System.Security.Cryptography.RandomNumberGenerator.GetBytes(4));
+        _state = _engine.Create(mapId, battleSeed);
         _bot = bot; _selected = ""; _phaseKey = ""; _phaseCards.Clear(); _action = "move"; _status = "Выбери подразделение, затем клетку назначения или цель.";
         _inspectedObject = null; InitializeCommanders();
         ResetBattleCamera(update: false);
@@ -23,8 +24,10 @@ public partial class Main
     private void DrawBattle()
     {
         if (_state == null) return;
-        if (_state.Repairs is { Length: > 0 }) _selected = _state.Repairs[0].Unit;
+        if (_state.Overrun != null) _selected = _state.Overrun.Unit;
+        else if (_state.Repairs is { Length: > 0 }) _selected = _state.Repairs[0].Unit;
         else if (_state.Combat != null) _selected = _state.Combat.Attacker;
+        else if (_state.Defense != null) _selected = _state.Defense.Attack.Target;
         else if (_state.Cards?.Response != null)
         {
             _action = "attack";
@@ -110,7 +113,7 @@ public partial class Main
         var right = ScrollBattlePanel(Panel(_tutorial == null ? 1150 : 1060, 112, _tutorial == null ? 260 : 350, 610));
         if (_tutorial != null) right.AddThemeConstantOverride("separation", 7);
         DrawTutorial(right);
-        var selected = _state.Units.Find(u => u.Id == _selected);
+        var selected = _state.Units.Find(u => u.Id == _selected) ?? _state.Combat?.Ghost;
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
             Text(right, _inspectedObject != null ? FleetPresentation.ObjectName(_content.Objects[_inspectedObject.Definition]) : selected == null ? "ПРИКАЗЫ" : FleetPresentation.UnitName(_content, _state, selected), 19, _colors.Highlight);
         if (_inspectedObject != null && _tutorial == null)
@@ -179,6 +182,7 @@ public partial class Main
     private void BotTurn()
     {
         if (_state == null || !_bot || _state.Finished) return;
+        if (_state.Overrun is { } overrun) { if (overrun.Side == 1) ApplyCommand(1, new("overrun")); return; }
         if (_state.Repairs is { Length: > 0 })
         {
             var repair = _state.Repairs[0]; if (repair.Side != 1) return;
@@ -186,13 +190,22 @@ public partial class Main
             string choice = (unit.Effects ?? []).FirstOrDefault(FleetRuleTools.Debuffs.Contains) ?? (unit.FocusFire > 0 ? "focus" : "");
             ApplyCommand(1, choice == "" ? new("repair-stop") : new("repair-choice", Repair: choice)); return;
         }
-        if (_state.Combat != null) { if (_state.Combat.Side == 1) ApplyCommand(1, new("resolve")); return; }
-        if (_state.Cards?.Phase == "cleanup") { ApplyCommand(1, new("cleanup")); return; }
+        if (_state.Combat is { } combat)
+        {
+            if (FleetCombat.DecisionSide(combat) != 1) return;
+            if (combat.AbilityRerolls > 0) { ApplyCommand(1, new("ability-reroll", Dice: FleetCombat.EligibleDice(_content, _state).Take(combat.AbilityRerolls).ToArray())); return; }
+            int success = FleetCombat.Success(_content, _state, combat);
+            bool poor = combat.Rolls.Count(d => d >= success) < Math.Max(1, combat.Rolls.Length / 3);
+            string choice = poor && FleetCombat.CanValor(_state, 1) ? "valor" : poor && FleetCombat.CanFaction(_content, _state, combat) ? "faction-reroll" : FleetCombat.CanCapture(_content, _state) ? "capture-result" : "resolve";
+            ApplyCommand(1, new(choice)); return;
+        }
+        if (_state.Defense is { } defense) { if (defense.Side == 0) ApplyCommand(1, new("defend")); return; }
+        if (_state.Cards?.Phase == "cleanup") { ApplyCommand(1, new("cleanup", Cards: _state.Cards.Hand1.Skip(_state.Cards.HandLimit1).ToArray())); return; }
         if (_state.Cards?.Response != null)
         {
             if (InterruptRules.Responder(_state) != 1) return;
             var unit = _state.Units.FirstOrDefault(u => _engine.GetActions(_state, 1, u.Id).AttackTargets.Length > 0);
-            ApplyCommand(1, unit == null ? new("decline") : new("interrupt", unit.Id, _state.Cards.Response.Command.Unit, Card: _state.Cards.Hand1.First(InterruptRules.IsAttack)));
+            ApplyCommand(1, unit == null ? new("decline") : BotAttack(unit, _state.Cards.Response.Command.Unit, interrupt: true) ?? new("decline"));
             return;
         }
         if (_state.Cards?.Phase == "initiative") { ApplyCommand(1, new("initiative")); return; }
@@ -200,17 +213,25 @@ public partial class Main
         if (_state.Cards?.Pending is { } order)
         {
             var actor = SpecialOrders.Actor(order); var options = _engine.GetActions(_state, 1, actor);
-            if (options.AttackTargets.Length > 0) ApplyCommand(1, new("attack", actor, options.AttackTargets[0]));
+            var unit = _state.Units.Single(u => u.Id == actor);
+            var attack = options.AttackTargets.Select(t => BotAttack(unit, t)).FirstOrDefault(cmd => cmd != null);
+            if (attack != null) ApplyCommand(1, attack);
             else if (options.MoveCells.Length > 0) { var h = options.MoveCells[0]; ApplyCommand(1, new("move", actor, Q: h.Q, R: h.R)); }
+            else if (FleetBattle && SpecialOrders.Action(order) == "attack" && FleetRuleTools.Has(unit, "weapons")) ApplyCommand(1, new("damage-control", Repair: "ask"));
             else ApplyCommand(1, new("skip"));
             return;
         }
-        foreach (var unit in _state.Units.Where(u => u.Side == 1 && !u.Activated).ToArray())
+        foreach (var unit in _state.Units.Where(u => u.Side == 1 && !u.Activated && !u.Hulk).ToArray())
         {
             var enemies = _state.Units.Where(u => u.Side == 0).ToArray();
+            if (FleetBattle && _state.Cards!.Hand1.Length > 0 && (unit.FocusFire > 0 || (unit.Effects ?? []).Any(FleetRuleTools.Debuffs.Contains)))
+            {
+                string action = FleetRuleTools.Has(unit, "weapons") || _engine.GetActions(_state, 1, unit.Id).AttackTargets.Length > 0 ? "attack" : "move";
+                ApplyCommand(1, new("begin-order", unit.Id, action, Card: _state.Cards.Hand1[0], Repair: "ask")); return;
+            }
             foreach (var target in enemies.OrderBy(u => u.Models))
             {
-                var cmd = new BattleCommand("attack", unit.Id, target.Id, Card: _state.Cards?.Hand1.FirstOrDefault() ?? "");
+                var cmd = BotAttack(unit, target.Id); if (cmd == null) continue;
                 if (_engine.Apply(_state, 1, cmd).Accepted) { ApplyCommand(1, cmd); return; }
             }
             var map = _content.Maps[_state.Map];

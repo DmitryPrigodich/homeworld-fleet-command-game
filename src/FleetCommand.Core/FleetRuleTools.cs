@@ -6,6 +6,7 @@ public static class FleetRuleTools
     public static readonly string[] Buffs = ["brace", "evasive", "lockdown"];
     public static readonly string[] Debuffs = ["engines", "weapons", "bays"];
     public static bool Enabled(ContentCatalog c, BattleState s) => c.Rules[c.Maps[s.Map].Rules].Tabletop;
+    public static string Faction(ContentCatalog c, BattleState s, int side) => c.Fleets[c.Maps[s.Map].Fleets[side]].Units.Select(u => c.Ships[u.Ship].Faction).FirstOrDefault() ?? "";
     public static string Class(ShipDefinition ship) => ship.Class != "" ? ship.Class : FleetPresentation.ShipIcon(ship) switch
     { "triangle" => "fighter", "square" => "corvette", "parallelogram" => "platform", "hexagon" => "capital", "circle" => "station", _ => "frigate" };
     public static bool Strike(ShipDefinition ship) => Class(ship) is "fighter" or "corvette" or "platform";
@@ -27,7 +28,7 @@ public static class FleetRuleTools
     public static BattleState DamageControl(ContentCatalog c, BattleState s, string id, string choice, out string message, bool advance = false)
     {
         message = ""; var unit = s.Units.Single(u => u.Id == id);
-        if (choice == "" || choice != "ask" && choice != "focus" && !Debuffs.Contains(choice)) return s;
+        if (unit.Hulk || choice == "" || choice != "ask" && choice != "focus" && !Debuffs.Contains(choice)) return s;
         if (choice == "ask" && unit.FocusFire == 0 && !(unit.Effects ?? []).Any(Debuffs.Contains)) return s;
         var ship = c.Ships[unit.Definition]; uint random = s.RandomState;
         int dice = 1 + (unit.Leader != "" ? c.Leaders[unit.Leader].CoolUnderPressure : 0);
@@ -47,10 +48,12 @@ public static class FleetRuleTools
     {
         var unit = s.Units.Find(u => u.Id == command.Unit && u.Side == side);
         if (!Enabled(c, s) || s.ActiveSide != side || s.Cards is not { Phase: "orders", Pending: null, Response: null }
-            || (side == 0 ? s.FactionUsed0 : s.FactionUsed1) || unit == null || c.Ships[unit.Definition].Faction != "kushan"
+            || (side == 0 ? s.FactionUsed0 : s.FactionUsed1) || unit == null || Faction(c, s, side) != "kushan"
             || (command.Repair == "focus" ? unit.FocusFire == 0 : !Debuffs.Contains(command.Repair) || !Has(unit, command.Repair)))
             return new(false, "Способность фракции сейчас недоступна.", s);
-        unit = command.Repair == "focus" ? unit with { FocusFire = unit.FocusFire - 1 } : unit with { Effects = (unit.Effects ?? []).Where(e => e != command.Repair).ToArray() };
+        // Focus is stored as a total and represented canonically with double-sided 2/1 tokens.
+        // Errata 1.7 removes the whole selected token, including its -2 face.
+        unit = command.Repair == "focus" ? unit with { FocusFire = Math.Max(0, unit.FocusFire - 2) } : unit with { Effects = (unit.Effects ?? []).Where(e => e != command.Repair).ToArray() };
         return new(true, "Kushan: Redundant Systems — эффект снят.", s with { Sequence = s.Sequence + 1,
             FactionUsed0 = s.FactionUsed0 || side == 0, FactionUsed1 = s.FactionUsed1 || side == 1, Units = s.Units.Select(u => u.Id == unit.Id ? unit : u).ToList() });
     }

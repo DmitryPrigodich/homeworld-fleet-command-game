@@ -54,6 +54,10 @@ Round Hand/Play limits are frozen in `CardRound` and recalculated at cleanup fro
 
 `CardStyleCatalog` is intentionally outside gameplay `ContentCatalog`. Optional frame/color packs are local presentation data selected by `AppSettings.CardStyle`; disabling/removing them cannot invalidate a match fingerprint or save. The renderer falls back to text. Original template frames are imported only into the ignored `.local` cache.
 
+`FleetClose` and `FleetTransfers` implement close-quarters effects, hulks and crew/leader transfer. `PendingCombat.Ghost` preserves the rammed unit for return collision even after destruction. `PendingOverrun` retains the original response until advancement is accepted or declined. Combat tracks destroyed stars separately from the still-pending scenario victory system.
+
+`PendingDefense` retains the declared incoming attack before any incoming dice are rolled. The defender chooses a weapon, and its roll uses the same selected Rapid/Evasive and Valor decisions as other combat; Ferocious does not apply. Projectile defense reduces incoming dice, while fighter/ram/boarding defense removes models before the incoming pool is built. Defense may occur inside Interrupt Attack and then resumes the existing response frame. Neither defensive fire nor collision stamps a normal ordered attack. The network protocol version rejects binaries predating these decisions.
+
 ## Campaign progression
 
 A campaign is a graph of mission IDs. Each mission chooses a map and victory/defeat transitions. Loops are allowed for reversals. Progress stores completed missions, medals, unlock IDs, participants and an optional in-progress battle. The example campaign awards one prototype medal for a victory; it does not implement the board game's full reward economy.

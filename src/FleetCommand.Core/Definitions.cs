@@ -23,7 +23,7 @@ public sealed record ShipDefinition(string Id, string Name, string Faction, stri
     string[]? Abilities = null, float VisualSize = 0.55f, string Color = "", string TacticalIcon = "", string Label = "", int Afterburners = -1,
     string Class = "", WeaponDefinition[]? Weapons = null, int Evasive = 0, int Crew = 0, int Ram = 0, int Stars = 0, bool ProwArmor = false);
 public sealed record WeaponDefinition(string Id, string Name, int DicePerModel, int Range, string Kind = "gun", string Arc = "all",
-    string[]? Targets = null, int Penetrating = 0, int RapidFire = 0, int PowerDice = 0, int PowerPenetrating = 0, bool DefensiveFire = false, string[]? RapidTargets = null);
+    string[]? Targets = null, int Penetrating = 0, int RapidFire = 0, int PowerDice = 0, int PowerPenetrating = 0, bool DefensiveFire = false, string[]? RapidTargets = null, int Barrage = 0);
 public sealed record LeaderDefinition(string Id, string Name, string Faction, string[] Classes, int Hand = 0, int Play = 0,
     int Stars = 0, int CoolUnderPressure = 0, int AttackDice = 0);
 public sealed record AbilityDefinition(string Id, string Handler, int Value = 1);
@@ -33,7 +33,7 @@ public sealed record ObjectDefinition(string Id, string Name, string Model = "",
     int AttackPenalty = 0, int MoveCost = 1, string Color = "#8792a2", string Label = "", string Kind = "none");
 public sealed record MapObject(string Definition, int Q, int R);
 public sealed record MapDefinition(string Id, string Name, int Width, int Height,
-    string Background, MapObject[] Objects, string[] Fleets, string Rules);
+    string Background, MapObject[] Objects, string[] Fleets, string Rules, string[]? CaptureTargets = null);
 public sealed record RulesDefinition(string Id, string Name, string Handler = "skirmish-v1",
     int RoundLimit = 12, int OrdersPerSide = 3, bool AlternatingOrders = true,
     bool FriendlyPassThrough = true, bool RearShots = true, bool FocusFire = true, bool Tabletop = false);

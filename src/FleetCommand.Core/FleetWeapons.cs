@@ -23,7 +23,7 @@ public static class FleetWeapons
             && ((w.Targets?.Length ?? 0) == 0 || w.Targets!.Contains(FleetRuleTools.Class(c.Ships[target.Definition]))) && Arc(unit, target, w.Arc));
         foreach (var w in choices)
         {
-            var geometry = SkirmishGeometry.CoverGeometry(c, s, unit, target, w.Range);
+            var geometry = SkirmishGeometry.CoverGeometry(c, s, unit, target, w.Range, w.Barrage > 0);
             if (geometry.Allowed) return geometry;
         }
         return (false, 0, "Нет подходящего оружия: дальность, сектор, тип цели или линия огня.");

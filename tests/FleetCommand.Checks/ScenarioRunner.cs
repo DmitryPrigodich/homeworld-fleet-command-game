@@ -23,8 +23,8 @@ internal static class ScenarioRunner
             for (int step = 0; step < scenario.MaxCommands && !live.Finished; step++)
             {
                 string before = engine.Save(live);
-                int side = live.Repairs is { Length: > 0 } ? live.Repairs[0].Side : live.Combat != null ? live.Combat.Side : live.Cards?.Response != null ? InterruptRules.Responder(live) : live.Cards is { Phase: "initiative" or "cleanup" } cards ? cards.Ready0 ? 1 : 0 : live.ActiveSide;
-                var command = Plan(engine, live, side, scenario.UseSpecialOrders);
+                int side = live.Overrun != null ? live.Overrun.Side : live.Repairs is { Length: > 0 } ? live.Repairs[0].Side : live.Combat != null ? FleetCombat.DecisionSide(live.Combat) : live.Defense != null ? 1 - live.Defense.Side : live.Cards?.Response != null ? InterruptRules.Responder(live) : live.Cards is { Phase: "initiative" or "cleanup" } cards ? cards.Ready0 ? 1 : 0 : live.ActiveSide;
+                var command = Plan(engine, content, live, side, scenario.UseSpecialOrders);
                 var a = engine.Apply(live, side, command); var b = engine.Apply(restored, side, command);
                 trace.Add(new { step, side, command, a.Accepted, a.Message, a.State.Round, a.State.Sequence,
                     hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(engine.Save(a.State)))) });
@@ -63,11 +63,16 @@ internal static class ScenarioRunner
         SpecialOrderScenarios.Run(root);
         InterruptScenarios.Run(root);
         TabletopScenarios.Run(root);
+        CloseCombatScenarios.Run(root);
+        DefenseScenarios.Run(root);
         File.WriteAllText(Path.Combine(output, "scenarios.json"), JsonSerializer.Serialize(reports, JsonData.Options));
     }
-    private static BattleCommand Plan(BattleEngine engine, BattleState state, int side, bool specials)
+    private static BattleCommand Plan(BattleEngine engine, ContentCatalog content, BattleState state, int side, bool specials)
     {
+        if (state.Combat is { AbilityRerolls: > 0 } ability) return new("ability-reroll", Dice: FleetCombat.EligibleDice(content, state).Take(ability.AbilityRerolls).ToArray());
         if (state.Combat != null) return new("resolve");
+        if (state.Defense != null) return new("defend");
+        if (state.Overrun != null) return new("decline-overrun");
         if (state.Repairs is { Length: > 0 }) return new("repair-stop");
         if (state.Cards?.Phase == "cleanup") return new("cleanup");
         if (state.Cards?.Response is { } response)

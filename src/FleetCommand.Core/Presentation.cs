@@ -72,7 +72,7 @@ public static class FleetPresentation
         return int.TryParse(unit.Id.AsSpan(unit.Id.LastIndexOf('-') + 1), out int index) ? Math.Max(1, index - offset + 1) : 1;
     }
     public static string UnitName(ContentCatalog content, BattleState state, BattleUnit unit) =>
-        $"{ShipName(content.Ships[unit.Definition])} №{UnitNumber(content, state, unit)}";
+        $"{ShipName(content.Ships[unit.Definition])} №{UnitNumber(content, state, unit)}" + (unit.Hulk ? " · дрейфующий остов" : "");
     public static string ObjectName(ObjectDefinition obj) => !string.IsNullOrWhiteSpace(obj.Label) ? obj.Label : obj.Id switch
     {
         "core:asteroids" => "Астероиды", "core:planet" => "Планета", _ => obj.Name
