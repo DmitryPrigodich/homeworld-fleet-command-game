@@ -37,6 +37,8 @@ Install the .NET SDK (8 or newer) and extract the official **Godot 4.7.2 .NET** 
 
 On the original development machine `Play.cmd` also finds the portable engine in `tmp/tools/godot`. The engine and build cache are not tracked in Git. The launch script uses project-local NuGet and save directories, and can use the package feed bundled with Godot for an offline build.
 
+`Play.cmd` preserves a separate launch transcript and engine log for each run under `.local/logs`. Handled startup/menu errors also write individual exception reports there; the error screen shows the report path. Closing the window or running tests does not overwrite those reports. A failed build or nonzero engine exit keeps the launch window open through `Play.cmd`.
+
 Start with **ОБУЧЕНИЕ** in the main menu. Controls: left-click a unit from the roster or board, choose **Movement** or **Attack**, then left-click a destination hex or enemy. **End turn** passes the remainder of that side's orders. Activated units darken. Hold **right mouse button** over the battlefield and drag to orbit; the **wheel** zooms and **F** resets the view. Camera orientation and zoom persist through selections and orders. Saves are under `.local/`.
 
 Hold **Alt** to show battlefield names, model counts, owners and object hover details; release it to return to compact symbols/emblems. Click an object symbol or label to read its movement/attack effects. Triangle denotes fighters and diamond denotes frigates; mods can choose other supported tactical shapes. The roster uses readable per-fleet unit numbers rather than internal IDs. Player colors affect ownership projections, while cube hull colors still distinguish the placeholder fleets.

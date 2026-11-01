@@ -83,7 +83,7 @@ public partial class Main : Node3D
             if (_args.Contains("--smoke-client")) { if (_args.Contains("--smoke-tabletop")) _settings = _settings with { CardStyle = "amber" }; StartBattle("core:training", false, persist: false); StartNetwork(false, "127.0.0.1", 25990, _args.Contains("--smoke-coop")); }
             GD.Print($"FLEET_COMMAND_READY mods={_content.Mods.Count} ships={_content.Ships.Count}");
         }
-        catch (Exception e) { ShowError(e.Message); GD.PushError(e.ToString()); }
+        catch (Exception e) { ReportError(e, "Startup"); }
     }
 
     private IEnumerable<string> ModDirectories()
@@ -150,7 +150,7 @@ public partial class Main : Node3D
     private Button Button(Control parent, string title, Action action, bool disabled = false)
     {
         var b = new Button { Text = title, CustomMinimumSize = new(0, 44), Alignment = HorizontalAlignment.Left, Disabled = disabled };
-        b.Pressed += () => { try { action(); } catch (Exception e) { _status = e.Message; ShowError(e.Message); GD.PushError(e.ToString()); } };
+        b.Pressed += () => { try { action(); } catch (Exception e) { ReportError(e, "Button: " + title); } };
         parent.AddChild(b); return b;
     }
     private void Heading(string subtitle)
@@ -161,10 +161,19 @@ public partial class Main : Node3D
         var footer = new Label { Text = "DEVELOPMENT PROTOTYPE   /   PLACEHOLDER CUBES   /   MODDABLE DATA", Position = new(72, 855) };
         footer.AddThemeFontSizeOverride("font_size", 13); footer.AddThemeColorOverride("font_color", C(_colors.Muted)); _ui.AddChild(footer);
     }
-    private void ShowError(string message)
+    private void ReportError(Exception error, string context)
     {
-        ClearScreen(); Heading("Ошибка загрузки"); var box = Panel(70, 220, 750, 400);
-        Text(box, message, 18, _colors.Enemy); Button(box, "В главное меню", MainMenu);
+        string? report = ErrorReport.Write(_data, context, error);
+        _status = error.Message;
+        GD.PushError(error.ToString());
+        ShowError(error.Message, report);
+    }
+    private void ShowError(string message, string? report = null)
+    {
+        ClearScreen(); Heading("Ошибка"); var box = Panel(70, 220, 1000, 510);
+        Text(box, message, 18, _colors.Enemy);
+        if (report != null) Text(box, "Подробности сохранены:\n" + report, 16, _colors.Muted);
+        Button(box, "В главное меню", MainMenu);
     }
     public override void _Process(double delta)
     {

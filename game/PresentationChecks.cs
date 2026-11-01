@@ -48,6 +48,15 @@ public partial class Main
             GetViewport().PushInput(new InputEventKey { Keycode = Key.Alt, Pressed = false }, true);
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "identification.png"));
             MainMenu();
+            var error = new InvalidOperationException("Diagnostic fixture", new System.IO.IOException("Inner detail"));
+            string? report = ErrorReport.Write(_data, "Presentation diagnostic check", error);
+            Check(report != null && System.IO.File.ReadAllText(report).Contains("Inner detail"), "error report retains nested exception details on disk");
+            string? secondReport = ErrorReport.Write(_data, "Second diagnostic check", error);
+            Check(secondReport != report && System.IO.File.Exists(report), "later errors preserve earlier reports");
+            ShowError(error.Message, report); await Frame(); await Frame();
+            Check(Nodes<Label>(_ui).Any(l => l.Text.Contains(report!)), "error screen shows the saved report path");
+            Press("В главное меню"); await Frame(); await Frame();
+            Check(Nodes<Button>(_ui).Any(b => b.Text == "ОБУЧЕНИЕ"), "error screen returns to the menu");
             _settings = original; SaveSettings();
             GD.Print("PRESENTATION_CHECKS_OK"); GetTree().Quit();
         }

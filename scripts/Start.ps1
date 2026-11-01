@@ -2,6 +2,7 @@ param([string]$Godot = '', [switch]$ChecksOnly)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Push-Location -LiteralPath $projectRoot
+$transcriptStarted = $false
 try {
     $env:NUGET_PACKAGES = Join-Path $projectRoot '.local\nuget'
     $env:FLEET_COMMAND_DATA_DIR = Join-Path $projectRoot '.local'
@@ -12,6 +13,14 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Checks failed.' }
         return
     }
+    $logDirectory = Join-Path $projectRoot '.local/logs'
+    New-Item -ItemType Directory -Force -Path $logDirectory | Out-Null
+    $launchId = 'launch-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '-' + $PID
+    $launchLog = Join-Path $logDirectory ($launchId + '.log')
+    $engineLog = Join-Path $logDirectory ($launchId + '-godot.log')
+    Start-Transcript -LiteralPath $launchLog | Out-Null
+    $transcriptStarted = $true
+    Write-Host "Launch log: $launchLog"
     if (-not $Godot) {
         $found = Get-Command godot -ErrorAction SilentlyContinue
         if ($found) { $Godot = $found.Source }
@@ -27,5 +36,12 @@ try {
     }
     & dotnet build 'FleetCommand.Game.csproj' --nologo --disable-build-servers -m:1
     if ($LASTEXITCODE -ne 0) { throw 'Game build failed.' }
-    & $Godot --path $projectRoot
-} finally { Pop-Location }
+    & $Godot --path $projectRoot --log-file $engineLog
+    if ($LASTEXITCODE -ne 0) { throw "Game exited with code $LASTEXITCODE. Engine log: $engineLog" }
+} catch {
+    Write-Host $_.Exception.ToString()
+    throw
+} finally {
+    if ($transcriptStarted) { Stop-Transcript | Out-Null }
+    Pop-Location
+}
