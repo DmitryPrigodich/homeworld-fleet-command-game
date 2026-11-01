@@ -37,9 +37,10 @@ public partial class Main
     }
     private void SinglePlayerMenu()
     {
-        ClearScreen(); Heading("Одиночная игра"); var box = Panel(70, 230, 420, 380);
+        ClearScreen(); Heading("Одиночная игра"); var box = Panel(70, 200, 470, 470);
         Button(box, "КАМПАНИИ", CampaignMenu);
         Button(box, "УЧЕБНЫЙ БОЙ С КАРТАМИ", StartCardBattle);
+        Button(box, "ПРАВИЛА / РЕЖИМ РАЗРАБОТКИ", () => { StartBattle(BasicCardBattle.TabletopMapId, true); QueueBot(); });
         Button(box, "СКИРМИШ / ГЕНЕРАТОР", GeneratorMenu);
         Button(box, "ПРОДОЛЖИТЬ СКИРМИШ", () => LoadGame(false), !System.IO.File.Exists(SavePath(false)));
         Button(box, "НАЗАД", MainMenu);
@@ -92,6 +93,7 @@ public partial class Main
     {
         ClearScreen(); Heading("Опции"); var box = Panel(70, 190, 550, 520);
         Button(box, "ИГРОК: ИМЯ, ЦВЕТ, ЭМБЛЕМА", PlayerMenu);
+        Button(box, "ОФОРМЛЕНИЕ КАРТОЧЕК", CardStylesMenu);
         Text(box, "Текущий игрок: " + FleetPresentation.Normalize(_settings.Player).Name, 16, _colors.Muted);
         Text(box, "ТЕМА ИНТЕРФЕЙСА", 16, _colors.Highlight);
         var themes = _content.Themes.Values.ToArray(); var dropdown = new OptionButton();

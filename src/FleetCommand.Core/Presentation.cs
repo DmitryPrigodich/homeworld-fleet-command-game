@@ -54,6 +54,7 @@ public static class FleetPresentation
     public static string ShipIcon(ShipDefinition ship)
     {
         if (TacticalIcons.Contains(ship.TacticalIcon)) return ship.TacticalIcon;
+        if (ship.Class != "") return ship.Class switch { "fighter" => "triangle", "corvette" => "square", "platform" => "parallelogram", "frigate" => "diamond", "capital" => "hexagon", "station" => "circle", _ => "unknown" };
         // Legacy definitions predate tacticalIcon. Mods can supply an explicit shape.
         if (ship.Id.Contains("interceptor") || ship.Id == "tutorial:scouts") return "triangle";
         if (ship.Id.Contains("frigate")) return "diamond";

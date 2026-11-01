@@ -12,10 +12,11 @@ internal static class SkirmishGeometry
         map.Objects.Any(o => o.Q == hex.Q && o.R == hex.R && content.Objects[o.Definition].BlocksMovement);
 
     public static HashSet<Hex> Movement(ContentCatalog content, BattleState state, BattleUnit unit)
-        => MovementPaths(content, state, unit, out _);
+        => FleetRuleTools.Enabled(content, state) ? FleetMovement.Destinations(content, state, unit).ToHashSet() : MovementPaths(content, state, unit, out _);
 
     public static Hex[] MovementPath(ContentCatalog content, BattleState state, BattleUnit unit, Hex goal)
     {
+        if (FleetRuleTools.Enabled(content, state)) return FleetMovement.Path(content, state, unit, goal)?.Select(p => p.Cell).ToArray() ?? [];
         var cells = MovementPaths(content, state, unit, out var previous);
         if (!cells.Contains(goal)) return [];
         var path = new List<Hex>(); var start = new Hex(unit.Q, unit.R);
@@ -54,9 +55,14 @@ internal static class SkirmishGeometry
 
     public static (bool Allowed, int Cover, string Error) Attack(ContentCatalog content, BattleState state, BattleUnit unit, BattleUnit? target)
     {
+        if (FleetRuleTools.Enabled(content, state)) return FleetWeapons.Attack(content, state, unit, target);
+        return CoverGeometry(content, state, unit, target);
+    }
+    internal static (bool Allowed, int Cover, string Error) CoverGeometry(ContentCatalog content, BattleState state, BattleUnit unit, BattleUnit? target, int? range = null)
+    {
         var ship = content.Ships[unit.Definition];
-        if (ship.DicePerModel == 0) return (false, 0, "У этого подразделения нет оружия для стрельбы.");
-        if (target == null || target.Side == unit.Side || new Hex(unit.Q, unit.R).Distance(new(target.Q, target.R)) > ship.Range)
+        if (ship.DicePerModel == 0 && range == null) return (false, 0, "У этого подразделения нет оружия для стрельбы.");
+        if (target == null || target.Side == unit.Side || new Hex(unit.Q, unit.R).Distance(new(target.Q, target.R)) > (range ?? ship.Range))
             return (false, 0, "Выбери противника в пределах дальности стрельбы.");
         var map = content.Maps[state.Map];
         var end = new Hex(target.Q, target.R);

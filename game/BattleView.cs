@@ -13,9 +13,9 @@ public partial class Main
         if (!preserveTutorial) EndTutorial();
         if (!preserveCampaign) _campaign = null;
         if (!preserveGeneration) _generation = null;
-        if (mapId == BasicCardBattle.MapId) BasicCardBattle.Register(_content);
+        if (mapId is BasicCardBattle.MapId or BasicCardBattle.TabletopMapId) BasicCardBattle.Register(_content);
         _state = _engine.Create(mapId, (uint)(_generation?.Seed ?? 12345));
-        _bot = bot; _selected = ""; _action = "move"; _status = "Выбери подразделение, затем клетку назначения или цель.";
+        _bot = bot; _selected = ""; _phaseKey = ""; _phaseCards.Clear(); _action = "move"; _status = "Выбери подразделение, затем клетку назначения или цель.";
         _inspectedObject = null; InitializeCommanders();
         ResetBattleCamera(update: false);
         DrawBattle(); if (persist) SaveGame();
@@ -23,7 +23,9 @@ public partial class Main
     private void DrawBattle()
     {
         if (_state == null) return;
-        if (_state.Cards?.Response != null)
+        if (_state.Repairs is { Length: > 0 }) _selected = _state.Repairs[0].Unit;
+        else if (_state.Combat != null) _selected = _state.Combat.Attacker;
+        else if (_state.Cards?.Response != null)
         {
             _action = "attack";
             if (!_state.Units.Any(u => u.Id == _selected && u.Side == LocalCommandSide))
@@ -87,8 +89,8 @@ public partial class Main
         }
         DrawTutorialMarker();
         var top = Panel(30, 22, 1380, 68);
-        Text(top, $"{map.Name.ToUpperInvariant()}     /     РАУНД {_state.Round}     /     " + (_state.Cards?.Response != null ? "ОТВЕТ: " + SideName(InterruptRules.Responder(_state)) : "ХОД: " + SideName(_state.ActiveSide)), 22, _colors.Accent);
-        var left = Panel(30, 112, 260, 610);
+        Text(top, $"{map.Name.ToUpperInvariant()}     /     РАУНД {_state.Round}     /     " + (_state.Combat != null ? "БРОСОК: " + SideName(_state.Combat.Side) : _state.Cards?.Response != null ? "ОТВЕТ: " + SideName(InterruptRules.Responder(_state)) : "ХОД: " + SideName(_state.ActiveSide)), 22, _colors.Accent);
+        var left = ScrollBattlePanel(Panel(30, 112, 260, 610));
         Text(left, _tutorial != null ? "ОБУЧЕНИЕ" : _campaign == null ? "СКИРМИШ" : "КАМПАНИЯ", 18, _colors.Highlight);
         Text(left, _tutorial != null ? "СИНИЕ — МЫ / КРАСНЫЕ — ВРАГ" : _generation == null ? "Сценарий из данных" : $"Seed: {_generation.Seed}", 13, _colors.Muted);
         OwnerLegend(left);
@@ -105,7 +107,7 @@ public partial class Main
             b.TooltipText = _content.Ships[unit.Definition].Name + (unit.Activated ? " — приказ уже выполнен" : " — готово к приказу");
         }
         Text(left, _state.Cards?.Response != null ? "ЛКМ — выбор / ответ\nПКМ — обзор · Alt — имена" : "ЛКМ — выбор / приказ\nПКМ + мышь — обзор\nКолёсико — масштаб\nAlt — названия на поле\nF — исходный ракурс", 14, _colors.Muted);
-        var right = Panel(_tutorial == null ? 1150 : 1060, 112, _tutorial == null ? 260 : 350, 610);
+        var right = ScrollBattlePanel(Panel(_tutorial == null ? 1150 : 1060, 112, _tutorial == null ? 260 : 350, 610));
         if (_tutorial != null) right.AddThemeConstantOverride("separation", 7);
         DrawTutorial(right);
         var selected = _state.Units.Find(u => u.Id == _selected);
@@ -123,9 +125,9 @@ public partial class Main
         }
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
         {
-            Button(right, _action == "move" ? "▶ ПЕРЕМЕЩЕНИЕ" : "ПЕРЕМЕЩЕНИЕ", () => SetBattleAction("move"), _state.Cards?.Response != null || _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.Move);
-            Button(right, _action == "attack" ? "▶ АТАКА" : "АТАКА", () => SetBattleAction("attack"), _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.Attack);
-            Button(right, "ЗАВЕРШИТЬ ХОД", () => Submit(new("pass")), _state.Cards?.Response != null || _state.Cards?.Pending != null || _state.Cards?.Phase == "initiative" || _tutorial != null && _tutorial.Step != TutorialStep.EndTurn);
+            Button(right, _action == "move" ? "▶ ПЕРЕМЕЩЕНИЕ" : "ПЕРЕМЕЩЕНИЕ", () => ChooseBattleAction("move"), FleetDecision || _state.Cards?.Response != null || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.Move);
+            Button(right, _action == "attack" ? "▶ АТАКА" : "АТАКА", () => ChooseBattleAction("attack"), FleetDecision || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.Attack);
+            Button(right, "ЗАВЕРШИТЬ ХОД", () => Submit(new("pass")), FleetDecision || _state.Cards?.Response != null || _state.Cards?.Pending != null || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.EndTurn);
         }
         if (_tutorial == null && !_interruptLesson) Button(right, "СОХРАНИТЬ", () => { SaveGame(); _status = "Сохранено."; DrawBattle(); }, _networkActive && !_isHost);
         if (_interruptLesson) { Button(right, "ПОВТОРИТЬ УРОК", StartInterruptLesson); Button(right, "К ОБУЧЕНИЮ", CardGuide); }
@@ -136,6 +138,7 @@ public partial class Main
                 Button(right, "ДАЛЕЕ ПО КАМПАНИИ", AdvanceCampaign, _networkActive && !_isHost);
         }
         Button(right, "ГЛАВНОЕ МЕНЮ", () => { SaveGame(); MainMenu(); });
+        DrawFleetUnitOptions(right, selected);
         if (_tutorial == null) Text(right, _interruptLesson ? "УРОК / БЕЗ СОХРАНЕНИЯ" : _networkActive ? (_cooperative ? "CO-OP / ОБЩИЙ ФЛОТ" : "PVP") : _bot ? "ОДИНОЧНАЯ / AI" : "ЛОКАЛЬНАЯ / HOTSEAT", 13, _colors.Muted);
         DrawEventLog();
     }
@@ -169,13 +172,22 @@ public partial class Main
     }
     private void QueueBot()
     {
-        if (!_bot || _botQueued || _state is null || _state.Finished || (_state.Cards?.Response != null ? InterruptRules.Responder(_state) != 1 : _state.Cards?.Phase == "initiative" ? _state.Cards.Ready1 : _state.ActiveSide != 1) || _networkActive && !_isHost) return;
+        if (!_bot || _botQueued || _state is null || _state.Finished || !BotExpected || _networkActive && !_isHost) return;
         _botQueued = true;
         GetTree().CreateTimer(0.4).Timeout += () => { _botQueued = false; BotTurn(); };
     }
     private void BotTurn()
     {
         if (_state == null || !_bot || _state.Finished) return;
+        if (_state.Repairs is { Length: > 0 })
+        {
+            var repair = _state.Repairs[0]; if (repair.Side != 1) return;
+            var unit = _state.Units.Single(u => u.Id == repair.Unit);
+            string choice = (unit.Effects ?? []).FirstOrDefault(FleetRuleTools.Debuffs.Contains) ?? (unit.FocusFire > 0 ? "focus" : "");
+            ApplyCommand(1, choice == "" ? new("repair-stop") : new("repair-choice", Repair: choice)); return;
+        }
+        if (_state.Combat != null) { if (_state.Combat.Side == 1) ApplyCommand(1, new("resolve")); return; }
+        if (_state.Cards?.Phase == "cleanup") { ApplyCommand(1, new("cleanup")); return; }
         if (_state.Cards?.Response != null)
         {
             if (InterruptRules.Responder(_state) != 1) return;

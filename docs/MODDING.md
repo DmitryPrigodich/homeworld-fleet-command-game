@@ -20,16 +20,33 @@ Definitions have namespaced IDs: `myfleet:ship-name`. A new definition must use 
 
 | Array | Main fields |
 | --- | --- |
-| `ships` | id, name, faction, model, models, move, dicePerModel, success, armor, range, abilities, visualSize, color, tacticalIcon, label, afterburners |
+| `ships` | id, name, faction, model, models, move, dicePerModel, success, armor, range, abilities, visualSize, color, tacticalIcon, label, afterburners, class, weapons, evasive, crew, ram, stars, prowArmor |
 | `abilities` | id, handler, value |
 | `fleets` | id, name, units: ship, q, r, facing |
 | `objects` | id, name, model, blocksMovement, attackPenalty, moveCost, color, label |
 | `maps` | id, name, width, height, background, objects, fleets, rules |
-| `rules` | id, name, handler, roundLimit, ordersPerSide, alternatingOrders, friendlyPassThrough, rearShots, focusFire |
+| `rules` | id, name, handler, roundLimit, ordersPerSide, alternatingOrders, friendlyPassThrough, rearShots, focusFire, tabletop |
+| `leaders` | id, name, faction, classes, hand, play, stars, coolUnderPressure, attackDice |
 | `themes` | id, name, background, panel, text, muted, accent, highlight, enemy, grid |
 | `campaigns` | id, name, start, missions: id, name, map, onVictory, onDefeat |
 
 The C# records in `src/FleetCommand.Core/Definitions.cs` are the canonical schema. All content colors use `#RRGGBB` or `#RRGGBBAA`. A ship's empty `color` selects its placeholder hull color from the current theme. Ownership footprints are separate: their color comes from the player profile, or reserved gray for NPCs/neutral objects. `visualSize` changes cube size without changing combat stats. `model` is a future visual asset reference and is not loaded by the cube renderer.
+
+`tabletop: true` currently enables the implemented rulebook foundations on `cards-basic-v1` maps; it does not imply every rule is complete. Use the coverage audit. Ship `class` is one of `fighter`, `corvette`, `platform`, `frigate`, `capital`, `station` and supplies a default tactical symbol. A fleet placement's optional `leader` must match faction and allowed classes. Round Hand/Play budgets freeze until cleanup, then are recomputed from surviving leaders. Existing definitions remain compatible.
+
+Optional weapon listings contain `id`, `name`, `dicePerModel`, `range`, `kind`, `arc`, `targets`, `penetrating`, `rapidFire`, `rapidTargets`, `powerDice`, `powerPenetrating`, `defensiveFire`. Arcs: `all`, `turret`, `spinal`. Target arrays contain ship classes; omitted `targets` permits all classes. `rapidTargets` conditions only the rerolls, not whether the weapon can fire. Power/defensive fields are reserved for corresponding handlers; a basic attack cannot grant itself a Power Attack. Omitting `weapons` preserves the old main-weapon stats; an empty array gives no ranged weapons.
+
+Terrain `kind` can identify `asteroid` or `planet` for rulebook movement costs. Gravity costs extra when leaving the well; an asteroid costs one move in tabletop mode. Entry attacks/mines are tracked separately in the coverage audit.
+
+## Independent card artwork
+
+Cosmetic packs are loaded from `card-styles/<pack>/style.json` or `.local/card-styles/<pack>/style.json`, independently of gameplay mods. Example:
+
+```json
+{"id":"my-art","name":"My card artwork","background":"#102436","accent":"#e2b361","text":"#b4d9e7","orderFrame":"order.png","interruptFrame":"interrupt.png"}
+```
+
+Both image fields are optional and must point to PNG/WebP/JPEG files inside that pack. Select a pack in Options or disable it with Text mode. Missing/invalid packs fall back to text; artwork never participates in gameplay content hashes and does not invalidate saves. `card-styles/amber` is a color-only example. The local PDF-frame importer writes only under `.local`; no source PDFs or original frames are published.
 
 `label` optionally supplies a short battlefield name, while `name` remains available in detailed tooltips. `tacticalIcon` accepts `triangle`, `square`, `diamond`, `parallelogram`, `hexagon`, `circle` or `unknown`. For example, add `"tacticalIcon": "square", "label": "Корветы"` to a corvette definition. Legacy interceptor/frigate definitions receive their known symbols without modifying their JSON files or invalidating saves.
 

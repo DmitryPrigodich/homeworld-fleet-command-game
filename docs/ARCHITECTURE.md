@@ -46,7 +46,15 @@ Played interrupts live in `Interrupts0/1` until round-end discard and participat
 
 The initial transport is direct ENet. Relay/lobby integration belongs outside Core. Cooperative players currently share command rights for side zero. Campaign progress belongs to the host and is saved alongside the active battle.
 
-## Campaigns
+## Tabletop foundations
+
+The `tabletop` flag enables the implemented rulebook foundations while legacy practice remains available. `FleetMovement` searches cell/facing states, includes turns and gravity costs, and records per-step facings in suspended movement. `FleetWeapons` validates weapon selection, target classes and arcs. `FleetCombat` holds public rolled dice until the owning side accepts or uses Valor/Taiidan, preserving private RNG on the authority. `FleetRepairs` queues post-roll success distribution for preassigned actors, without advancing their order. Both decisions survive save/load and have explicit command-side ownership.
+
+Round Hand/Play limits are frozen in `CardRound` and recalculated at cleanup from surviving data-defined leaders. Multi-card initiative commitments are redacted per viewer. Cleanup allows unused-card discards and then draws; recycling occurs only when the draw pile is empty. These are foundations, with remaining coverage tracked explicitly in RULES_COVERAGE.md.
+
+`CardStyleCatalog` is intentionally outside gameplay `ContentCatalog`. Optional frame/color packs are local presentation data selected by `AppSettings.CardStyle`; disabling/removing them cannot invalidate a match fingerprint or save. The renderer falls back to text. Original template frames are imported only into the ignored `.local` cache.
+
+## Campaign progression
 
 A campaign is a graph of mission IDs. Each mission chooses a map and victory/defeat transitions. Loops are allowed for reversals. Progress stores completed missions, medals, unlock IDs, participants and an optional in-progress battle. The example campaign awards one prototype medal for a victory; it does not implement the board game's full reward economy.
 

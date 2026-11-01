@@ -38,18 +38,24 @@ public partial class Main
     }
     private BattleCommand WithCard(BattleCommand command)
     {
+        if (FleetBattle)
+        {
+            if (command.Kind is "attack" or "interrupt") command = command with { Weapon = _weaponChoice };
+            if (command.Kind == "move" && command.AutoFacing) command = command with { AutoFacing = _facingChoice < 0, Facing = Math.Max(0, _facingChoice) };
+        }
         if (_state?.Cards?.Response != null && command.Kind == "attack")
         {
             var responseHand = LocalCommandSide == 0 ? _state.Cards.Hand0 : _state.Cards.Hand1;
             return command with { Kind = "interrupt", Card = responseHand.Contains(_selectedCard) && InterruptRules.IsAttack(_selectedCard) ? _selectedCard : responseHand.FirstOrDefault(InterruptRules.IsAttack) ?? "" };
         }
-        if (_state?.Cards is not { Phase: "orders", Pending: null } cards || command.Kind is "pass" or "special") return command;
+        if (_state?.Cards is not { Phase: "orders", Pending: null, Response: null } cards || command.Kind is "pass" or "special" or "faction") return command;
         var hand = LocalCommandSide == 0 ? cards.Hand0 : cards.Hand1;
         return command with { Card = hand.Contains(_selectedCard) ? _selectedCard : hand.FirstOrDefault() ?? "" };
     }
     private void DrawCards(Control parent)
     {
         if (_state?.Cards is not { } cards) return;
+        if (DrawFleetPhase(parent)) return;
         if (cards.Response is { } pause)
         {
             int responder = 1 - pause.Side;
@@ -67,16 +73,18 @@ public partial class Main
             }
             Button(parent, "ПРОПУСТИТЬ ОКНО", () => Submit(new("decline")));
             Text(parent, "1 Interrupt Attack за раунд. После ответа приказ продолжится.", 12, _colors.Muted);
+            DrawCardPreview(parent, _selectedCard);
             return;
         }
         if (cards.Pending is { } pending)
         {
-            Text(parent, SpecialOrders.Name(pending.Card), 15, _colors.Highlight);
+            Text(parent, pending.BasicAction == "" ? SpecialOrders.Name(pending.Card) : "БАЗОВЫЙ ПРИКАЗ", 15, _colors.Highlight);
             Text(parent, $"Действие {pending.Step + 1}/{SpecialOrders.Steps(pending)}: " + SpecialOrders.ActionName(pending) + "\n" +
                 FleetPresentation.UnitName(_content, _state, _state.Units.Single(u => u.Id == SpecialOrders.Actor(pending))), 13);
-            Text(parent, SpecialOrders.Formation(pending.Card) ? "Move → Attack / Afterburners → Attack\nLightning Move: закончить рядом с первым отрядом." : "Два Move в одном направлении.\nКаждое действие можно пропустить.", 12, _colors.Muted);
+            Text(parent, pending.BasicAction != "" ? "Карта и Play уже потрачены. Выбери цель действия или пропусти его." : SpecialOrders.Formation(pending.Card) ? "Move → Attack / Afterburners → Attack\nLightning Move: закончить рядом с первым отрядом." : "Два Move в одном направлении.\nКаждое действие можно пропустить.", 12, _colors.Muted);
             Button(parent, "ПРОПУСТИТЬ ДЕЙСТВИЕ", () => Submit(new("skip")), LocalCommandSide != pending.Side);
             Button(parent, "ЗАВЕРШИТЬ ПРИКАЗ", () => Submit(new("finish-order")), LocalCommandSide != pending.Side);
+            DrawCardPreview(parent, pending.Card);
             return;
         }
         int side = LocalCommandSide;
@@ -105,9 +113,10 @@ public partial class Main
                 if (others.Length > 0) other.Select(Array.FindIndex(others, u => u.Id == _secondOrderUnit));
                 other.ItemSelected += index => _secondOrderUnit = others[(int)index].Id; parent.AddChild(other);
             }
-            var play = Button(parent, "СПЕЦПРИКАЗ", () => Submit(new("special", _selected, Card: _selectedCard, OtherUnit: _secondOrderUnit)), selected == null || side != _state.ActiveSide);
+            var play = Button(parent, "СПЕЦПРИКАЗ", () => Submit(new("special", _selected, Card: _selectedCard, OtherUnit: _secondOrderUnit, Repair: _repairChoice, OtherRepair: _repairOtherChoice)), selected == null || side != _state.ActiveSide);
             play.CustomMinimumSize = new(0, 32);
         }
-        Text(parent, "Рука 2 / Play 1 · Move/Attack = базовый приказ", 11, _colors.Muted);
+        Text(parent, $"Рука {(side == 0 ? cards.HandLimit0 : cards.HandLimit1)} / Play {(side == 0 ? cards.PlayLimit0 : cards.PlayLimit1)} · Move/Attack = базовый приказ", 11, _colors.Muted);
+        DrawCardPreview(parent, _selectedCard);
     }
 }

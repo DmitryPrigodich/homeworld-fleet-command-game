@@ -6,7 +6,7 @@ namespace FleetCommand.Game;
 
 public sealed record AppSettings(string Theme = "core:hw1", string[]? EnabledMods = null, PlayerProfile? Player = null,
     // ShowLabels remains readable for older settings files; holding Alt now controls battlefield names.
-    string HwrmInstallation = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Homeworld", bool ShowLabels = true);
+    string HwrmInstallation = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Homeworld", bool ShowLabels = true, string CardStyle = "text");
 public sealed record SavedGame(BattleState State, GenerationOptions? Generation = null, CampaignProgress? Campaign = null,
     bool ComputerOpponent = true, CommanderAppearance[]? Commanders = null);
 
@@ -46,6 +46,7 @@ public partial class Main : Node3D
             if (System.IO.File.Exists(settings)) _settings = JsonData.Read<AppSettings>(settings);
             _settings = _settings with { Player = FleetPresentation.Normalize(_settings.Player) };
             LoadContent();
+            ReloadCardStyles();
             LoadEmblems();
             MainMenu();
             if (_args.Contains("--capture-battle")) StartBattle("core:training", false);
@@ -58,7 +59,7 @@ public partial class Main : Node3D
             {
                 bool coop = _args.Contains("--smoke-coop");
                 if (coop) _campaign = FleetCommand.Core.Campaign.Start(_content, "core:patrol", ["host"]);
-                StartBattle(_args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop);
+                StartBattle(_args.Contains("--smoke-tabletop") ? BasicCardBattle.TabletopMapId : _args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop);
                 if (_args.Contains("--smoke-special"))
                 {
                     var deck = _state!.Cards!.Deck.Concat(_state.Cards.Hand0).Concat(_state.Cards.Hand1).ToArray();
@@ -71,9 +72,15 @@ public partial class Main : Node3D
                     _state = _state! with { ActiveSide = 0, Cards = new(Enumerable.Range(1, 24).Select(i => $"order-{i:00}").Except(hand0).Except(hand1).ToArray(), hand0, hand1, [], Phase: "orders"),
                         Units = _state.Units.Select(u => u.Id == "s0-0" ? u with { Q = 1, R = 1 } : u.Id == "s1-3" ? u with { Q = 2, R = 1, Activated = true } : u).ToList() };
                 }
+                if (_args.Contains("--smoke-tabletop"))
+                {
+                    string[] hand0 = ["order-01", "order-09"], hand1 = ["order-21", "order-22"];
+                    _state = _state! with { ActiveSide = 0, ValorOwner = 0, Cards = new(Enumerable.Range(1, 24).Select(i => $"order-{i:00}").Except(hand0).Except(hand1).ToArray(), hand0, hand1, [], Phase: "orders"),
+                        Units = _state.Units.Select(u => u.Id == "s0-0" ? u with { Q = 1, R = 1 } : u.Id == "s1-3" ? u with { Q = 2, R = 1 } : u).ToList() };
+                }
                 StartNetwork(true, "127.0.0.1", 25990, coop);
             }
-            if (_args.Contains("--smoke-client")) { StartBattle("core:training", false, persist: false); StartNetwork(false, "127.0.0.1", 25990, _args.Contains("--smoke-coop")); }
+            if (_args.Contains("--smoke-client")) { if (_args.Contains("--smoke-tabletop")) _settings = _settings with { CardStyle = "amber" }; StartBattle("core:training", false, persist: false); StartNetwork(false, "127.0.0.1", 25990, _args.Contains("--smoke-coop")); }
             GD.Print($"FLEET_COMMAND_READY mods={_content.Mods.Count} ships={_content.Ships.Count}");
         }
         catch (Exception e) { ShowError(e.Message); GD.PushError(e.ToString()); }
@@ -91,7 +98,7 @@ public partial class Main : Node3D
         var dirs = new List<string> { System.IO.Path.Combine(_root, "content", "base") };
         dirs.AddRange(ModDirectories().Where(d => (_settings.EnabledMods ?? []).Contains(JsonData.Read<ModManifest>(System.IO.Path.Combine(d, "mod.json")).Id)));
         var content = ContentCatalog.Load(dirs);
-        _content = content; _engine = new(content);
+        _content = content; BasicCardBattle.Register(_content); _engine = new(content);
         _colors = _content.Themes.GetValueOrDefault(_settings.Theme) ?? _content.Themes["core:hw1"];
         RenderingServer.SetDefaultClearColor(C(_colors.Background));
         _stars.Palette = _colors; _stars.QueueRedraw();
@@ -168,6 +175,7 @@ public partial class Main : Node3D
         if (_frames == 5 && _args.Contains("--check-cards")) _ = CheckCards();
         if (_frames == 5 && _args.Contains("--check-special")) _ = CheckSpecialCards();
         if (_frames == 5 && _args.Contains("--check-interrupt")) _ = CheckInterrupts();
+        if (_frames == 5 && _args.Contains("--check-tabletop")) _ = CheckTabletop();
         if (_world != null && _state == null) _world.RotateY((float)delta * 0.08f);
         if (_frames == 40)
         {

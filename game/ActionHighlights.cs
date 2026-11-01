@@ -10,6 +10,9 @@ public partial class Main
     private void DrawActionHighlights()
     {
         _unitActions = _state == null || _selected == "" ? UnitActions.Empty : _engine.GetActions(_state, LocalCommandSide, _selected);
+        if (FleetBattle && _weaponChoice != "" && _state!.Units.Find(u => u.Id == _selected) is { } selected
+            && FleetWeapons.Weapons(_content, _content.Ships[selected.Definition]).Any(w => w.Id == _weaponChoice))
+            _unitActions = _unitActions with { AttackTargets = _unitActions.AttackTargets.Where(id => FleetWeapons.Attack(_content, _state, selected, _state.Units.Find(u => u.Id == id), _weaponChoice).Allowed).ToArray() };
         if (_tutorial != null)
             _unitActions = new(_unitActions.MoveCells.Where(h => _tutorial.Allows(new("move", _selected, Q: h.Q, R: h.R))).ToArray(),
                 _unitActions.AttackTargets.Where(id => _tutorial.Allows(new("attack", _selected, id))).ToArray());

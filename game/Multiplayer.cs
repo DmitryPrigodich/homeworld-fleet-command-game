@@ -9,16 +9,18 @@ public partial class Main
     private bool _networkActive, _isHost, _cooperative, _networkSignalsBound, _smokeRequestSent;
     private int _localSide;
     private int _specialNetworkStep = -1;
-    private int LocalCommandSide => _networkActive ? _localSide : _bot || _tutorial != null ? 0 : _state?.Cards?.Response is { } pause ? 1 - pause.Side : _state?.Cards is { Phase: "initiative", Ready0: true, Ready1: false } ? 1 : _state?.ActiveSide ?? 0;
+    private int LocalCommandSide => _networkActive ? _localSide : _bot || _tutorial != null ? 0 : _state?.Repairs is { Length: > 0 } ? _state.Repairs[0].Side : _state?.Combat is { } combat ? combat.Side : _state?.Cards?.Response is { } pause ? 1 - pause.Side
+        : _state?.Cards is { Phase: "initiative" or "cleanup" } phase ? phase.Ready0 ? 1 : 0 : _state?.ActiveSide ?? 0;
     private readonly Dictionary<long, int> _sideByPeer = [];
     private void NetworkMenu()
     {
         ClearScreen(); Heading("Совместная игра"); var box = Panel(70, 200, 640, 570);
         var cooperative = new CheckBox { Text = "Кооператив: общий синий флот против AI", ButtonPressed = true }; box.AddChild(cooperative);
         var cardMode = new CheckBox { Text = "Учебный бой с картами" }; box.AddChild(cardMode);
+        var tabletop = new CheckBox { Text = "Механики правил (режим разработки)" }; box.AddChild(tabletop);
         var address = new LineEdit { Text = "127.0.0.1", PlaceholderText = "Адрес хоста", CustomMinimumSize = new(0, 40) }; box.AddChild(address);
         Text(box, "Прототип: прямое подключение ENet, UDP-порт 24560. Комнаты по приглашению и relay — следующий этап.", 15, _colors.Muted);
-        Button(box, "СОЗДАТЬ СКИРМИШ", () => { StartBattle(cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
+        Button(box, "СОЗДАТЬ СКИРМИШ", () => { StartBattle(tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
         Button(box, "СОЗДАТЬ КООП-КАМПАНИЮ", () =>
         {
             _campaign = FleetCommand.Core.Campaign.Start(_content, "core:patrol", ["host"]);
@@ -39,7 +41,7 @@ public partial class Main
         if (host) InitializeCommanders();
         if (!_networkSignalsBound)
         {
-            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "interrupt-attack-v1:" + _content.Fingerprint,
+            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "tabletop-foundation-v1:" + _content.Fingerprint,
                 JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
             Multiplayer.ConnectionFailed += () => { _status = "Не удалось подключиться."; StopNetwork(); DrawBattle(); };
             Multiplayer.ServerDisconnected += () => { _status = "Хост отключился. Продолжение — из сохранения у хоста."; StopNetwork(); DrawBattle(); };
@@ -60,7 +62,7 @@ public partial class Main
     {
         if (!_networkActive || !_isHost) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (fingerprint != "interrupt-attack-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        if (fingerprint != "tabletop-foundation-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
         PlayerProfile profile;
         try { profile = FleetPresentation.Normalize(JsonSerializer.Deserialize<PlayerProfile>(profileJson, JsonData.Options)); }
         catch (JsonException) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
@@ -74,7 +76,8 @@ public partial class Main
         }
         if (_campaign != null) _campaign = _campaign with { Participants = (_campaign.Participants ?? []).Append("peer-" + sender).Distinct().ToArray() };
         DrawBattle(); Broadcast(); SaveGame();
-        if (_args.Contains("--smoke-interrupt"))
+        if (_args.Contains("--smoke-tabletop")) ApplyCommand(0, new("attack", "s0-0", "s1-3", Card: "order-01"));
+        else if (_args.Contains("--smoke-interrupt"))
         {
             ApplyCommand(0, new("attack", "s0-0", "s1-3", Card: "order-01"));
             var saved = JsonData.Read<SavedGame>(SavePath(false));
@@ -102,6 +105,17 @@ public partial class Main
         {
             var command = JsonSerializer.Deserialize<BattleCommand>(json, JsonData.Options);
             if (command != null && !ApplyCommand(side, command)) RpcId(Multiplayer.GetRemoteSenderId(), nameof(ReceiveCommandFeedback), _status);
+            if (_args.Contains("--smoke-tabletop"))
+            {
+                if (command?.Kind == "decline" && _state.Combat != null)
+                {
+                    var saved = JsonData.Read<SavedGame>(SavePath(false)); _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
+                    if (_state.Combat == null) throw new InvalidDataException("Post-roll save was not restored.");
+                    GD.Print("TABLETOP_NETWORK_RESUMED"); ApplyCommand(0, new("valor")); ApplyCommand(0, new("resolve"));
+                    GD.Print("TABLETOP_NETWORK_OK"); GetTree().CreateTimer(0.5).Timeout += () => GetTree().Quit();
+                }
+                return;
+            }
             if (_args.Contains("--smoke-interrupt"))
             {
                 if (command?.Kind == "interrupt" && _state.Cards?.Response == null && InterruptRules.Played(_state.Cards!, 1).Contains("order-17"))
@@ -160,6 +174,13 @@ public partial class Main
             {
                 if (_state.Cards is not { IsView: true } cards || cards.Deck.Length != 0 || cards.Hand0.Length != 0 || _state.RandomState != 1)
                     throw new InvalidDataException("Private card state leaked over ENet.");
+                if (_args.Contains("--smoke-tabletop"))
+                {
+                    if (_smokeRequestSent && cards.Response == null && _state.Combat == null && _state.Orders0 == 1 && _state.ValorOwner == 1 && _state.ValorUsedMask == 1)
+                    { GD.Print("TABLETOP_NETWORK_OK"); GetTree().Quit(); return; }
+                    if (!_smokeRequestSent && cards.Response != null && _state.Combat == null) { _smokeRequestSent = true; Submit(new("decline")); }
+                    return;
+                }
                 if (_args.Contains("--smoke-interrupt"))
                 {
                     if (_smokeRequestSent && cards.Response == null && InterruptRules.Played(cards, 1).Contains("order-17"))

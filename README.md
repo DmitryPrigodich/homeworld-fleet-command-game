@@ -7,6 +7,8 @@ The current version uses differently sized blue and red cubes for ships, with gr
 ## Current playable slice
 
 - Card practice: a shared deck, two-card hand, initiative commitments, card spending and replenishment, two special orders (**All Ahead Full**, **Stay in Formation**) and **Interrupt Attack**. Pending sequences and response windows survive saves and network synchronization.
+- A separate **ПРАВИЛА / РЕЖИМ РАЗРАБОТКИ** mode adds leader-defined Hand/Play, multi-card initiative bids, cleanup discards, class-specific movement/turns, weapon choice/arcs, rapid/evasive cancellation, prow/rear armor, post-roll Valor/Taiidan decisions, activation repair and Kushan faction repair. Its deck and ship roster are still training content, not the full published game. See [rules coverage](docs/RULES_COVERAGE.md).
+- Optional card artwork packs selected in **Options → Card appearance**. Text mode is the default; removing an art pack does not affect match fingerprints or saves. Original blank frames can be rendered locally with `scripts/Import-CardFrames.ps1` and are never distributed.
 
 - Russian main menu: tutorial, single player, multiplayer, options, mods, exit.
 - A seven-step interactive tutorial with highlighted selection, movement, round reset and shooting. It uses a passive opponent and keeps existing saves untouched.
@@ -23,7 +25,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - Player name, color and emblem in **Options → Player**. Flattened cube footprints use the player's color; NPCs and neutral objects use reserved gray. PvP color collisions are resolved by the host.
 - Optional local import of Kushan, Taiidan and five kiith emblems from an owned HWRM installation. Only the importer code is distributed.
 
-**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Other special cards and interrupt types, leaders, unrestricted initiative bidding, CAP/defensive-fire timing, boarding, production, full scenario objectives and the supplied book campaigns are not implemented yet. The simplified combat module is `skirmish-v1`; card practice wraps it as `cards-basic-v1`.
+**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Other printed cards/leader abilities, CAP/defensive-fire timing, boarding, production, full scenario objectives and supplied book campaigns remain in progress. The simplified combat module is `skirmish-v1`; card modes use `cards-basic-v1`, with the new mechanics enabled by the rules definition's `tabletop` flag.
 
 ## Run on Windows
 

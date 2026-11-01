@@ -13,6 +13,7 @@ public sealed class ContentCatalog
     public Dictionary<string, RulesDefinition> Rules { get; } = new(StringComparer.Ordinal);
     public Dictionary<string, ThemeDefinition> Themes { get; } = new(StringComparer.Ordinal);
     public Dictionary<string, CampaignDefinition> Campaigns { get; } = new(StringComparer.Ordinal);
+    public Dictionary<string, LeaderDefinition> Leaders { get; } = new(StringComparer.Ordinal);
     public List<ModManifest> Mods { get; } = [];
     public string Fingerprint { get; private set; } = "";
 
@@ -27,6 +28,7 @@ public sealed class ContentCatalog
         Copy(Ships, copy.Ships); Copy(Abilities, copy.Abilities); Copy(Fleets, copy.Fleets);
         Copy(Objects, copy.Objects); Copy(Maps, copy.Maps); Copy(Rules, copy.Rules);
         Copy(Themes, copy.Themes); Copy(Campaigns, copy.Campaigns);
+        Copy(Leaders, copy.Leaders);
         copy.Mods.AddRange(Mods);
         return copy;
     }
@@ -71,6 +73,7 @@ public sealed class ContentCatalog
             Add(catalog.Rules, data.Rules, v => v.Id);
             Add(catalog.Themes, data.Themes, v => v.Id);
             Add(catalog.Campaigns, data.Campaigns, v => v.Id);
+            Add(catalog.Leaders, data.Leaders, v => v.Id);
             catalog.Mods.Add(mod);
             digest.Append(mod.Id).Append('\n').Append(File.ReadAllText(Path.Combine(path, "mod.json")))
                 .Append('\n').Append(File.ReadAllText(contentPath)).Append('\n');
@@ -92,15 +95,24 @@ public sealed class ContentCatalog
         foreach (var s in Ships.Values)
         {
             if (s.Models < 1 || s.Models > 100 || s.Move < 0 || s.Move > 50 || s.DicePerModel < 0 || s.DicePerModel > 50
-                || s.Success is < 2 or > 6 || s.Armor < 0 || s.Range < 0 || s.Afterburners is < -1 or > 50 || !float.IsFinite(s.VisualSize) || s.VisualSize is <= 0 or > 2)
+                || s.Success is < 2 or > 6 || s.Armor < 0 || s.Range < 0 || s.Afterburners is < -1 or > 50 || s.Crew < 0 || s.Ram < 0 || s.Stars < 0 || s.Evasive < 0
+                || !float.IsFinite(s.VisualSize) || s.VisualSize is <= 0 or > 2)
                 throw new InvalidDataException($"Invalid ship statistics: {s.Id}");
             foreach (var a in s.Abilities ?? []) if (!Abilities.ContainsKey(a)) throw new InvalidDataException($"{s.Id}: missing ability {a}");
             if (!string.IsNullOrEmpty(s.TacticalIcon) && !FleetPresentation.TacticalIcons.Contains(s.TacticalIcon))
                 throw new InvalidDataException($"Unknown tactical icon: {s.TacticalIcon}");
+            if (s.Class != "" && !FleetRuleTools.Classes.Contains(s.Class)) throw new InvalidDataException($"Unknown ship class: {s.Class}");
+            if (s.Weapons != null && (s.Weapons.Select(w => w.Id).Distinct().Count() != s.Weapons.Length || s.Weapons.Any(w => string.IsNullOrWhiteSpace(w.Id)
+                || w.DicePerModel < 0 || w.Range < 1 || w.Arc is not ("all" or "turret" or "spinal") || w.Kind is not ("gun" or "fighter" or "missile" or "torpedo" or "bomb" or "drone" or "close")
+                || w.Penetrating < 0 || w.RapidFire < 0 || w.PowerDice < 0 || w.PowerPenetrating < 0 || (w.Targets ?? []).Any(t => !FleetRuleTools.Classes.Contains(t)) || (w.RapidTargets ?? []).Any(t => !FleetRuleTools.Classes.Contains(t)))))
+                throw new InvalidDataException($"Invalid weapons: {s.Id}");
         }
+        foreach (var leader in Leaders.Values)
+            if (leader.Hand < 0 || leader.Play < 0 || leader.Stars < 0 || leader.CoolUnderPressure < 0 || leader.AttackDice < 0 || leader.Classes == null
+                || leader.Classes.Any(t => !FleetRuleTools.Classes.Contains(t))) throw new InvalidDataException($"Invalid leader: {leader.Id}");
         foreach (var f in Fleets.Values)
             foreach (var u in f.Units)
-                if (!Ships.ContainsKey(u.Ship) || u.Facing is < 0 or > 5) throw new InvalidDataException($"Invalid fleet unit: {f.Id}");
+                if (!Ships.ContainsKey(u.Ship) || u.Facing is < 0 or > 5 || !FleetRuleTools.ValidLeader(this, new("", u.Ship, 0, u.Q, u.R, u.Facing, 1, Leader: u.Leader))) throw new InvalidDataException($"Invalid fleet unit: {f.Id}");
         foreach (var o in Objects.Values)
             if (o.MoveCost < 1 || o.AttackPenalty < 0) throw new InvalidDataException($"Invalid object: {o.Id}");
         foreach (var rule in Rules.Values)
