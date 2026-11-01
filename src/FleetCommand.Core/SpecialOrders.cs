@@ -121,7 +121,7 @@ public static class SpecialOrders
     {
         var order = next.Cards!.Pending!;
         order = order with { Step = finish ? Steps(order) : order.Step + 1 };
-        while (order.Step < Steps(order) && !next.Units.Any(u => u.Id == Actor(order))) order = order with { Step = order.Step + 1 };
+        while (order.Step < Steps(order) && !next.Units.Any(u => u.Id == Actor(order) && u.Patrol == "")) order = order with { Step = order.Step + 1 };
         if (next.Finished || order.Step >= Steps(order))
         {
             next = next with { Cards = next.Cards! with { Pending = null } };

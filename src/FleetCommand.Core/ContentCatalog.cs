@@ -101,6 +101,7 @@ public sealed class ContentCatalog
             foreach (var a in s.Abilities ?? []) if (!Abilities.ContainsKey(a)) throw new InvalidDataException($"{s.Id}: missing ability {a}");
             if (!string.IsNullOrEmpty(s.TacticalIcon) && !FleetPresentation.TacticalIcons.Contains(s.TacticalIcon))
                 throw new InvalidDataException($"Unknown tactical icon: {s.TacticalIcon}");
+            if (s.CapSuccess != 0 && s.CapSuccess is < 2 or > 6) throw new InvalidDataException($"Invalid CAP success: {s.Id}");
             if (s.Class != "" && !FleetRuleTools.Classes.Contains(s.Class)) throw new InvalidDataException($"Unknown ship class: {s.Class}");
             if (s.Weapons != null && (s.Weapons.Select(w => w.Id).Distinct().Count() != s.Weapons.Length || s.Weapons.Any(w => string.IsNullOrWhiteSpace(w.Id)
                 || w.DicePerModel < 0 || w.Range < 0 || w.Range == 0 && !w.DefensiveFire || w.Barrage != 0 && w.Barrage is < 2 or > 6 || w.Arc is not ("all" or "turret" or "spinal") || w.Kind is not ("gun" or "fighter" or "missile" or "torpedo" or "bomb" or "drone" or "close")

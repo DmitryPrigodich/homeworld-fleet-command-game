@@ -32,16 +32,17 @@ try {
         if (-not $Godot) { $Godot = (Get-ChildItem -LiteralPath 'tmp/tools/godot' -Filter '*console.exe' -Recurse | Select-Object -First 1).FullName }
         if (-not $Godot) { throw 'Provide -Godot with the Godot .NET executable path' }
         Step 'Game build' { & dotnet build FleetCommand.Game.csproj --nologo --disable-build-servers -m:1; if ($LASTEXITCODE -ne 0) { throw 'Game build failed' } }
-        foreach ($test in @(@('controls','--check-controls','CONTROLS_CHECKS_OK'),@('presentation','--check-presentation','PRESENTATION_CHECKS_OK'),@('actions','--check-actions','ACTION_HIGHLIGHTS_OK'),@('cards','--check-cards','CARD_UI_OK'),@('special-ui','--check-special','SPECIAL_UI_OK'),@('interrupt-ui','--check-interrupt','INTERRUPT_UI_OK'),@('tabletop-ui','--check-tabletop','TABLETOP_UI_OK'),@('close-ui','--check-close','CLOSE_UI_OK'),@('defense-ui','--check-defense','DEFENSE_UI_OK'))) {
+        foreach ($test in @(@('controls','--check-controls','CONTROLS_CHECKS_OK'),@('presentation','--check-presentation','PRESENTATION_CHECKS_OK'),@('actions','--check-actions','ACTION_HIGHLIGHTS_OK'),@('cards','--check-cards','CARD_UI_OK'),@('special-ui','--check-special','SPECIAL_UI_OK'),@('interrupt-ui','--check-interrupt','INTERRUPT_UI_OK'),@('tabletop-ui','--check-tabletop','TABLETOP_UI_OK'),@('close-ui','--check-close','CLOSE_UI_OK'),@('defense-ui','--check-defense','DEFENSE_UI_OK'),@('cap-ui','--check-cap','CAP_UI_OK'))) {
             Step ('UI '+$test[0]) { $process = EngineProcess $test[0] @($test[1]); Finish $process $test[0] $test[2] }
         }
-        foreach ($mode in @('pvp','coop','cards','special','interrupt','tabletop','defense')) {
+        foreach ($mode in @('pvp','coop','cards','special','interrupt','tabletop','defense','cap')) {
             Step ('Network '+$mode) {
                 $extra = @(); if ($mode -eq 'cards') { $extra = @('--smoke-cards') }; if ($mode -eq 'coop') { $extra = @('--smoke-coop') }
                 if ($mode -eq 'special') { $extra = @('--smoke-cards','--smoke-special') }
                 if ($mode -eq 'interrupt') { $extra = @('--smoke-cards','--smoke-interrupt') }
                 if ($mode -eq 'tabletop') { $extra = @('--smoke-cards','--smoke-tabletop') }
                 if ($mode -eq 'defense') { $extra = @('--smoke-cards','--smoke-defense') }
+                if ($mode -eq 'cap') { $extra = @('--smoke-cards','--smoke-cap') }
                 $server = EngineProcess ($mode+'-host') (@('--smoke-host') + $extra)
                 try {
                     $ready = $false
@@ -52,8 +53,9 @@ try {
                     }
                     if (-not $ready) { throw 'Host failed to become ready' }
                     $client = EngineProcess ($mode+'-client') (@('--smoke-client') + $extra)
-                    Finish $client ($mode+'-client') ($(if ($mode -eq 'defense') { 'DEFENSE_NETWORK_OK' } elseif ($mode -eq 'tabletop') { 'TABLETOP_NETWORK_OK' } elseif ($mode -eq 'interrupt') { 'INTERRUPT_NETWORK_OK' } elseif ($mode -eq 'special') { 'SPECIAL_NETWORK_OK' } elseif ($mode -eq 'cards') { 'CARD_NETWORK_OK' } else { 'NETWORK_SNAPSHOT_OK' }))
-                    Finish $server ($mode+'-host') ($(if ($mode -eq 'defense') { 'DEFENSE_NETWORK_OK' } elseif ($mode -eq 'tabletop') { 'TABLETOP_NETWORK_OK' } elseif ($mode -eq 'interrupt') { 'INTERRUPT_NETWORK_OK' } elseif ($mode -eq 'special') { 'SPECIAL_NETWORK_OK' } elseif ($mode -eq 'cards') { 'CARD_NETWORK_OK' } else { 'NETWORK_COMMAND_ACCEPTED' }))
+                    Finish $client ($mode+'-client') ($(if ($mode -eq 'cap') { 'CAP_NETWORK_OK' } elseif ($mode -eq 'defense') { 'DEFENSE_NETWORK_OK' } elseif ($mode -eq 'tabletop') { 'TABLETOP_NETWORK_OK' } elseif ($mode -eq 'interrupt') { 'INTERRUPT_NETWORK_OK' } elseif ($mode -eq 'special') { 'SPECIAL_NETWORK_OK' } elseif ($mode -eq 'cards') { 'CARD_NETWORK_OK' } else { 'NETWORK_SNAPSHOT_OK' }))
+                    Finish $server ($mode+'-host') ($(if ($mode -eq 'cap') { 'CAP_NETWORK_OK' } elseif ($mode -eq 'defense') { 'DEFENSE_NETWORK_OK' } elseif ($mode -eq 'tabletop') { 'TABLETOP_NETWORK_OK' } elseif ($mode -eq 'interrupt') { 'INTERRUPT_NETWORK_OK' } elseif ($mode -eq 'special') { 'SPECIAL_NETWORK_OK' } elseif ($mode -eq 'cards') { 'CARD_NETWORK_OK' } else { 'NETWORK_COMMAND_ACCEPTED' }))
+                    if ($mode -eq 'cap' -and (Get-Content -LiteralPath (Join-Path $outputRoot 'cap-host.log') -Raw) -notmatch 'CAP_ROLL_NETWORK_RESUMED[\s\S]*CAP_EXCHANGE_NETWORK_RESUMED') { throw 'Host did not restore the simultaneous CAP volleys' }
                     if ($mode -eq 'interrupt' -and (Get-Content -LiteralPath (Join-Path $outputRoot 'interrupt-host.log') -Raw) -notmatch 'INTERRUPT_NETWORK_RESUMED') { throw 'Host did not restore the interrupt save' }
                     if ($mode -eq 'tabletop' -and (Get-Content -LiteralPath (Join-Path $outputRoot 'tabletop-host.log') -Raw) -notmatch 'TABLETOP_NETWORK_RESUMED') { throw 'Host did not restore the post-roll decision' }
                     if ($mode -eq 'defense' -and (Get-Content -LiteralPath (Join-Path $outputRoot 'defense-host.log') -Raw) -notmatch 'DEFENSE_NETWORK_RESUMED[\s\S]*DEFENSE_ROLL_NETWORK_RESUMED') { throw 'Host did not restore both defense stages' }

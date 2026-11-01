@@ -27,7 +27,8 @@
 - [x] Leader/faction budgets, multi-card bids, cleanup, post-roll decisions and repair; published deck/card data still incomplete.
 - [ ] Extend saved response windows to other interrupts, terrain, CAP and defensive fire.
 - [x] Ship classes, proper turning/arcs, boarding, ramming/collision, crew/leader transfers, hulks and defensive fire.
-- [ ] CAP, bays, reinforcements, harvesting and production.
+- [x] CAP entry/exit, off-board targeting, movement with host, simultaneous interception and return after host destruction.
+- [ ] Terrain attacks/defense, bays, reinforcements, harvesting and production.
 - [ ] Scenario objectives, medals, heroes/upgrades and campaign purchases.
 - [ ] Actual book campaigns as separate data packs after card coverage is complete.
 

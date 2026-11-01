@@ -4,14 +4,16 @@ namespace FleetCommand.Core;
 
 public sealed record BattleUnit(string Id, string Definition, int Side, int Q, int R, int Facing,
     int Models, int FocusFire = 0, bool Activated = false, string Leader = "", int CrewDamage = 0, string[]? Effects = null,
-    bool Hulk = false, string AttackWindow = "", string LastAction = "", string LastTarget = "", int LastActionRound = 0);
+    bool Hulk = false, string AttackWindow = "", string LastAction = "", string LastTarget = "", int LastActionRound = 0,
+    string Patrol = "", bool CapUsed = false);
 public sealed record BattleState(string Map, string ContentFingerprint, List<BattleUnit> Units,
     int Round = 1, int ActiveSide = 0, int Orders0 = 0, int Orders1 = 0, int Sequence = 0,
     uint RandomState = 12345, int? Winner = null, bool Finished = false, List<BattleLogEntry>? Log = null, CardRound? Cards = null,
     bool FactionUsed0 = false, bool FactionUsed1 = false, PendingCombat? Combat = null, int ValorOwner = -1, int ValorUsedMask = 0, PendingRepair[]? Repairs = null,
-    PendingOverrun? Overrun = null, int Stars0 = 0, int Stars1 = 0, PendingDefense? Defense = null);
+    PendingOverrun? Overrun = null, int Stars0 = 0, int Stars1 = 0, PendingDefense? Defense = null, PendingCapEntry? CapEntry = null);
+public sealed record UnitDeployment(string Unit, int Q, int R);
 public sealed record BattleCommand(string Kind, string Unit = "", string Target = "", int Q = 0, int R = 0, int Facing = 0, string Card = "", string OtherUnit = "",
-    string[]? Cards = null, string Weapon = "", bool Power = false, string Repair = "", bool AutoFacing = true, string OtherRepair = "", string AttackKind = "ranged", string Effect = "weapons", int Amount = 0, bool TransferLeader = false, int[]? Dice = null);
+    string[]? Cards = null, string Weapon = "", bool Power = false, string Repair = "", bool AutoFacing = true, string OtherRepair = "", string AttackKind = "ranged", string Effect = "weapons", int Amount = 0, bool TransferLeader = false, int[]? Dice = null, UnitDeployment[]? Deployments = null);
 public sealed record CommandResult(bool Accepted, string Message, BattleState State);
 
 // Rule implementations are ordinary C# modules. JSON selects/configures one; it never executes code.
@@ -44,6 +46,7 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
         if (state.ContentFingerprint != content.Fingerprint) return new(false, "Набор игровых данных не совпадает.", state);
         var result = _modules[content.Rules[content.Maps[state.Map].Rules].Handler].Apply(content, state, side, command);
         if (!result.Accepted) return result;
+        result = result with { State = FleetCap.Sync(state, result.State) };
         return result with { State = result.State with { Log = BattleLog.AfterCommand(state, result.State, side, result.Message) } };
     }
     public UnitActions GetActions(BattleState state, int side, string unitId)
@@ -67,11 +70,12 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
                 || u.LastAction is not ("" or "move" or "ranged" or "ram" or "board") || u.LastTarget == null || u.LastActionRound < 0 || u.LastActionRound > s.Round
                 || FleetRuleTools.Enabled(content, s) && u.Hulk != FleetClose.CheckHulk(content, u).Hulk
                 || u.Q < 0 || u.Q >= map.Width || u.R < 0 || u.R >= map.Height
-                || !cells.Add(new(u.Q, u.R))) throw new InvalidDataException("Invalid unit in save.");
+                || u.Patrol == null || u.Patrol == "" && !cells.Add(new(u.Q, u.R))) throw new InvalidDataException("Invalid unit in save.");
         if (s.Log != null && (s.Log.Count > BattleLog.Capacity || s.Log.Any(e => e.Number < 0 || e.Round < 1 || e.Round > s.Round
                 || e.Side is < -1 or > 1 || string.IsNullOrWhiteSpace(e.Text) || e.Text.Length > 4096)
             || !s.Log.Select(e => e.Number).SequenceEqual(s.Log.Select(e => e.Number).Distinct().Order())))
             throw new InvalidDataException("Invalid battle log in save.");
+        FleetCap.Validate(content, s);
         if (content.Rules[map.Rules].Handler == "cards-basic-v1") { BasicCardRules.Validate(s); InterruptRules.ValidateGeometry(content, s); FleetDefense.Validate(content, s); FleetCombat.Validate(content, s); FleetRepairs.Validate(s); FleetClose.Validate(s); }
         return s;
     }
@@ -85,7 +89,7 @@ public sealed class SkirmishRules : IRuleModule
     {
         var unit = state.Units.Find(u => u.Id == unitId);
         var rules = content.Rules[content.Maps[state.Map].Rules];
-        if (state.Finished || side != state.ActiveSide || unit == null || unit.Side != side || unit.Activated || unit.Hulk
+        if (state.Finished || side != state.ActiveSide || unit == null || unit.Side != side || unit.Activated || unit.Hulk || unit.Patrol != ""
             || (side == 0 ? state.Orders0 : state.Orders1) >= FleetRuleTools.PlayLimit(content, state, side)) return UnitActions.Empty;
         return new(SkirmishGeometry.Movement(content, state, unit).OrderBy(h => h.Q).ThenBy(h => h.R).ToArray(),
             state.Units.Where(target => SkirmishGeometry.Attack(content, state, unit, target).Allowed || FleetRuleTools.Enabled(content, state)
@@ -162,13 +166,13 @@ public sealed class SkirmishRules : IRuleModule
     {
         var rules = c.Rules[c.Maps[state.Map].Rules];
         int Remaining(int s) => FleetRuleTools.PlayLimit(c, state, s) - (s == 0 ? state.Orders0 : state.Orders1);
-        bool CanAct(int s) => Remaining(s) > 0 && state.Units.Any(u => u.Side == s && !u.Activated && !u.Hulk);
+        bool CanAct(int s) => Remaining(s) > 0 && state.Units.Any(u => u.Side == s && !u.Activated && !u.Hulk && (u.Patrol == "" || FleetCap.ExitCells(c, state, u).Length > 0));
         if (!state.Units.Any(u => u.Side == 0) || !state.Units.Any(u => u.Side == 1))
             state = state with { Winner = state.Units.Count == 0 ? null : state.Units.Any(u => u.Side == 0) ? 0 : 1, Finished = true };
         else if (!CanAct(0) && !CanAct(1))
         {
             state = state with { Round = state.Round + 1, Orders0 = 0, Orders1 = 0, ActiveSide = state.Round % 2,
-                Units = state.Units.Select(u => u with { Activated = false }).ToList() };
+                Units = state.Units.Select(u => u with { Activated = false, CapUsed = false }).ToList() };
             if (state.Round > rules.RoundLimit) state = state with { Finished = true };
         }
         else state = state with { ActiveSide = CanAct(1 - side) && (rules.AlternatingOrders || !CanAct(side)) ? 1 - side : side };

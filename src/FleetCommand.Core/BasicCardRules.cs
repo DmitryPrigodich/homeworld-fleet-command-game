@@ -49,7 +49,7 @@ public sealed class BasicCardRules : IRuleModule
         return state with { RandomState = random, Cards = new(deck.ToArray(), hands[0].ToArray(), hands[1].ToArray(), discard.ToArray(), HandLimit0: cards.HandLimit0, HandLimit1: cards.HandLimit1, PlayLimit0: cards.PlayLimit0, PlayLimit1: cards.PlayLimit1) };
     }
     public UnitActions GetActions(ContentCatalog c, BattleState state, int side, string unitId) =>
-        state.Combat != null || state.Defense != null || state.Overrun != null || state.Repairs is { Length: > 0 } ? UnitActions.Empty :
+        state.Combat != null || state.Defense != null || state.CapEntry != null || state.Overrun != null || state.Repairs is { Length: > 0 } ? UnitActions.Empty :
         state.Cards?.Response != null ? InterruptRules.Actions(c, state, side, unitId) :
         state.Cards?.Pending != null ? SpecialOrders.Actions(c, state, side, unitId) :
         state.Cards is { Phase: "orders" } cards && (side == 0 ? cards.Hand0 : cards.Hand1).Length > 0
@@ -63,8 +63,14 @@ public sealed class BasicCardRules : IRuleModule
         if (state.Overrun != null) return FleetClose.Apply(c, state, side, command);
         if (state.Combat != null) return FleetCombat.Apply(c, state, side, command);
         if (state.Defense != null) return FleetDefense.Apply(c, state, side, command);
+        if (state.CapEntry != null) return FleetCap.ApplyEntry(c, state, side, command);
         if (cards.Response != null) return InterruptRules.Apply(c, state, side, command);
         if (cards.Pending != null) return SpecialOrders.Apply(c, state, side, command);
+        if (cards.Phase == "orders" && command.Kind is "begin-order" or "special" or "move" or "attack")
+        {
+            var expanded = FleetCap.Expand(c, state, side, command);
+            if (expanded != null) return expanded;
+        }
         var hand = side == 0 ? cards.Hand0 : cards.Hand1;
         if (cards.Phase == "cleanup")
         {

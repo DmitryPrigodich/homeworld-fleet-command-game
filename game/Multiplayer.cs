@@ -10,7 +10,8 @@ public partial class Main
     private int _localSide;
     private int _specialNetworkStep = -1;
     private int _defenseNetworkStep;
-    private int LocalCommandSide => _networkActive ? _localSide : _bot || _tutorial != null ? 0 : _state?.Overrun is { } overrun ? overrun.Side : _state?.Repairs is { Length: > 0 } ? _state.Repairs[0].Side : _state?.Combat is { } combat ? FleetCombat.DecisionSide(combat) : _state?.Defense is { } defense ? 1 - defense.Side : _state?.Cards?.Response is { } pause ? 1 - pause.Side
+    private int _capNetworkStep;
+    private int LocalCommandSide => _networkActive ? _localSide : _bot || _tutorial != null ? 0 : _state?.CapEntry is { } entry ? entry.Side : _state?.Overrun is { } overrun ? overrun.Side : _state?.Repairs is { Length: > 0 } ? _state.Repairs[0].Side : _state?.Combat is { } combat ? FleetCombat.DecisionSide(combat) : _state?.Defense is { } defense ? 1 - defense.Side : _state?.Cards?.Response is { } pause ? 1 - pause.Side
         : _state?.Cards is { Phase: "initiative" or "cleanup" } phase ? phase.Ready0 ? 1 : 0 : _state?.ActiveSide ?? 0;
     private readonly Dictionary<long, int> _sideByPeer = [];
     private void NetworkMenu()
@@ -42,7 +43,7 @@ public partial class Main
         if (host) InitializeCommanders();
         if (!_networkSignalsBound)
         {
-            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-defense-v1:" + _content.Fingerprint,
+            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-cap-v1:" + _content.Fingerprint,
                 JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
             Multiplayer.ConnectionFailed += () => { _status = "Не удалось подключиться."; StopNetwork(); DrawBattle(); };
             Multiplayer.ServerDisconnected += () => { _status = "Хост отключился. Продолжение — из сохранения у хоста."; StopNetwork(); DrawBattle(); };
@@ -63,7 +64,7 @@ public partial class Main
     {
         if (!_networkActive || !_isHost) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (fingerprint != "fleet-defense-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        if (fingerprint != "fleet-cap-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
         PlayerProfile profile;
         try { profile = FleetPresentation.Normalize(JsonSerializer.Deserialize<PlayerProfile>(profileJson, JsonData.Options)); }
         catch (JsonException) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
@@ -77,7 +78,12 @@ public partial class Main
         }
         if (_campaign != null) _campaign = _campaign with { Participants = (_campaign.Participants ?? []).Append("peer-" + sender).Distinct().ToArray() };
         DrawBattle(); Broadcast(); SaveGame();
-        if (_args.Contains("--smoke-defense"))
+        if (_args.Contains("--smoke-cap"))
+        {
+            ApplyCommand(0, new("attack", "s0-0", "s1-5", Card: "order-01"));
+            if (_state!.Defense == null) ApplyCommand(1, new("decline"));
+        }
+        else if (_args.Contains("--smoke-defense"))
         {
             ApplyCommand(0, new("attack", "s0-0", "s1-3", Card: "order-01"));
             if (_state!.Defense == null) ApplyCommand(1, new("decline"));
@@ -114,6 +120,24 @@ public partial class Main
         {
             var command = JsonSerializer.Deserialize<BattleCommand>(json, JsonData.Options);
             if (command != null && !ApplyCommand(side, command)) RpcId(Multiplayer.GetRemoteSenderId(), nameof(ReceiveCommandFeedback), _status);
+            if (_args.Contains("--smoke-cap"))
+            {
+                if (command?.Kind == "cap")
+                {
+                    var saved = JsonData.Read<SavedGame>(SavePath(false)); _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
+                    if (_state.Combat?.Kind != "cap" || _state.Defense?.PreparedIncoming == null) throw new InvalidDataException("CAP simultaneous pools were not restored.");
+                    GD.Print("CAP_ROLL_NETWORK_RESUMED"); Broadcast();
+                }
+                if (command?.Kind == "resolve" && _state.Combat?.Kind == "dogfight")
+                {
+                    var saved = JsonData.Read<SavedGame>(SavePath(false)); _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
+                    if (_state.Defense?.CapVolley?.Ghost == null) throw new InvalidDataException("CAP confirmed volley was not restored.");
+                    GD.Print("CAP_EXCHANGE_NETWORK_RESUMED"); ApplyCommand(0, new("resolve"));
+                    if (_state.Units.Any(u => u.Id is "s0-0" or "s1-3") || _state.Cards?.Response != null) throw new InvalidDataException("Dogfight did not resolve simultaneous casualties.");
+                    GD.Print("CAP_NETWORK_OK"); GetTree().CreateTimer(0.5).Timeout += () => GetTree().Quit();
+                }
+                return;
+            }
             if (_args.Contains("--smoke-defense"))
             {
                 if (command?.Kind == "defend")
@@ -201,6 +225,14 @@ public partial class Main
             {
                 if (_state.Cards is not { IsView: true } cards || cards.Deck.Length != 0 || cards.Hand0.Length != 0 || _state.RandomState != 1)
                     throw new InvalidDataException("Private card state leaked over ENet.");
+                if (_args.Contains("--smoke-cap"))
+                {
+                    if (_capNetworkStep == 2 && cards.Response == null && _state.Combat == null && _state.Defense == null && !_state.Units.Any(u => u.Id is "s0-0" or "s1-3"))
+                    { GD.Print("CAP_NETWORK_OK"); GetTree().Quit(); return; }
+                    if (_capNetworkStep == 0 && _state.Defense is { CapActive: false, CapComplete: false }) { _capNetworkStep = 1; Submit(new("cap", Card: "order-21", Weapon: "gun")); }
+                    else if (_capNetworkStep == 1 && _state.Combat?.Kind == "cap") { _capNetworkStep = 2; Submit(new("resolve")); }
+                    return;
+                }
                 if (_args.Contains("--smoke-defense"))
                 {
                     if (_defenseNetworkStep == 2 && cards.Response == null && _state.Combat == null && _state.Defense == null && _state.Orders0 == 1)

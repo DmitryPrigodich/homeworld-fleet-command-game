@@ -24,7 +24,8 @@ public partial class Main
     private void DrawBattle()
     {
         if (_state == null) return;
-        if (_state.Overrun != null) _selected = _state.Overrun.Unit;
+        if (_state.CapEntry != null) _selected = _state.CapEntry.Unit;
+        else if (_state.Overrun != null) _selected = _state.Overrun.Unit;
         else if (_state.Repairs is { Length: > 0 }) _selected = _state.Repairs[0].Unit;
         else if (_state.Combat != null) _selected = _state.Combat.Attacker;
         else if (_state.Defense != null) _selected = _state.Defense.Attack.Target;
@@ -75,6 +76,7 @@ public partial class Main
         foreach (var unit in _state.Units)
         {
             var def = _content.Ships[unit.Definition]; var point = World(new(unit.Q, unit.R));
+            if (unit.Patrol != "") { UnitAnnotation(unit, def, 3.0f); continue; }
             float size = def.VisualSize;
             var color = C(string.IsNullOrEmpty(def.Color) ? unit.Side == 0 ? _colors.Accent : _colors.Enemy : def.Color);
             if (unit.Activated) color = color.Darkened(0.45f);
@@ -103,7 +105,7 @@ public partial class Main
         foreach (var unit in _state.Units.OrderBy(u => u.Side).ThenBy(u => u.Id))
         {
             var ship = _content.Ships[unit.Definition]; var owner = Commander(unit.Side);
-            var b = Button(roster, $"{FleetPresentation.ShipName(ship)} ×{unit.Models}\n{owner.Name} · отряд №{FleetPresentation.UnitNumber(_content, _state, unit)}" + (unit.Activated ? " · ✓" : ""), () => SelectUnit(unit.Id));
+            var b = Button(roster, $"{(unit.Patrol == "" ? "" : "CAP · ")}{FleetPresentation.ShipName(ship)} ×{unit.Models}\n{owner.Name} · отряд №{FleetPresentation.UnitNumber(_content, _state, unit)}" + (unit.Activated ? " · ✓" : ""), () => SelectUnit(unit.Id));
             b.Icon = TacticalTextures.Icon(FleetPresentation.ShipIcon(ship), C(owner.Color)); b.ExpandIcon = true;
             b.AddThemeConstantOverride("icon_max_width", 20); b.AddThemeFontSizeOverride("font_size", 13);
             b.CustomMinimumSize = new(0, 54);
@@ -157,7 +159,7 @@ public partial class Main
             float d = World(new(q, r)).DistanceTo(hit.Value); if (d < distance) { distance = d; tile = new(q, r); }
         }
         if (tile == null || distance > 1.05f) return;
-        var target = _state.Units.Find(u => u.Q == tile.Value.Q && u.R == tile.Value.R);
+        var target = _state.Units.Find(u => u.Patrol == "" && u.Q == tile.Value.Q && u.R == tile.Value.R);
         var obj = map.Objects.FirstOrDefault(o => o.Q == tile.Value.Q && o.R == tile.Value.R);
         if (obj != null && target == null && (_selected == "" || _content.Objects[obj.Definition].BlocksMovement)) { InspectObject(obj); return; }
         if (target != null && (target.Side == LocalCommandSide || string.IsNullOrEmpty(_selected))) { SelectUnit(target.Id); return; }
@@ -182,6 +184,7 @@ public partial class Main
     private void BotTurn()
     {
         if (_state == null || !_bot || _state.Finished) return;
+        if (_state.CapEntry is { } entry) { if (entry.Side == 1) ApplyCommand(1, new("cap-enter", Target: FleetCap.Hosts(_content, _state, _state.Units.Single(u => u.Id == entry.Unit))[0].Id)); return; }
         if (_state.Overrun is { } overrun) { if (overrun.Side == 1) ApplyCommand(1, new("overrun")); return; }
         if (_state.Repairs is { Length: > 0 })
         {
@@ -199,7 +202,15 @@ public partial class Main
             string choice = poor && FleetCombat.CanValor(_state, 1) ? "valor" : poor && FleetCombat.CanFaction(_content, _state, combat) ? "faction-reroll" : FleetCombat.CanCapture(_content, _state) ? "capture-result" : "resolve";
             ApplyCommand(1, new(choice)); return;
         }
-        if (_state.Defense is { } defense) { if (defense.Side == 0) ApplyCommand(1, new("defend")); return; }
+        if (_state.Defense is { } defense)
+        {
+            if (defense.Side != 0) return;
+            var patrol = FleetCap.Patrol(_state, defense.Attack.Target);
+            if (!defense.CapComplete && patrol != null && FleetCap.Available(_state, defense.Attack.Target) && FleetCap.Weapons(_content, patrol).Length > 0 && _state.Cards!.Hand1.Length > 0)
+                ApplyCommand(1, new("cap", Card: _state.Cards.Hand1[0], Weapon: FleetCap.Weapons(_content, patrol)[0].Id));
+            else ApplyCommand(1, FleetDefense.Weapons(_content, _state.Units.Single(u => u.Id == defense.Attack.Target)).Length > 0 ? new("defend") : new("decline-defense"));
+            return;
+        }
         if (_state.Cards?.Phase == "cleanup") { ApplyCommand(1, new("cleanup", Cards: _state.Cards.Hand1.Skip(_state.Cards.HandLimit1).ToArray())); return; }
         if (_state.Cards?.Response != null)
         {

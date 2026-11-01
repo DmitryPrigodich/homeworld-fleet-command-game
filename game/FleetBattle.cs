@@ -5,13 +5,14 @@ public partial class Main
 {
     private readonly HashSet<string> _phaseCards = [];
     private readonly HashSet<int> _rerollDice = [];
+    private readonly Dictionary<string, Hex> _capExits = [];
     private int _rerollSequence = -1;
     private string _phaseKey = "", _weaponChoice = "", _repairChoice = "ask", _repairOtherChoice = "ask", _attackKindChoice = "ranged", _transferTarget = "";
     private int _transferCrew;
     private bool _transferLeader;
     private int _facingChoice = -1;
     private bool FleetBattle => _state != null && FleetRuleTools.Enabled(_content, _state);
-    private bool FleetDecision => _state?.Combat != null || _state?.Defense != null || _state?.Overrun != null || _state?.Repairs is { Length: > 0 };
+    private bool FleetDecision => _state?.Combat != null || _state?.Defense != null || _state?.CapEntry != null || _state?.Overrun != null || _state?.Repairs is { Length: > 0 };
     private BattleCommand? BotAttack(BattleUnit unit, string target, bool interrupt = false)
     {
         string card = interrupt ? _state!.Cards!.Hand1.FirstOrDefault(InterruptRules.IsAttack) ?? "" : _state?.Cards?.Hand1.FirstOrDefault() ?? "";
@@ -23,7 +24,7 @@ public partial class Main
         }
         return null;
     }
-    private bool BotExpected => _state!.Overrun is { } overrun ? overrun.Side == 1 : _state.Repairs is { Length: > 0 } ? _state.Repairs[0].Side == 1 : _state.Combat is { } combat ? FleetCombat.DecisionSide(combat) == 1 : _state.Defense is { } defense ? defense.Side == 0 : _state.Cards?.Response != null ? InterruptRules.Responder(_state) == 1
+    private bool BotExpected => _state!.CapEntry is { } entry ? entry.Side == 1 : _state.Overrun is { } overrun ? overrun.Side == 1 : _state.Repairs is { Length: > 0 } ? _state.Repairs[0].Side == 1 : _state.Combat is { } combat ? FleetCombat.DecisionSide(combat) == 1 : _state.Defense is { } defense ? defense.Side == 0 : _state.Cards?.Response != null ? InterruptRules.Responder(_state) == 1
         : _state.Cards?.Phase is "initiative" or "cleanup" ? !_state.Cards.Ready1 : _state.ActiveSide == 1;
     private VBoxContainer ScrollBattlePanel(VBoxContainer outer)
     {
@@ -34,6 +35,18 @@ public partial class Main
     private bool DrawFleetPhase(Control parent)
     {
         if (!FleetBattle) return false;
+        if (_state!.CapEntry is { } entry)
+        {
+            Text(parent, "НАЗНАЧИТЬ CAP", 16, _colors.Highlight);
+            Text(parent, "Истребители закончили перемещение. Можно назначить патруль на соседний корабль.", 14);
+            if (LocalCommandSide == entry.Side)
+            {
+                foreach (var host in FleetCap.Hosts(_content, _state, _state.Units.Single(u => u.Id == entry.Unit)))
+                { string id = host.Id; Button(parent, "CAP: " + FleetPresentation.UnitName(_content, _state, host), () => Submit(new("cap-enter", Target: id))); }
+                Button(parent, "ОСТАТЬСЯ НА ПОЛЕ", () => Submit(new("decline-cap")));
+            }
+            return true;
+        }
         if (_state!.Overrun is { } overrun)
         {
             Text(parent, "ПРОДВИЖЕНИЕ ПОСЛЕ АТАКИ", 15, _colors.Highlight);
@@ -59,6 +72,8 @@ public partial class Main
         {
             Text(parent, "РЕЗУЛЬТАТ БРОСКА", 16, _colors.Highlight);
             Text(parent, "Атакует: " + SideName(combat.Side) + "\n[" + string.Join(", ", combat.Rolls) + "]", 15);
+            var opposingVolley = combat.Kind == "cap" ? _state.Defense?.PreparedIncoming : combat.Kind == "dogfight" ? _state.Defense?.CapVolley : null;
+            if (opposingVolley != null) Text(parent, "Одновременный бросок противника: [" + string.Join(", ", opposingVolley.Rolls) + "]", 13);
             if (combat.AbilityRerolls > 0)
             {
                 if (_rerollSequence != _state.Sequence) { _rerollDice.Clear(); _rerollSequence = _state.Sequence; }
@@ -95,9 +110,21 @@ public partial class Main
         {
             var defender = _state.Units.Single(u => u.Id == defense.Attack.Target);
             Text(parent, "ЗАЩИТНЫЙ ОГОНЬ", 16, _colors.Highlight);
-            Text(parent, FleetPresentation.UnitName(_content, _state, defender) + "\nУгроза: " + defense.Threat + "\nЗащита до основного броска. Карта и Play не расходуются.", 14);
+            Text(parent, FleetPresentation.UnitName(_content, _state, defender) + "\nУгроза: " + defense.Threat + "\nЗащитный огонь бесплатный. CAP расходует карту, без Play.", 14);
             if (LocalCommandSide == 1 - defense.Side)
             {
+                var patrol = FleetCap.Patrol(_state, defender.Id); var defenseHand = LocalCommandSide == 0 ? _state.Cards!.Hand0 : _state.Cards!.Hand1;
+                if (!defense.CapComplete && FleetCap.Available(_state, defender.Id) && patrol != null)
+                {
+                    if (defenseHand.Length > 0)
+                    {
+                        if (!defenseHand.Contains(_selectedCard)) _selectedCard = defenseHand[0];
+                        var card = new OptionButton(); foreach (string id in defenseHand) card.AddItem("CAP: " + SpecialOrders.Name(id));
+                        card.Select(Array.IndexOf(defenseHand, _selectedCard)); card.ItemSelected += i => _selectedCard = defenseHand[(int)i]; parent.AddChild(card);
+                    }
+                    foreach (var weapon in FleetCap.Weapons(_content, patrol))
+                    { string id = weapon.Id; Button(parent, "ПЕРЕХВАТ CAP: " + weapon.Name, () => Submit(new("cap", Card: defenseHand.Contains(_selectedCard) ? _selectedCard : defenseHand.FirstOrDefault() ?? "", Weapon: id)), defenseHand.Length == 0); }
+                }
                 foreach (var weapon in FleetDefense.Weapons(_content, defender))
                 {
                     string id = weapon.Id;
@@ -134,6 +161,10 @@ public partial class Main
     private void DrawFleetUnitOptions(Control parent, BattleUnit? unit)
     {
         if (!FleetBattle || unit == null || FleetDecision) return;
+        DrawCapExit(parent, unit);
+        if (unit.Side == LocalCommandSide)
+            foreach (var target in _state!.Units.Where(u => u.Side != unit.Side && u.Patrol != "" && _unitActions.AttackTargets.Contains(u.Id)))
+            { string id = target.Id; Button(parent, "АТАКОВАТЬ CAP: " + FleetPresentation.UnitName(_content, _state, target), () => Submit(new("attack", unit.Id, id))); }
         string[] kinds = ["ranged", "ram", "board"];
         var kind = new OptionButton(); kind.AddItem("Атака: стрельба"); kind.AddItem("Атака: таран"); kind.AddItem("Атака: абордаж");
         kind.Select(Math.Max(0, Array.IndexOf(kinds, _attackKindChoice))); kind.ItemSelected += i => { _attackKindChoice = kinds[(int)i]; _action = "attack"; DrawBattle(); }; parent.AddChild(kind);
@@ -180,5 +211,15 @@ public partial class Main
         var leader = new CheckBox { Text = "Передать лидера", ButtonPressed = _transferLeader, Disabled = unit.Leader == "" || target.Leader != "" };
         leader.Toggled += on => _transferLeader = on; parent.AddChild(leader);
         Button(parent, "ПЕРЕДАТЬ ЭКИПАЖ / ЛИДЕРА", () => Submit(new("transfer-crew", unit.Id, _transferTarget, Amount: _transferCrew, TransferLeader: _transferLeader, Repair: _repairChoice)));
+    }
+    private void DrawCapExit(Control parent, BattleUnit unit)
+    {
+        if (unit.Patrol == "" || unit.Side != LocalCommandSide) return;
+        var cells = FleetCap.ExitCells(_content, _state!, unit);
+        Text(parent, "CAP: выход перед новым приказом", 14, _colors.Highlight);
+        if (cells.Length == 0) { Text(parent, "Корабль и патруль должны быть готовы; нужен свободный соседний гекс.", 13); return; }
+        if (!_capExits.TryGetValue(unit.Id, out var choice) || !cells.Contains(choice)) _capExits[unit.Id] = cells[0];
+        var dropdown = new OptionButton(); foreach (var cell in cells) dropdown.AddItem($"Выход: {cell.Q + 1}, {cell.R + 1}");
+        dropdown.Select(Array.IndexOf(cells, _capExits[unit.Id])); dropdown.ItemSelected += i => _capExits[unit.Id] = cells[(int)i]; parent.AddChild(dropdown);
     }
 }

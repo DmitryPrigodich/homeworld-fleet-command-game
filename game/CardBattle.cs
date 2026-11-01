@@ -41,6 +41,19 @@ public partial class Main
     {
         if (FleetBattle)
         {
+            if (command.Kind is "begin-order" or "special" or "move" or "attack")
+            {
+                var actors = command.Kind == "special" && SpecialOrders.Formation(command.Card) ? new[] { command.Unit, command.OtherUnit } : new[] { command.Unit };
+                var deployments = new List<UnitDeployment>();
+                foreach (var unit in _state!.Units.Where(u => actors.Contains(u.Id) && u.Patrol != ""))
+                {
+                    var cells = FleetCap.ExitCells(_content, _state, unit);
+                    if (cells.Length == 0) continue;
+                    var cell = _capExits.TryGetValue(unit.Id, out var chosen) && cells.Contains(chosen) ? chosen : cells[0];
+                    deployments.Add(new(unit.Id, cell.Q, cell.R));
+                }
+                command = command with { Deployments = deployments.ToArray() };
+            }
             if (command.Kind is "attack" or "interrupt") command = command with { Weapon = _weaponChoice, AttackKind = _attackKindChoice };
             if (command.Kind == "move" && command.AutoFacing) command = command with { AutoFacing = _facingChoice < 0, Facing = Math.Max(0, _facingChoice) };
         }

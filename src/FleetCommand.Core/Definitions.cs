@@ -21,7 +21,7 @@ public sealed record ModManifest(string Id, string Version, int SchemaVersion = 
 public sealed record ShipDefinition(string Id, string Name, string Faction, string Model,
     int Models, int Move, int DicePerModel, int Success, int Armor, int Range,
     string[]? Abilities = null, float VisualSize = 0.55f, string Color = "", string TacticalIcon = "", string Label = "", int Afterburners = -1,
-    string Class = "", WeaponDefinition[]? Weapons = null, int Evasive = 0, int Crew = 0, int Ram = 0, int Stars = 0, bool ProwArmor = false);
+    string Class = "", WeaponDefinition[]? Weapons = null, int Evasive = 0, int Crew = 0, int Ram = 0, int Stars = 0, bool ProwArmor = false, int CapSuccess = 0);
 public sealed record WeaponDefinition(string Id, string Name, int DicePerModel, int Range, string Kind = "gun", string Arc = "all",
     string[]? Targets = null, int Penetrating = 0, int RapidFire = 0, int PowerDice = 0, int PowerPenetrating = 0, bool DefensiveFire = false, string[]? RapidTargets = null, int Barrage = 0);
 public sealed record LeaderDefinition(string Id, string Name, string Faction, string[] Classes, int Hand = 0, int Play = 0,

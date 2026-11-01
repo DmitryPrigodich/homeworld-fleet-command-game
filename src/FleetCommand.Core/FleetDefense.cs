@@ -2,7 +2,8 @@ namespace FleetCommand.Core;
 
 // Keeps the declared attack, not its rolls: casualties from defense change the incoming pool.
 public sealed record PendingDefense(int Side, BattleCommand Attack, bool Interrupt, string Threat, int IncomingDice,
-    bool Fired = false, int Reduction = 0);
+    bool Fired = false, int Reduction = 0, string Patroller = "", bool CapActive = false, bool CapComplete = false,
+    PendingCombat? CapVolley = null, PendingCombat? IncomingVolley = null, PendingCombat? PreparedIncoming = null);
 
 public static class FleetDefense
 {
@@ -22,22 +23,23 @@ public static class FleetDefense
     {
         var unit = s.Units.Single(u => u.Id == attack.Unit); var defender = s.Units.Single(u => u.Id == attack.Target);
         string threat = Threat(c, s, unit, defender, attack);
-        if (threat == "" || Locked(s, defender, attack) || Weapons(c, defender).Length == 0) return null;
+        if (threat == "" || Locked(s, defender, attack) || Weapons(c, defender).Length == 0 && !FleetCap.Available(s, defender.Id)) return null;
         var frame = new PendingDefense(side, attack, interrupt, threat, FleetCombat.AttackDice(c, s, attack));
-        return new(true, "До атаки: противник может применить защитный огонь или пропустить его.", s with { Defense = frame });
+        return new(true, "До атаки: противник может применить CAP / защитный огонь или пропустить защиту.", s with { Defense = frame });
     }
     public static int Dice(ContentCatalog c, BattleState s, WeaponDefinition weapon)
     {
         var frame = s.Defense!; var unit = s.Units.Single(u => u.Id == frame.Attack.Target);
         var incoming = s.Units.Single(u => u.Id == frame.Attack.Unit);
         if (weapon.Barrage > 0) return Math.Max(1, (Projectile(frame.Threat) ? frame.IncomingDice : incoming.Models) - unit.FocusFire);
-        int support = s.Units.Count(u => u.Id != unit.Id && u.Side == unit.Side && new Hex(u.Q, u.R).Distance(new(unit.Q, unit.R)) == 1 && Weapons(c, u).Length > 0);
+        int support = s.Units.Count(u => u.Patrol == "" && u.Id != unit.Id && u.Side == unit.Side && new Hex(u.Q, u.R).Distance(new(unit.Q, unit.R)) == 1 && Weapons(c, u).Length > 0);
         return Math.Max(1, weapon.DicePerModel * unit.Models + support - unit.FocusFire + (unit.Leader == "" ? 0 : c.Leaders[unit.Leader].AttackDice));
     }
     public static CommandResult Apply(ContentCatalog c, BattleState s, int side, BattleCommand command)
     {
         var frame = s.Defense!;
         if (side != 1 - frame.Side || frame.Fired) return new(false, "Решение о защитном огне принимает защищающийся.", s);
+        if (command.Kind == "cap") return FleetCap.Activate(c, s, side, command);
         if (command.Kind == "decline-defense") return Resume(c, s, s with { Defense = null }, frame, "Защитный огонь пропущен.");
         var defender = s.Units.Single(u => u.Id == frame.Attack.Target);
         var weapon = Weapons(c, defender).FirstOrDefault(w => command.Weapon == "" || w.Id == command.Weapon);
@@ -50,7 +52,7 @@ public static class FleetDefense
         var frame = result.State.Defense!;
         return Resume(c, before, result.State with { Defense = null }, frame, result.Message);
     }
-    private static CommandResult Resume(ContentCatalog c, BattleState before, BattleState next, PendingDefense frame, string message)
+    internal static CommandResult Resume(ContentCatalog c, BattleState before, BattleState next, PendingDefense frame, string message)
     {
         var unit = next.Units.Find(u => u.Id == frame.Attack.Unit);
         if (unit == null || unit.Hulk)
@@ -70,8 +72,8 @@ public static class FleetDefense
         var declared = s.Cards?.Response?.Command;
         if (!FleetRuleTools.Enabled(c, s) || s.Finished || s.Overrun != null || frame.Side != sourceSide || frame.IncomingDice is < 1 or > 10000
             || frame.Reduction < 0 || frame.Reduction > 10000 || unit == null || defender == null || frame.Threat != Threat(c, s, unit, defender, frame.Attack)
-            || frame.Threat == "" || Locked(s, defender, frame.Attack) || Weapons(c, defender).Length == 0
+            || frame.Threat == "" || Locked(s, defender, frame.Attack) || Weapons(c, defender).Length == 0 && !FleetCap.Available(s, defender.Id) && !frame.CapActive
             || !frame.Interrupt && (declared == null || frame.Attack.Unit != declared.Unit || frame.Attack.Target != declared.Target || frame.Attack.Weapon != declared.Weapon || frame.Attack.AttackKind != declared.AttackKind || frame.Attack.Power != declared.Power)
-            || frame.Fired != (s.Combat?.Kind == "defense")) throw new InvalidDataException("Invalid defensive-fire window.");
+            || frame.Fired != (s.Combat?.Kind == "defense") || frame.CapActive != (s.Combat?.Kind is "cap" or "dogfight")) throw new InvalidDataException("Invalid defensive-fire window.");
     }
 }

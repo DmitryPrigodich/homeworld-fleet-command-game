@@ -8,7 +8,7 @@ public static class FleetCombat
     private static WeaponDefinition Weapon(ContentCatalog c, BattleState s, PendingCombat combat)
     {
         var ship = c.Ships[Actor(s, combat).Definition];
-        return combat.Kind is "ranged" or "defense" ? FleetWeapons.Weapons(c, ship).Single(w => w.Id == combat.Weapon)
+        return combat.Kind is "ranged" or "defense" or "cap" or "dogfight" ? FleetWeapons.Weapons(c, ship).Single(w => w.Id == combat.Weapon)
             : new(combat.Kind, combat.Kind, combat.Kind == "board" ? ship.Crew : ship.Ram, 1, Kind: "close");
     }
     private static int[] Roll(int dice, ref uint random)
@@ -17,7 +17,11 @@ public static class FleetCombat
         return rolls;
     }
     public static int DecisionSide(PendingCombat combat) => combat.AbilityRerolls > 0 ? combat.RerollSide : combat.Side;
-    public static int Success(ContentCatalog c, BattleState s, PendingCombat combat) => Weapon(c, s, combat).Barrage is > 0 and var barrage ? barrage : c.Ships[Actor(s, combat).Definition].Success;
+    public static int Success(ContentCatalog c, BattleState s, PendingCombat combat)
+    {
+        var weapon = Weapon(c, s, combat); var ship = c.Ships[Actor(s, combat).Definition];
+        return weapon.Barrage > 0 ? weapon.Barrage : Actor(s, combat) is { CapUsed: true, Patrol: not "" } && ship.CapSuccess > 0 ? ship.CapSuccess : ship.Success;
+    }
     public static int[] EligibleDice(ContentCatalog c, BattleState s)
     {
         var combat = s.Combat!; int success = Success(c, s, combat);
@@ -27,7 +31,7 @@ public static class FleetCombat
     {
         var combat = s.Combat!; var unit = Actor(s, combat); var target = s.Units.Single(u => u.Id == combat.Target);
         var defender = c.Ships[target.Definition]; var weapon = Weapon(c, s, combat);
-        bool projectile = combat.Kind == "defense" && FleetDefense.Projectile(s.Defense!.Threat);
+        bool projectile = combat.Kind is "defense" or "cap" && FleetDefense.Projectile(s.Defense!.Threat);
         string targetClass = projectile ? s.Defense!.Threat : FleetRuleTools.Class(defender);
         int rapid = weapon.RapidTargets == null || weapon.RapidTargets.Contains(targetClass) ? weapon.RapidFire : 0;
         int evasive = projectile ? s.Defense!.Threat == "drone" && s.Defense.Attack.Power ? 1 : 0 : defender.Evasive + (FleetRuleTools.Has(target, "evasive") ? 1 : 0);
@@ -37,9 +41,9 @@ public static class FleetCombat
         return next with { Combat = next.Combat! with { AbilityRerolls = count, RerollSide = count == 0 ? -1 : next.Combat.RerollSide } };
     }
     public static bool CanValor(BattleState s, int side) => s.Combat?.AbilityRerolls is not > 0 && s.ValorOwner == side && (s.ValorUsedMask & (1 << side)) == 0 && s.Combat?.Rerolled != true;
-    public static bool CanFaction(ContentCatalog c, BattleState s, PendingCombat combat) => combat.AbilityRerolls == 0 && (combat.Kind is "ranged" or "ram" or "board") && !combat.Rerolled && !(combat.Side == 0 ? s.FactionUsed0 : s.FactionUsed1)
+    public static bool CanFaction(ContentCatalog c, BattleState s, PendingCombat combat) => combat.AbilityRerolls == 0 && (combat.Kind is "ranged" or "ram" or "board" or "cap" or "dogfight") && !combat.Rerolled && !(combat.Side == 0 ? s.FactionUsed0 : s.FactionUsed1)
         && FleetRuleTools.Faction(c, s, combat.Side) == "taiidan";
-    public static bool Allowed(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit? target, BattleCommand cmd) => !unit.Hulk &&
+    public static bool Allowed(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit? target, BattleCommand cmd) => !unit.Hulk && unit.Patrol == "" &&
         (cmd.AttackKind == "ranged" ? FleetWeapons.Attack(c, s, unit, target, cmd.Weapon).Allowed : FleetClose.Allowed(c, s, unit, target, cmd.AttackKind));
     internal static CommandResult Begin(ContentCatalog c, BattleState s, int side, BattleCommand cmd, bool interrupt)
     {
@@ -73,6 +77,18 @@ public static class FleetCombat
         var combat = new PendingCombat(1 - frame.Side, frame.Attack.Target, frame.Attack.Unit, weapon.Id, false, Roll(Math.Max(1, dice), ref random), frame.Interrupt, Kind: "defense");
         return WaitOrResolve(c, Abilities(c, s with { Combat = combat, RandomState = random }));
     }
+    internal static CommandResult ReactionRoll(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit target, WeaponDefinition weapon, string kind)
+    {
+        uint random = s.RandomState; var combat = PrepareReaction(c, s, unit, target, weapon, kind, ref random);
+        return ReactionStart(c, s with { RandomState = random }, combat);
+    }
+    internal static PendingCombat PrepareReaction(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit target, WeaponDefinition weapon, string kind, ref uint random)
+    {
+        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + (unit.Leader == "" ? 0 : c.Leaders[unit.Leader].AttackDice);
+        return new(unit.Side, unit.Id, target.Id, weapon.Id, false, Roll(Math.Max(1, dice), ref random), s.Defense!.Interrupt, Kind: kind);
+    }
+    internal static CommandResult ReactionStart(ContentCatalog c, BattleState s, PendingCombat combat) => WaitOrResolve(c, Abilities(c, s with { Combat = combat }));
+    internal static CommandResult ReactionDamage(ContentCatalog c, BattleState s, PendingCombat combat) => Resolve(c, s with { Combat = combat }, reactionDamage: true);
     private static CommandResult WaitOrResolve(ContentCatalog c, BattleState s)
     {
         var combat = s.Combat!;
@@ -98,15 +114,16 @@ public static class FleetCombat
     {
         if (s.Combat is not { Kind: "board" } combat) return false;
         var target = s.Units.Single(u => u.Id == combat.Target);
-        return FleetClose.CaptureAllowed(c, s, target) && combat.Rolls.Count(d => d >= c.Ships[Actor(s, combat).Definition].Success) - Armor(c, s, combat, target) >= target.Models;
+        return FleetCap.Patrol(s, target.Id) == null && FleetClose.CaptureAllowed(c, s, target) && combat.Rolls.Count(d => d >= c.Ships[Actor(s, combat).Definition].Success) - Armor(c, s, combat, target) >= target.Models;
     }
-    private static CommandResult Resolve(ContentCatalog c, BattleState s, bool capture = false)
+    private static CommandResult Resolve(ContentCatalog c, BattleState s, bool capture = false, bool reactionDamage = false)
     {
         var combat = s.Combat!; var unit = Actor(s, combat); var target = s.Units.Single(u => u.Id == combat.Target);
         var ship = c.Ships[unit.Definition]; var defender = c.Ships[target.Definition]; int armor = Armor(c, s, combat, target);
         int successes = combat.Rolls.Count(d => d >= Success(c, s, combat)), killed = Math.Min(target.Models, Math.Max(0, successes - armor));
+        if (combat.Kind is "cap" or "dogfight" && !reactionDamage) return FleetCap.RecordVolley(c, s, successes);
         if (combat.Kind == "defense" && FleetDefense.Projectile(s.Defense!.Threat))
-            return new(true, $"Защитный огонь: [{string.Join(", ", combat.Rolls)}], входящая атака -{successes} кубиков.", s with { Combat = null, Defense = s.Defense with { Reduction = successes } });
+            return new(true, $"Защитный огонь: [{string.Join(", ", combat.Rolls)}], входящая атака -{successes} кубиков.", s with { Combat = null, Defense = s.Defense with { Reduction = s.Defense.Reduction + successes } });
         int ones = FleetRuleTools.Class(defender) != "fighter" ? combat.Rolls.Count(d => d == 1) : 0;
         int focus = combat.Kind == "board" ? 0 : ones, crew = combat.Kind == "board" ? ones : 0;
         var survivor = target with { Models = target.Models - killed, FocusFire = Math.Max(0, target.FocusFire + focus - killed), CrewDamage = target.CrewDamage + crew,
@@ -123,11 +140,12 @@ public static class FleetCombat
         }
         if (survivor.Models > 0) next.Units.Add(FleetClose.CheckHulk(c, survivor));
         else next = FleetClose.Award(c, next, target, combat.Side);
+        next = FleetCap.Sync(s, next);
         if (combat.Kind is "ranged" or "ram" or "board") next = next with { Units = next.Units.Select(u => u.Id == unit.Id ? u with { AttackWindow = FleetClose.Window(s), LastAction = combat.Kind, LastTarget = target.Id, LastActionRound = s.Round } : u).ToList() };
         bool fighterSuicide = combat.Kind == "ram" && FleetRuleTools.Class(ship) == "fighter" && successes > 0;
         if (fighterSuicide) { next = FleetClose.Award(c, next, unit, 1 - unit.Side); next = next with { Units = next.Units.Where(u => u.Id != unit.Id).ToList() }; }
         string message = $"{FleetPresentation.UnitName(c, s, unit)} → {FleetPresentation.UnitName(c, s, target)} ({combat.Kind}): [{string.Join(", ", combat.Rolls)}], броня {armor}, потери {killed}, Focus Fire +{focus}, Crew Damage +{crew}." + (captured ? " Цель захвачена." : "");
-        if (combat.Kind == "defense") return new(true, message, next);
+        if (combat.Kind is "defense" or "cap" or "dogfight") return new(true, message, next);
         if (combat.Kind == "ram" && !fighterSuicide)
         {
             uint random = next.RandomState;
@@ -174,7 +192,7 @@ public static class FleetCombat
     }
     private static CommandResult Finish(ContentCatalog c, BattleState before, CommandResult result, PendingCombat combat) =>
         result.State.Combat != null || result.State.Overrun != null ? result with { State = result.State with { Sequence = before.Sequence + 1 } }
-            : combat.Kind == "defense" ? FleetDefense.AfterRoll(c, before, result) : InterruptRules.CombatResolved(c, before, result.State, result.Message, combat.Interrupt);
+            : combat.Kind == "defense" ? FleetDefense.AfterRoll(c, before, result) : combat.Kind is "cap" or "dogfight" ? FleetCap.AfterVolley(c, before, result) : InterruptRules.CombatResolved(c, before, result.State, result.Message, combat.Interrupt);
     internal static void Validate(ContentCatalog c, BattleState s)
     {
         if (s.Combat is not { } combat) return;
@@ -182,10 +200,11 @@ public static class FleetCombat
         int sourceSide = s.Cards?.Response == null ? -1 : combat.Interrupt ? 1 - s.Cards.Response.Side : s.Cards.Response.Side;
         bool legal = unit != null && target != null && (combat.Kind == "collision" ? combat.Ghost != null && combat.Ghost.Id == combat.Attacker && combat.Ghost.Side == combat.Side && c.Ships.ContainsKey(combat.Ghost.Definition)
             : combat.Ghost == null && (combat.Kind == "defense" ? s.Defense is { Fired: true } frame && frame.Attack.Unit == target.Id && frame.Attack.Target == unit.Id && FleetDefense.Weapons(c, unit).Any(w => w.Id == combat.Weapon)
+                : combat.Kind is "cap" or "dogfight" ? FleetCap.ValidVolley(c, s, combat)
                 : combat.Kind == "ranged" ? FleetWeapons.Select(c, s, unit, target, combat.Weapon) != null : combat.Kind is "ram" or "board" && new Hex(unit.Q, unit.R).Distance(new(target.Q, target.R)) == 1));
         if (!FleetRuleTools.Enabled(c, s) || s.Finished || s.Cards?.Response == null || !legal || combat.Rolls == null || s.Overrun != null
             || combat.Rolls.Length is < 1 or > 10000 || combat.Rolls.Any(d => d is < 1 or > 6) || !FleetRuleTools.Debuffs.Contains(combat.Effect)
             || combat.AbilityRerolls < 0 || combat.AbilityRerolls > combat.Rolls.Length || combat.AbilityRerolls > 0 && (combat.RerollSide is < 0 or > 1 || EligibleDice(c, s).Length < combat.AbilityRerolls)
-            || combat.Side != (combat.Kind is "collision" or "defense" ? 1 - sourceSide : sourceSide)) throw new InvalidDataException("Invalid pending combat.");
+            || combat.Side != (combat.Kind is "collision" or "defense" or "cap" ? 1 - sourceSide : sourceSide)) throw new InvalidDataException("Invalid pending combat.");
     }
 }

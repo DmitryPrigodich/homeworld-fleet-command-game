@@ -48,7 +48,7 @@ public partial class Main
         string details = $"{FleetPresentation.UnitName(_content, _state!, unit)}\n{owner.Name}\nХод {ship.Move} · Дальность {ship.Range} · Броня {ship.Armor}\n" +
             (unit.Activated ? "Приказ в этом раунде уже выполнен." : "Подразделение готово к приказу.");
         _annotations.Marker(World(new(unit.Q, unit.R)) + Vector3.Up * height,
-            $"{FleetPresentation.ShipName(ship)} ×{unit.Models}", $"{owner.Name} · отряд №{FleetPresentation.UnitNumber(_content, _state!, unit)}" + (unit.Activated ? " · ✓" : ""),
+            $"{(unit.Patrol == "" ? "" : "CAP · ")}{FleetPresentation.ShipName(ship)} ×{unit.Models}", $"{owner.Name} · отряд №{FleetPresentation.UnitNumber(_content, _state!, unit)}" + (unit.Activated ? " · ✓" : ""),
             TacticalTextures.Icon(FleetPresentation.ShipIcon(ship), color), EmblemTexture(owner.Emblem), color, details, () => ClickUnit(unit.Id));
     }
 

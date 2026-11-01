@@ -23,7 +23,7 @@ internal static class ScenarioRunner
             for (int step = 0; step < scenario.MaxCommands && !live.Finished; step++)
             {
                 string before = engine.Save(live);
-                int side = live.Overrun != null ? live.Overrun.Side : live.Repairs is { Length: > 0 } ? live.Repairs[0].Side : live.Combat != null ? FleetCombat.DecisionSide(live.Combat) : live.Defense != null ? 1 - live.Defense.Side : live.Cards?.Response != null ? InterruptRules.Responder(live) : live.Cards is { Phase: "initiative" or "cleanup" } cards ? cards.Ready0 ? 1 : 0 : live.ActiveSide;
+                int side = live.CapEntry != null ? live.CapEntry.Side : live.Overrun != null ? live.Overrun.Side : live.Repairs is { Length: > 0 } ? live.Repairs[0].Side : live.Combat != null ? FleetCombat.DecisionSide(live.Combat) : live.Defense != null ? 1 - live.Defense.Side : live.Cards?.Response != null ? InterruptRules.Responder(live) : live.Cards is { Phase: "initiative" or "cleanup" } cards ? cards.Ready0 ? 1 : 0 : live.ActiveSide;
                 var command = Plan(engine, content, live, side, scenario.UseSpecialOrders);
                 var a = engine.Apply(live, side, command); var b = engine.Apply(restored, side, command);
                 trace.Add(new { step, side, command, a.Accepted, a.Message, a.State.Round, a.State.Sequence,
@@ -65,10 +65,12 @@ internal static class ScenarioRunner
         TabletopScenarios.Run(root);
         CloseCombatScenarios.Run(root);
         DefenseScenarios.Run(root);
+        CapScenarios.Run(root);
         File.WriteAllText(Path.Combine(output, "scenarios.json"), JsonSerializer.Serialize(reports, JsonData.Options));
     }
     private static BattleCommand Plan(BattleEngine engine, ContentCatalog content, BattleState state, int side, bool specials)
     {
+        if (state.CapEntry != null) return new("decline-cap");
         if (state.Combat is { AbilityRerolls: > 0 } ability) return new("ability-reroll", Dice: FleetCombat.EligibleDice(content, state).Take(ability.AbilityRerolls).ToArray());
         if (state.Combat != null) return new("resolve");
         if (state.Defense != null) return new("defend");

@@ -29,7 +29,7 @@ internal static class SkirmishGeometry
         var rules = content.Rules[map.Rules];
         var ship = content.Ships[unit.Definition];
         int allowance = ship.Move + (ship.Abilities ?? []).Select(id => content.Abilities[id]).Where(a => a.Handler == "move-bonus").Sum(a => a.Value);
-        var occupied = state.Units.ToDictionary(u => new Hex(u.Q, u.R));
+        var occupied = state.Units.Where(u => u.Patrol == "").ToDictionary(u => new Hex(u.Q, u.R));
         bool Inside(Hex h) => h.Q >= 0 && h.Q < map.Width && h.R >= 0 && h.R < map.Height;
         var start = new Hex(unit.Q, unit.R);
         var best = new Dictionary<Hex, int> { [start] = 0 };
@@ -79,7 +79,7 @@ internal static class SkirmishGeometry
                 var next = h.Neighbor(direction);
                 if (!Inside(next) || next.Distance(end) != h.Distance(end) - 1) continue;
                 if (Blocked(content, map, next)) return memo[h] = 100000;
-                int penalty = next == end ? 0 : state.Units.Any(u => u.Q == next.Q && u.R == next.R) ? 1 : 0;
+                int penalty = next == end ? 0 : state.Units.Any(u => u.Patrol == "" && u.Q == next.Q && u.R == next.R) ? 1 : 0;
                 penalty += map.Objects.Where(o => o.Q == next.Q && o.R == next.R && (!ignoreNebula || content.Objects[o.Definition].Kind != "nebula")).Sum(o => content.Objects[o.Definition].AttackPenalty);
                 worst = Math.Max(worst, penalty + Cover(next));
             }

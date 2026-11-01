@@ -20,7 +20,7 @@ Definitions have namespaced IDs: `myfleet:ship-name`. A new definition must use 
 
 | Array | Main fields |
 | --- | --- |
-| `ships` | id, name, faction, model, models, move, dicePerModel, success, armor, range, abilities, visualSize, color, tacticalIcon, label, afterburners, class, weapons, evasive, crew, ram, stars, prowArmor |
+| `ships` | id, name, faction, model, models, move, dicePerModel, success, armor, range, abilities, visualSize, color, tacticalIcon, label, afterburners, class, weapons, evasive, crew, ram, stars, prowArmor, capSuccess |
 | `abilities` | id, handler, value |
 | `fleets` | id, name, units: ship, q, r, facing |
 | `objects` | id, name, model, blocksMovement, attackPenalty, moveCost, color, label |
@@ -37,6 +37,8 @@ The C# records in `src/FleetCommand.Core/Definitions.cs` are the canonical schem
 Optional weapon listings contain `id`, `name`, `dicePerModel`, `range`, `kind`, `arc`, `targets`, `penetrating`, `rapidFire`, `rapidTargets`, `powerDice`, `powerPenetrating`, `defensiveFire`, `barrage`. Arcs: `all`, `turret`, `spinal`. Target arrays contain ship classes; omitted `targets` permits all classes. `rapidTargets` conditions only rerolls. `defensiveFire: true` enables free pre-attack defense, including a defense-only `range: 0` weapon. Incoming `fighter`, `close`, `missile`, `torpedo`, `bomb` and `drone` kinds supply threat handling, along with fighter units/ram/boarding. A positive `barrage` (2–6) supplies that weapon's success threshold and target-count pool; zero disables it. A basic attack cannot grant itself a Power Attack. Omitting `weapons` preserves old main-weapon stats; an empty array gives no ranged weapons.
 
 Map `captureTargets` is an optional list of battle unit IDs or ship definition IDs that a successful boarding action may capture. It does not itself define medal objectives. Ship `stars` and a destroyed leader's `stars` feed the saved destroyed-star ledger; prototype victory conditions remain separate.
+
+CAP applies to `fighter` units and hosts of class `frigate` or `capital`, with one patrol per host. Patrols stay in saved `units` with a `patrol` host ID but do not occupy a second board cell or provide adjacent defensive support. `capSuccess` (2–6, default zero) overrides the fighter's ordinary success after CAP activation while it remains on patrol; it is available for the Defence Fighter erratum. Barrage retains its own threshold. No guessed special ability is assigned to the base roster.
 
 Terrain `kind` can identify `asteroid` or `planet` for rulebook movement costs. Gravity costs extra when leaving the well; an asteroid costs one move in tabletop mode. Entry attacks/mines are tracked separately in the coverage audit.
 
