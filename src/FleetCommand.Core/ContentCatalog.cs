@@ -115,7 +115,7 @@ public sealed class ContentCatalog
             foreach (var u in f.Units)
                 if (!Ships.ContainsKey(u.Ship) || u.Facing is < 0 or > 5 || !FleetRuleTools.ValidLeader(this, new("", u.Ship, 0, u.Q, u.R, u.Facing, 1, Leader: u.Leader))) throw new InvalidDataException($"Invalid fleet unit: {f.Id}");
         foreach (var o in Objects.Values)
-            if (o.MoveCost < 1 || o.AttackPenalty < 0) throw new InvalidDataException($"Invalid object: {o.Id}");
+            if (o.MoveCost < 1 || o.AttackPenalty < 0 || o.Hazard is { } hazard && (hazard.Dice is < 0 or > 100 || hazard.Success is < 2 or > 6 || hazard.Penetrating < 0)) throw new InvalidDataException($"Invalid object: {o.Id}");
         foreach (var rule in Rules.Values)
             if (rule.RoundLimit < 1 || rule.OrdersPerSide < 1) throw new InvalidDataException($"Invalid rules: {rule.Id}");
         foreach (var map in Maps.Values)
@@ -126,7 +126,7 @@ public sealed class ContentCatalog
             var occupied = new HashSet<Hex>();
             foreach (var objectPlacement in map.Objects)
             {
-                if (!Objects.ContainsKey(objectPlacement.Definition) || !Inside(objectPlacement.Q, objectPlacement.R))
+                if (!Objects.ContainsKey(objectPlacement.Definition) || !Inside(objectPlacement.Q, objectPlacement.R) || objectPlacement.Owner is < -1 or > 1)
                     throw new InvalidDataException($"Invalid map object: {map.Id}");
                 if (Objects[objectPlacement.Definition].BlocksMovement) occupied.Add(new(objectPlacement.Q, objectPlacement.R));
             }

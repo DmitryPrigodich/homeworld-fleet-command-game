@@ -24,7 +24,7 @@ public static class FleetClose
     }
     internal static BattleState OfferOverrun(ContentCatalog c, BattleState s, BattleUnit attacker, BattleUnit target, bool interrupt)
     {
-        if (s.Finished || !s.Units.Any(u => u.Id == attacker.Id) || s.Units.Any(u => u.Q == target.Q && u.R == target.R) || SkirmishGeometry.Blocked(c, c.Maps[s.Map], new(target.Q, target.R))) return s;
+        if (s.Finished || !s.Units.Any(u => u.Id == attacker.Id) || s.Units.Any(u => u.Q == target.Q && u.R == target.R) || SkirmishGeometry.Blocked(c, c.Maps[s.Map], new(target.Q, target.R), s)) return s;
         return s with { Overrun = new(attacker.Side, attacker.Id, new(target.Q, target.R), interrupt) };
     }
     public static CommandResult Apply(ContentCatalog c, BattleState s, int side, BattleCommand cmd)

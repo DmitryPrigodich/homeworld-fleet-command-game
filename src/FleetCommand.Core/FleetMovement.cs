@@ -31,9 +31,9 @@ public static class FleetMovement
             {
                 if (direction != current.Facing) Add(new(current.Cell, direction), 1);
                 var cell = current.Cell.Neighbor(direction);
-                if (cell.Q < 0 || cell.R < 0 || cell.Q >= map.Width || cell.R >= map.Height || SkirmishGeometry.Blocked(c, map, cell)
+                if (cell.Q < 0 || cell.R < 0 || cell.Q >= map.Width || cell.R >= map.Height || SkirmishGeometry.Blocked(c, map, cell, s)
                     || s.Units.Any(u => u.Patrol == "" && u.Id != unit.Id && u.Q == cell.Q && u.R == cell.R && (u.Hulk || u.Side != unit.Side || !rules.FriendlyPassThrough))) continue;
-                int cost = map.Objects.Where(o => o.Q == cell.Q && o.R == cell.R).Select(o => c.Objects[o.Definition].Kind == "asteroid" ? 1 : c.Objects[o.Definition].MoveCost).DefaultIfEmpty(1).Max();
+                int cost = FleetTerrain.Objects(c, s).Where(o => o.Q == cell.Q && o.R == cell.R).Select(o => c.Objects[o.Definition].Kind == "asteroid" ? 1 : c.Objects[o.Definition].MoveCost).DefaultIfEmpty(1).Max();
                 if (Gravity(current.Cell) && !Gravity(cell)) cost = Math.Max(2, cost);
                 Add(new(cell, direction), cost);
             }
@@ -70,9 +70,9 @@ public static class FleetMovement
         while (position != goal)
         {
             var next = position.Neighbor(direction);
-            if (SkirmishGeometry.Blocked(c, map, next) || s.Units.Any(other => other.Patrol == "" && other.Id != u.Id && other.Q == next.Q && other.R == next.R
+            if (SkirmishGeometry.Blocked(c, map, next, s) || s.Units.Any(other => other.Patrol == "" && other.Id != u.Id && other.Q == next.Q && other.R == next.R
                 && (other.Hulk || other.Side != u.Side || !c.Rules[map.Rules].FriendlyPassThrough))) return null;
-            int stepCost = map.Objects.Where(o => o.Q == next.Q && o.R == next.R).Select(o => c.Objects[o.Definition].Kind == "asteroid" ? 1 : c.Objects[o.Definition].MoveCost).DefaultIfEmpty(1).Max();
+            int stepCost = FleetTerrain.Objects(c, s).Where(o => o.Q == next.Q && o.R == next.R).Select(o => c.Objects[o.Definition].Kind == "asteroid" ? 1 : c.Objects[o.Definition].MoveCost).DefaultIfEmpty(1).Max();
             if (Gravity(position) && !Gravity(next)) stepCost = Math.Max(2, stepCost);
             cost += stepCost; result.Add(new(next, direction)); position = next;
         }

@@ -35,7 +35,7 @@ public partial class Main
     private void ObjectAnnotation(MapObject placement, ObjectDefinition obj, float height)
     {
         var color = C(FleetPresentation.NeutralColor);
-        string effects = FleetPresentation.ObjectEffects(obj);
+        string effects = TerrainEffects(placement);
         _annotations.Marker(World(new(placement.Q, placement.R)) + Vector3.Up * (height + 0.3f),
             FleetPresentation.ObjectName(obj), "НЕЙТРАЛЬНЫЙ ОБЪЕКТ", TacticalTextures.Icon(obj.BlocksMovement ? "circle" : "hexagon", color), null,
             color, effects + $"\nКлетка {placement.Q + 1}, {placement.R + 1}. Нажми для подробностей.", () => InspectObject(placement));
@@ -63,6 +63,20 @@ public partial class Main
     {
         if (_tutorial != null) { _status = FleetPresentation.ObjectName(_content.Objects[obj.Definition]) + ": " + FleetPresentation.ObjectEffects(_content.Objects[obj.Definition]); DrawBattle(); return; }
         _inspectedObject = obj; _selected = ""; DrawBattle();
+    }
+    private string TerrainEffects(MapObject placement)
+    {
+        var definition = _content.Objects[placement.Definition]; string text = FleetPresentation.ObjectEffects(definition);
+        if (!FleetBattle) return text;
+        var attack = FleetTerrain.Attack(definition);
+        if (attack is not { Dice: > 0 }) return text;
+        if (FleetTerrain.Kind(definition) == "mine")
+        {
+            int index = Array.FindIndex(_content.Maps[_state!.Map].Objects, p => ReferenceEquals(p, placement));
+            text += $"\nМин осталось: {FleetTerrain.MineCount(_state, index)}. " + (placement.Owner < 0 ? "Нейтральное поле." : "Владелец: " + SideName(placement.Owner) + ".");
+        }
+        text += $"\nАтака при входе / активации: {attack.Dice}D" + (FleetTerrain.Kind(definition) == "mine" ? " за мину" : "") + $", успех {attack.Success}+, Penetrating {attack.Penetrating}.";
+        return text;
     }
 
     private void OwnerLegend(Control parent)

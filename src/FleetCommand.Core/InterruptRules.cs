@@ -1,7 +1,7 @@
 namespace FleetCommand.Core;
 
 // The active side keeps its turn while the other side answers this public pause.
-public sealed record PendingResponse(int Side, BattleCommand Command, bool Basic, Hex[] RemainingPath, int[]? PathFacings = null);
+public sealed record PendingResponse(int Side, BattleCommand Command, bool Basic, Hex[] RemainingPath, int[]? PathFacings = null, Hex? Transit = null);
 
 public static class InterruptRules
 {
@@ -69,6 +69,13 @@ public static class InterruptRules
         if (tabletop && command.Kind == "move") path = steps!.Select(p => p.Cell).ToArray();
         var response = new PendingResponse(side, command, basic, path, steps?.Select(p => p.Facing).ToArray());
         next = next with { Cards = next.Cards! with { Response = response } };
+        if (basic && tabletop)
+        {
+            var activation = FleetTerrain.Activation(c, state, next, [unit.Id], "response-start", "");
+            if (activation.State.Hazard != null || activation.State.Combat != null || activation.State.Defense != null || activation.State.Cards?.Response == null) return activation;
+            // An automatically resolved terrain attack already resumed the action.
+            if (activation.State.Sequence != next.Sequence) return activation;
+        }
         return Continue(c, state, next, "", offerAttack: true);
     }
     // Resolve only the effect. Preserve the real turn, activation flags, Play and round.
@@ -106,10 +113,24 @@ public static class InterruptRules
             var cell = remaining[0]; remaining.RemoveAt(0);
             int facing = facings?.FirstOrDefault() ?? (pause.Command.Facing % 6 + 6) % 6; if (facings != null) facings.RemoveAt(0);
             // A pause cannot leave two units sharing a cell: pass through allies first.
-            if (next.Units.Any(u => u.Patrol == "" && u.Id != unit.Id && u.Q == cell.Q && u.R == cell.R)) continue;
+            bool occupied = next.Units.Any(u => u.Patrol == "" && u.Id != unit.Id && u.Q == cell.Q && u.R == cell.R);
+            if (occupied)
+            {
+                pause = pause with { RemainingPath = remaining.ToArray(), PathFacings = facings?.ToArray(), Transit = cell };
+                next = next with { Cards = next.Cards! with { Response = pause } };
+                var transit = FleetTerrain.Entry(c, original, next, unit.Id, cell, message);
+                if (transit != null) return transit;
+                continue;
+            }
+            var previous = pause.Transit ?? new Hex(unit.Q, unit.R);
             unit = unit with { Q = cell.Q, R = cell.R, Facing = facing, LastAction = "move", LastTarget = "", LastActionRound = next.Round };
-            pause = pause with { RemainingPath = remaining.ToArray(), PathFacings = facings?.ToArray() };
+            pause = pause with { RemainingPath = remaining.ToArray(), PathFacings = facings?.ToArray(), Transit = null };
             next = next with { Units = next.Units.Select(u => u.Id == unit.Id ? unit : u).ToList(), Cards = next.Cards! with { Response = pause } };
+            if (previous != cell)
+            {
+                var terrain = FleetTerrain.Entry(c, original, next, unit.Id, cell, message);
+                if (terrain != null) return terrain;
+            }
             if (Offer(c, next, pause)) return Paused(original, next, message + $" {FleetPresentation.UnitName(c, next, unit)}: перемещение в клетку ({cell.Q + 1}, {cell.R + 1}).");
         }
         string completed = message + $" {FleetPresentation.UnitName(c, next, unit)}: перемещение завершено ({unit.Q + 1}, {unit.R + 1}).";
@@ -124,6 +145,12 @@ public static class InterruptRules
         if (!pause.Basic) return SpecialOrders.Advance(c, original, next, pause.Side, message);
         var result = SkirmishRules.FinishOrder(c, original, next, pause.Side, message);
         return result with { State = result.State.Round != original.Round && !result.State.Finished ? BasicCardRules.NextRound(c, result.State) : result.State };
+    }
+    internal static CommandResult ResumeTerrain(ContentCatalog c, BattleState original, BattleState next, string message, bool start)
+    {
+        var pause = next.Cards!.Response!;
+        if (!start && pause.Transit == null && !next.Finished && next.Units.Any(u => u.Id == pause.Command.Unit) && Offer(c, next, pause)) return Paused(original, next, message);
+        return Continue(c, original, next, message, offerAttack: start);
     }
     public static CommandResult Apply(ContentCatalog c, BattleState state, int side, BattleCommand command)
     {
@@ -155,7 +182,7 @@ public static class InterruptRules
             || !state.Units.Any(u => u.Id == pause.Command.Unit && u.Side == pause.Side && u.Activated)
             || (pause.Basic ? cards.Pending != null || !cards.Discard.Contains(pause.Command.Card) : cards.Pending == null || SpecialOrders.Actor(cards.Pending) != pause.Command.Unit))
             throw new InvalidDataException("Invalid response window.");
-        var unit = state.Units.Single(u => u.Id == pause.Command.Unit); var previous = new Hex(unit.Q, unit.R);
+        var unit = state.Units.Single(u => u.Id == pause.Command.Unit); var previous = pause.Transit ?? new Hex(unit.Q, unit.R);
         if ((pause.Basic && (pause.Side == 0 ? state.Orders0 : state.Orders1) < 1)
             || (!pause.Basic && (SpecialOrders.Action(cards.Pending!) == "attack" ? pause.Command.Kind != "attack" : pause.Command.Kind != "move"))
             || pause.Command.Kind == "move" && (pause.RemainingPath.LastOrDefault(new Hex(unit.Q, unit.R)) != new Hex(pause.Command.Q, pause.Command.R)))
@@ -172,7 +199,11 @@ public static class InterruptRules
     {
         if (state.Cards?.Response is not { } pause) return;
         var map = c.Maps[state.Map]; var rules = c.Rules[map.Rules];
-        if (pause.RemainingPath.Any(h => h.Q >= map.Width || h.R >= map.Height || SkirmishGeometry.Blocked(c, map, h)
+        if (pause.Transit is { } transit && (pause.Command.Kind != "move" || state.Hazard == null || state.Hazard.Job.Resume != "movement"
+            || transit.Q < 0 || transit.R < 0 || transit.Q >= map.Width || transit.R >= map.Height || SkirmishGeometry.Blocked(c, map, transit, state)
+            || !state.Units.Any(u => u.Id != pause.Command.Unit && u.Patrol == "" && u.Q == transit.Q && u.R == transit.R && u.Side == pause.Side && !u.Hulk) || !rules.FriendlyPassThrough))
+            throw new InvalidDataException("Invalid occupied transit cell.");
+        if (pause.RemainingPath.Any(h => h.Q >= map.Width || h.R >= map.Height || SkirmishGeometry.Blocked(c, map, h, state)
             || state.Units.Any(u => u.Patrol == "" && u.Q == h.Q && u.R == h.R && (u.Hulk || u.Side != pause.Side || !rules.FriendlyPassThrough)))
             || pause.Command.Kind == "attack" && state.Combat?.Kind != "collision" && state.Overrun == null && !(FleetRuleTools.Enabled(c, state)
                 ? FleetCombat.Allowed(c, state, state.Units.Single(u => u.Id == pause.Command.Unit), state.Units.Find(u => u.Id == pause.Command.Target), pause.Command)

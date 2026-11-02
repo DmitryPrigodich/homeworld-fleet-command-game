@@ -30,8 +30,9 @@ public sealed record AbilityDefinition(string Id, string Handler, int Value = 1)
 public sealed record FleetUnit(string Ship, int Q, int R, int Facing = 0, string Leader = "");
 public sealed record FleetDefinition(string Id, string Name, FleetUnit[] Units);
 public sealed record ObjectDefinition(string Id, string Name, string Model = "", bool BlocksMovement = false,
-    int AttackPenalty = 0, int MoveCost = 1, string Color = "#8792a2", string Label = "", string Kind = "none");
-public sealed record MapObject(string Definition, int Q, int R);
+    int AttackPenalty = 0, int MoveCost = 1, string Color = "#8792a2", string Label = "", string Kind = "none", HazardDefinition? Hazard = null);
+public sealed record HazardDefinition(int Dice, int Success = 5, int Penetrating = 1);
+public sealed record MapObject(string Definition, int Q, int R, int Owner = -1);
 public sealed record MapDefinition(string Id, string Name, int Width, int Height,
     string Background, MapObject[] Objects, string[] Fleets, string Rules, string[]? CaptureTargets = null);
 public sealed record RulesDefinition(string Id, string Name, string Handler = "skirmish-v1",

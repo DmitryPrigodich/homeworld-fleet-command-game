@@ -105,9 +105,9 @@ internal static class CloseCombatScenarios
             s.C.Leaders["core:transfer-test"] = new("core:transfer-test", "Test", "kushan", ["frigate"], Hand: 2, Play: 1, CoolUnderPressure: 1);
             s.S = s.S with { RandomState = 1, Units = s.S.Units.Select(u => u.Id == "s0-0" ? u with { Leader = "core:transfer-test", FocusFire = 1 } : u.Id == "s0-1" ? u with { Q = 2, R = 3 } : u).ToList() };
             s.Do(0, new("transfer-crew", "s0-0", "s0-1", Card: "order-01", TransferLeader: true, Repair: "ask"));
-            s.Check(s.S.Repairs is { Length: 1 } && s.S.Repairs[0].Rolls.Length == 2 && s.S.Units.Single(u => u.Id == "s0-1").Leader == "core:transfer-test", "Transfer lost the activating leader's repair bonus");
+            s.Check(s.S.Repairs is { Length: 1 } && s.S.Repairs[0].Rolls.Length == 2 && s.S.Units.Single(u => u.Id == "s0-0").Leader == "core:transfer-test" && s.S.Units.Single(u => u.Id == "s0-1").Leader == "", "Transfer lost the activating leader's repair bonus or happened before activation effects");
             s.Do(0, new("repair-choice", Repair: "focus"));
-            s.Check(s.S.Cards!.Pending == null && s.S.Units.Single(u => u.Id == "s0-0").Leader == "" && s.S.Cards.PlayLimit0 == 1, "Transfer failed to finish or changed the round's frozen budget");
+            s.Check(s.S.Cards!.Pending == null && s.S.Units.Single(u => u.Id == "s0-0").Leader == "" && s.S.Units.Single(u => u.Id == "s0-1").Leader == "core:transfer-test" && s.S.Cards.PlayLimit0 == 1, "Transfer failed to finish or changed the round's frozen budget");
         });
     }
 }

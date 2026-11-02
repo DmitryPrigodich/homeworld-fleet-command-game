@@ -23,7 +23,7 @@ Definitions have namespaced IDs: `myfleet:ship-name`. A new definition must use 
 | `ships` | id, name, faction, model, models, move, dicePerModel, success, armor, range, abilities, visualSize, color, tacticalIcon, label, afterburners, class, weapons, evasive, crew, ram, stars, prowArmor, capSuccess |
 | `abilities` | id, handler, value |
 | `fleets` | id, name, units: ship, q, r, facing |
-| `objects` | id, name, model, blocksMovement, attackPenalty, moveCost, color, label |
+| `objects` | id, name, model, blocksMovement, attackPenalty, moveCost, color, label, kind, hazard |
 | `maps` | id, name, width, height, background, objects, fleets, rules, captureTargets |
 | `rules` | id, name, handler, roundLimit, ordersPerSide, alternatingOrders, friendlyPassThrough, rearShots, focusFire, tabletop |
 | `leaders` | id, name, faction, classes, hand, play, stars, coolUnderPressure, attackDice |
@@ -40,7 +40,7 @@ Map `captureTargets` is an optional list of battle unit IDs or ship definition I
 
 CAP applies to `fighter` units and hosts of class `frigate` or `capital`, with one patrol per host. Patrols stay in saved `units` with a `patrol` host ID but do not occupy a second board cell or provide adjacent defensive support. `capSuccess` (2–6, default zero) overrides the fighter's ordinary success after CAP activation while it remains on patrol; it is available for the Defence Fighter erratum. Barrage retains its own threshold. No guessed special ability is assigned to the base roster.
 
-Terrain `kind` can identify `asteroid` or `planet` for rulebook movement costs. Gravity costs extra when leaving the well; an asteroid costs one move in tabletop mode. Entry attacks/mines are tracked separately in the coverage audit.
+Terrain `kind` can identify `asteroid` or `planet` for rulebook movement costs. Gravity costs extra when leaving the well; an asteroid costs one move in tabletop mode. Entry/activation attacks and minefields are described below.
 
 ## Independent card artwork
 
@@ -65,3 +65,9 @@ Maps use axial `(q,r)` hex coordinates inside a rectangular coordinate domain. `
 Use `mods/example` as a minimal working theme mod. A campaign transition set to null ends the campaign; otherwise it names another mission in that campaign. Cycles are valid. The prototype treats a blue victory as campaign success and a draw as defeat.
 
 For code-based rule extensions, implement `IRuleModule` and pass the instance into `BattleEngine` from the game bootstrap. Implement its optional `GetActions` method to supply legal green destination cells and red target IDs for the selected unit. It must not mutate state or advance RNG. The default returns no highlights. Rebuilding is currently required. This keeps the first extension point small and testable.
+
+## Terrain attacks
+
+In tabletop mode, object `kind: "asteroid"` defaults to three dice, and `kind: "mine"` to one die per remaining mine. Both default to success 5 and Penetrating 1. Override with `hazard: { "dice": 3, "success": 5, "penetrating": 1 }`; `dice: 0` disables the attack. The existing `core:asteroids` ID also receives asteroid behavior for compatibility. Other object kinds retain ordinary movement/cover behavior. Hazards are inactive in simplified skirmish mode.
+
+A map object placement accepts `owner: -1` (neutral, default), `0` or `1`. Owned mines spare their own fleet; changed tokens are battle state, not edits to the mod. Each minefield starts at five, reduces to three, then disappears. `attackPenalty`, blocking and movement cost remain independent data. Removing a field removes those geometry effects too. Generated `runtime:terrain/…` profiles are internal derivations, not fleet entries; do not reference them in mods. **МИНЫ И АСТЕРОИДЫ** is a training map rather than a published scenario.

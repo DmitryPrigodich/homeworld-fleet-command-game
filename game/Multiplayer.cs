@@ -11,6 +11,7 @@ public partial class Main
     private int _specialNetworkStep = -1;
     private int _defenseNetworkStep;
     private int _capNetworkStep;
+    private int _terrainNetworkStep;
     private int LocalCommandSide => _networkActive ? _localSide : _bot || _tutorial != null ? 0 : _state?.CapEntry is { } entry ? entry.Side : _state?.Overrun is { } overrun ? overrun.Side : _state?.Repairs is { Length: > 0 } ? _state.Repairs[0].Side : _state?.Combat is { } combat ? FleetCombat.DecisionSide(combat) : _state?.Defense is { } defense ? 1 - defense.Side : _state?.Cards?.Response is { } pause ? 1 - pause.Side
         : _state?.Cards is { Phase: "initiative" or "cleanup" } phase ? phase.Ready0 ? 1 : 0 : _state?.ActiveSide ?? 0;
     private readonly Dictionary<long, int> _sideByPeer = [];
@@ -43,7 +44,7 @@ public partial class Main
         if (host) InitializeCommanders();
         if (!_networkSignalsBound)
         {
-            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-cap-v1:" + _content.Fingerprint,
+            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-terrain-v1:" + _content.Fingerprint,
                 JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
             Multiplayer.ConnectionFailed += () => { _status = "Не удалось подключиться."; StopNetwork(); DrawBattle(); };
             Multiplayer.ServerDisconnected += () => { _status = "Хост отключился. Продолжение — из сохранения у хоста."; StopNetwork(); DrawBattle(); };
@@ -64,7 +65,7 @@ public partial class Main
     {
         if (!_networkActive || !_isHost) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (fingerprint != "fleet-cap-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        if (fingerprint != "fleet-terrain-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
         PlayerProfile profile;
         try { profile = FleetPresentation.Normalize(JsonSerializer.Deserialize<PlayerProfile>(profileJson, JsonData.Options)); }
         catch (JsonException) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
@@ -78,6 +79,7 @@ public partial class Main
         }
         if (_campaign != null) _campaign = _campaign with { Participants = (_campaign.Participants ?? []).Append("peer-" + sender).Distinct().ToArray() };
         DrawBattle(); Broadcast(); SaveGame();
+        if (_args.Contains("--smoke-terrain")) return;
         if (_args.Contains("--smoke-cap"))
         {
             ApplyCommand(0, new("attack", "s0-0", "s1-5", Card: "order-01"));
@@ -120,6 +122,33 @@ public partial class Main
         {
             var command = JsonSerializer.Deserialize<BattleCommand>(json, JsonData.Options);
             if (command != null && !ApplyCommand(side, command)) RpcId(Multiplayer.GetRemoteSenderId(), nameof(ReceiveCommandFeedback), _status);
+            if (_args.Contains("--smoke-terrain"))
+            {
+                if (command?.Kind is "move" or "resolve")
+                {
+                    var saved = JsonData.Read<SavedGame>(SavePath(false)); _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
+                    if (command.Kind == "move")
+                    {
+                        if (_state.Hazard?.Kind != "mine" || _state.Cards?.Response == null || _state.Defense == null) throw new InvalidDataException("Terrain movement window was not restored.");
+                        GD.Print("TERRAIN_WINDOW_NETWORK_RESUMED");
+                    }
+                    else
+                    {
+                        if (_state.Combat is not { Kind: "terrain", AbilityRerolls: 1 } || _state.Combat.Rolls.Length != 5 || FleetTerrain.MineCount(_state, 0) != 5) throw new InvalidDataException("Terrain dice or deferred mine reduction were not restored.");
+                        GD.Print("TERRAIN_ROLL_NETWORK_RESUMED");
+                    }
+                    Broadcast();
+                }
+                if (command?.Kind == "ability-reroll")
+                {
+                    for (int i = 0; i < 20 && _state.Hazard == null && _state.Combat == null && _state.Defense == null && _state.Cards?.Response is { Side: 1 }; i++) ApplyCommand(0, new("decline"));
+                    if (_state.Cards?.Response != null || _state.Orders1 != 1 || FleetTerrain.MineCount(_state, 0) != 0 || _state.Units.Single(u => u.Id == "s1-3") is not { Q: 3, R: 2, FocusFire: 1 }) throw new InvalidDataException("Terrain movement did not resume exactly once.");
+                    var saved = JsonData.Read<SavedGame>(SavePath(false)); _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
+                    if (FleetTerrain.MineCount(_state, 0) != 0) throw new InvalidDataException("Cleared mines respawned after network save restore.");
+                    Broadcast(); GD.Print("TERRAIN_NETWORK_OK"); GetTree().CreateTimer(0.5).Timeout += () => GetTree().Quit();
+                }
+                return;
+            }
             if (_args.Contains("--smoke-cap"))
             {
                 if (command?.Kind == "cap")
@@ -225,6 +254,17 @@ public partial class Main
             {
                 if (_state.Cards is not { IsView: true } cards || cards.Deck.Length != 0 || cards.Hand0.Length != 0 || _state.RandomState != 1)
                     throw new InvalidDataException("Private card state leaked over ENet.");
+                if (_args.Contains("--smoke-terrain"))
+                {
+                    if (_terrainNetworkStep == 4 && cards.Response == null && _state.Combat == null && _state.Defense == null && _state.Hazard == null && _state.Orders1 == 1 && FleetTerrain.MineCount(_state, 0) == 0 && _state.Units.Single(u => u.Id == "s1-3") is { Q: 3, R: 2, FocusFire: 1 })
+                    { GD.Print("TERRAIN_NETWORK_OK"); GetTree().Quit(); return; }
+                    if (_terrainNetworkStep == 0 && cards.Phase == "orders" && _state.ActiveSide == 1 && cards.Response == null && _state.Hazard == null)
+                    { _terrainNetworkStep = 1; Submit(new("move", "s1-3", Q: 3, R: 2, Card: "order-21")); }
+                    else if (_terrainNetworkStep == 1 && _state.Defense is { Fired: false }) { _terrainNetworkStep = 2; Submit(new("defend", Weapon: "guard")); }
+                    else if (_terrainNetworkStep == 2 && _state.Combat?.Kind == "defense") { _terrainNetworkStep = 3; Submit(new("resolve")); }
+                    else if (_terrainNetworkStep == 3 && _state.Combat is { Kind: "terrain", AbilityRerolls: > 0 }) { _terrainNetworkStep = 4; Submit(new("ability-reroll", Dice: [])); }
+                    return;
+                }
                 if (_args.Contains("--smoke-cap"))
                 {
                     if (_capNetworkStep == 2 && cards.Response == null && _state.Combat == null && _state.Defense == null && !_state.Units.Any(u => u.Id is "s0-0" or "s1-3"))

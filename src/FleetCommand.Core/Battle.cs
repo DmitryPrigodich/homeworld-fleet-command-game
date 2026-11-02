@@ -10,7 +10,8 @@ public sealed record BattleState(string Map, string ContentFingerprint, List<Bat
     int Round = 1, int ActiveSide = 0, int Orders0 = 0, int Orders1 = 0, int Sequence = 0,
     uint RandomState = 12345, int? Winner = null, bool Finished = false, List<BattleLogEntry>? Log = null, CardRound? Cards = null,
     bool FactionUsed0 = false, bool FactionUsed1 = false, PendingCombat? Combat = null, int ValorOwner = -1, int ValorUsedMask = 0, PendingRepair[]? Repairs = null,
-    PendingOverrun? Overrun = null, int Stars0 = 0, int Stars1 = 0, PendingDefense? Defense = null, PendingCapEntry? CapEntry = null);
+    PendingOverrun? Overrun = null, int Stars0 = 0, int Stars1 = 0, PendingDefense? Defense = null, PendingCapEntry? CapEntry = null,
+    Dictionary<int, int>? Mines = null, HazardJob[]? Hazards = null, PendingHazard? Hazard = null);
 public sealed record UnitDeployment(string Unit, int Q, int R);
 public sealed record BattleCommand(string Kind, string Unit = "", string Target = "", int Q = 0, int R = 0, int Facing = 0, string Card = "", string OtherUnit = "",
     string[]? Cards = null, string Weapon = "", bool Power = false, string Repair = "", bool AutoFacing = true, string OtherRepair = "", string AttackKind = "ranged", string Effect = "weapons", int Amount = 0, bool TransferLeader = false, int[]? Dice = null, UnitDeployment[]? Deployments = null);
@@ -29,6 +30,7 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
     private readonly Dictionary<string, IRuleModule> _modules = (modules ?? [new SkirmishRules(), new BasicCardRules()]).ToDictionary(m => m.Id);
     public BattleState Create(string mapId, uint seed = 12345)
     {
+        FleetTerrain.Register(content);
         var map = content.Maps[mapId];
         if (!_modules.ContainsKey(content.Rules[map.Rules].Handler)) throw new InvalidDataException("Unknown rule module.");
         var units = new List<BattleUnit>();
@@ -57,6 +59,7 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
     public string Save(BattleState state) => JsonSerializer.Serialize(state, JsonData.Options);
     public BattleState Load(string json)
     {
+        FleetTerrain.Register(content);
         var s = JsonSerializer.Deserialize<BattleState>(json, JsonData.Options) ?? throw new InvalidDataException("Empty save.");
         if (s.ContentFingerprint != content.Fingerprint || string.IsNullOrEmpty(s.Map) || s.Units == null || !content.Maps.ContainsKey(s.Map)) throw new InvalidDataException("Save requires different content or is invalid.");
         var map = content.Maps[s.Map];
@@ -75,6 +78,7 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
                 || e.Side is < -1 or > 1 || string.IsNullOrWhiteSpace(e.Text) || e.Text.Length > 4096)
             || !s.Log.Select(e => e.Number).SequenceEqual(s.Log.Select(e => e.Number).Distinct().Order())))
             throw new InvalidDataException("Invalid battle log in save.");
+        FleetTerrain.Validate(content, s);
         FleetCap.Validate(content, s);
         if (content.Rules[map.Rules].Handler == "cards-basic-v1") { BasicCardRules.Validate(s); InterruptRules.ValidateGeometry(content, s); FleetDefense.Validate(content, s); FleetCombat.Validate(content, s); FleetRepairs.Validate(s); FleetClose.Validate(s); }
         return s;

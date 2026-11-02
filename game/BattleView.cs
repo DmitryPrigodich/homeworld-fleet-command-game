@@ -62,7 +62,7 @@ public partial class Main
         lines.SurfaceEnd();
         _world.AddChild(new MeshInstance3D { Mesh = lines, MaterialOverride = new StandardMaterial3D { AlbedoColor = C(_colors.Grid), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded } });
         DrawActionHighlights();
-        foreach (var placement in map.Objects)
+        foreach (var placement in FleetTerrain.Objects(_content, _state))
         {
             var def = _content.Objects[placement.Definition];
             var size = def.BlocksMovement ? new Vector3(1.1f, 1.2f, 1.1f) : new Vector3(0.75f, 0.35f, 0.75f);
@@ -115,13 +115,13 @@ public partial class Main
         var right = ScrollBattlePanel(Panel(_tutorial == null ? 1150 : 1060, 112, _tutorial == null ? 260 : 350, 610));
         if (_tutorial != null) right.AddThemeConstantOverride("separation", 7);
         DrawTutorial(right);
-        var selected = _state.Units.Find(u => u.Id == _selected) ?? _state.Combat?.Ghost;
+        var selected = FleetTerrain.Find(_state, _selected) ?? _state.Combat?.Ghost;
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
             Text(right, _inspectedObject != null ? FleetPresentation.ObjectName(_content.Objects[_inspectedObject.Definition]) : selected == null ? "ПРИКАЗЫ" : FleetPresentation.UnitName(_content, _state, selected), 19, _colors.Highlight);
         if (_inspectedObject != null && _tutorial == null)
         {
             Text(right, "НЕЙТРАЛЬНЫЙ ОБЪЕКТ", 13, FleetPresentation.NeutralColor);
-            Text(right, FleetPresentation.ObjectEffects(_content.Objects[_inspectedObject.Definition]), 16);
+            Text(right, TerrainEffects(_inspectedObject), 16);
         }
         if (selected != null && _tutorial == null)
         {
@@ -160,7 +160,7 @@ public partial class Main
         }
         if (tile == null || distance > 1.05f) return;
         var target = _state.Units.Find(u => u.Patrol == "" && u.Q == tile.Value.Q && u.R == tile.Value.R);
-        var obj = map.Objects.FirstOrDefault(o => o.Q == tile.Value.Q && o.R == tile.Value.R);
+        var obj = FleetTerrain.Objects(_content, _state).FirstOrDefault(o => o.Q == tile.Value.Q && o.R == tile.Value.R);
         if (obj != null && target == null && (_selected == "" || _content.Objects[obj.Definition].BlocksMovement)) { InspectObject(obj); return; }
         if (target != null && (target.Side == LocalCommandSide || string.IsNullOrEmpty(_selected))) { SelectUnit(target.Id); return; }
         if (string.IsNullOrEmpty(_selected)) return;

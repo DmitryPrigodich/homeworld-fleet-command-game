@@ -2,6 +2,8 @@ using System.Text.Json;
 using FleetCommand.Core;
 using FleetCommand.Import;
 
+try
+{
 var root = Path.GetFullPath(args.Length > 1 ? args[1] : ".");
 if (args.FirstOrDefault() == "scenarios")
 {
@@ -141,3 +143,10 @@ Reject(() => ContentCatalog.Load([temporary]), "unknown JSON properties rejected
 File.WriteAllBytes(Path.Combine(temporary, "invalid.big"), new byte[180]);
 Reject(() => { using var archive = new BigArchive(Path.Combine(temporary, "invalid.big")); }, "unsupported archives rejected");
 Console.WriteLine($"{checks} checks passed.");
+
+}
+catch (Exception error)
+{
+    Console.Error.WriteLine(error);
+    Environment.ExitCode = 1;
+}

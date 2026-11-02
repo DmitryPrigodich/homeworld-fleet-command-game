@@ -8,8 +8,8 @@ public sealed record UnitActions(Hex[] MoveCells, string[] AttackTargets)
 // Shared geometry for command validation and read-only action previews.
 internal static class SkirmishGeometry
 {
-    public static bool Blocked(ContentCatalog content, MapDefinition map, Hex hex) =>
-        map.Objects.Any(o => o.Q == hex.Q && o.R == hex.R && content.Objects[o.Definition].BlocksMovement);
+    public static bool Blocked(ContentCatalog content, MapDefinition map, Hex hex, BattleState? state = null) =>
+        map.Objects.Where((_, i) => state == null || FleetTerrain.Visible(content, state, i)).Any(o => o.Q == hex.Q && o.R == hex.R && content.Objects[o.Definition].BlocksMovement);
 
     public static HashSet<Hex> Movement(ContentCatalog content, BattleState state, BattleUnit unit)
         => FleetRuleTools.Enabled(content, state) ? FleetMovement.Destinations(content, state, unit).ToHashSet() : MovementPaths(content, state, unit, out _);
@@ -42,9 +42,9 @@ internal static class SkirmishGeometry
             for (int direction = 0; direction < 6; direction++)
             {
                 var next = hex.Neighbor(direction);
-                if (!Inside(next) || Blocked(content, map, next)
+                if (!Inside(next) || Blocked(content, map, next, state)
                     || occupied.TryGetValue(next, out var other) && (other.Hulk || other.Side != unit.Side || !rules.FriendlyPassThrough)) continue;
-                int moveCost = map.Objects.Where(o => o.Q == next.Q && o.R == next.R).Select(o => content.Objects[o.Definition].MoveCost).DefaultIfEmpty(1).Max();
+                int moveCost = FleetTerrain.Objects(content, state).Where(o => o.Q == next.Q && o.R == next.R).Select(o => content.Objects[o.Definition].MoveCost).DefaultIfEmpty(1).Max();
                 int total = cost + moveCost;
                 if (total > allowance || best.TryGetValue(next, out int old) && old <= total) continue;
                 best[next] = total; previous[next] = hex; queue.Enqueue(next, (total, next.Q, next.R));
@@ -78,9 +78,9 @@ internal static class SkirmishGeometry
             {
                 var next = h.Neighbor(direction);
                 if (!Inside(next) || next.Distance(end) != h.Distance(end) - 1) continue;
-                if (Blocked(content, map, next)) return memo[h] = 100000;
+                if (Blocked(content, map, next, state)) return memo[h] = 100000;
                 int penalty = next == end ? 0 : state.Units.Any(u => u.Patrol == "" && u.Q == next.Q && u.R == next.R) ? 1 : 0;
-                penalty += map.Objects.Where(o => o.Q == next.Q && o.R == next.R && (!ignoreNebula || content.Objects[o.Definition].Kind != "nebula")).Sum(o => content.Objects[o.Definition].AttackPenalty);
+                penalty += FleetTerrain.Objects(content, state).Where(o => o.Q == next.Q && o.R == next.R && (!ignoreNebula || content.Objects[o.Definition].Kind != "nebula")).Sum(o => content.Objects[o.Definition].AttackPenalty);
                 worst = Math.Max(worst, penalty + Cover(next));
             }
             return memo[h] = worst;

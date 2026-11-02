@@ -10,12 +10,15 @@ public static class BasicCardBattle
 {
     public const string MapId = "practice:cards";
     public const string TabletopMapId = "practice:rules";
+    public const string TerrainMapId = "practice:hazards";
     public static void Register(ContentCatalog c)
     {
         c.Rules["practice:cards"] = new("practice:cards", "Basic card practice", "cards-basic-v1", OrdersPerSide: 1, RearShots: false);
         c.Maps[MapId] = c.Maps["core:training"] with { Id = MapId, Name = "Учебный бой с картами", Rules = "practice:cards" };
         c.Rules[TabletopMapId] = new(TabletopMapId, "Rulebook mechanics", "cards-basic-v1", OrdersPerSide: 1, Tabletop: true);
         c.Maps[TabletopMapId] = c.Maps["core:training"] with { Id = TabletopMapId, Name = "Бой по правилам / разработка", Rules = TabletopMapId };
+        c.Objects["practice:mines"] = new("practice:mines", "Минное поле", Kind: "mine", Color: "#9a8782");
+        c.Maps[TerrainMapId] = c.Maps[TabletopMapId] with { Id = TerrainMapId, Name = "Мины и астероиды", Objects = [new("practice:mines", 3, 2), new("core:asteroids", 4, 2), new("core:asteroids", 3, 3), new("core:planet", 5, 3)] };
     }
 }
 
@@ -49,7 +52,7 @@ public sealed class BasicCardRules : IRuleModule
         return state with { RandomState = random, Cards = new(deck.ToArray(), hands[0].ToArray(), hands[1].ToArray(), discard.ToArray(), HandLimit0: cards.HandLimit0, HandLimit1: cards.HandLimit1, PlayLimit0: cards.PlayLimit0, PlayLimit1: cards.PlayLimit1) };
     }
     public UnitActions GetActions(ContentCatalog c, BattleState state, int side, string unitId) =>
-        state.Combat != null || state.Defense != null || state.CapEntry != null || state.Overrun != null || state.Repairs is { Length: > 0 } ? UnitActions.Empty :
+        state.Hazard != null || state.Hazards is { Length: > 0 } || state.Combat != null || state.Defense != null || state.CapEntry != null || state.Overrun != null || state.Repairs is { Length: > 0 } ? UnitActions.Empty :
         state.Cards?.Response != null ? InterruptRules.Actions(c, state, side, unitId) :
         state.Cards?.Pending != null ? SpecialOrders.Actions(c, state, side, unitId) :
         state.Cards is { Phase: "orders" } cards && (side == 0 ? cards.Hand0 : cards.Hand1).Length > 0

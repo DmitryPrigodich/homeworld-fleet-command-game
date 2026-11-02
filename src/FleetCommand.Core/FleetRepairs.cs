@@ -20,6 +20,8 @@ public static class FleetRepairs
         var queue = left == 0 ? s.Repairs.Skip(1).ToArray() : new[] { pending with { Successes = left } }.Concat(s.Repairs.Skip(1)).ToArray();
         var next = s with { Units = s.Units.Select(u => u.Id == unit.Id ? unit : u).ToList(), Repairs = queue.Length == 0 ? null : queue, Sequence = s.Sequence + 1 };
         string message = cmd.Kind == "repair-stop" ? "Оставшиеся успехи ремонта пропущены." : "Damage Control: снят " + cmd.Repair + ".";
+        if (queue.Length == 0 && next.Hazards is { Length: > 0 }) return FleetTerrain.StartQueued(c, s, next, message);
+        if (queue.Length == 0 && next.Cards?.Pending?.Deferred != null) return FleetTransfers.Complete(c, s, next, message);
         return queue.Length == 0 && pending.Advance ? SpecialOrders.Advance(c, s, next, side, message) : new(true, message, next);
     }
     internal static void Validate(BattleState s)

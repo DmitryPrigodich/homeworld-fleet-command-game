@@ -69,3 +69,9 @@ A campaign is a graph of mission IDs. Each mission chooses a map and victory/def
 Data comes first: stats, force definitions, terrain properties, setup, palette and campaign transitions. New mechanics are ordinary C# implementations of `IRuleModule`, registered with `BattleEngine`; loading arbitrary external assemblies is not enabled. There is no new scripting language, universal visual rule editor or general-purpose plugin bus in the initial implementation.
 
 Rendering uses placeholder cubes. Ship visual size and optional color are data, independent of stats and future asset IDs. The interface palette comes from a selected theme; action hints use semantic green/red. Current map backgrounds are procedural and can override the clear color with a hex color string.
+
+## Terrain continuations
+
+`FleetTerrain` queues public `HazardJob` entries for paid activation or movement entry. Repairs finish first; `PendingHazard` then uses a generated terrain combat profile and the existing defense, CAP and post-roll machinery. These profiles are derived at runtime from object data and are never physical units. `Mines` stores only changed token counts by map-object index; an absent entry means five mines, zero means removed. Rendering, cover and movement all enumerate surviving objects.
+
+The queue retains the exact continuation (`order`, `response-start`, `movement`), so multiple actors and terrain features finish before one original action resumes. Defensive-fire mine reductions are deferred until the pending terrain attack resolves. Simultaneous CAP rolls keep their original pools. `PendingResponse.Transit` records an occupied allied cell separately from the unit's last vacant cell. `PendingOrder.Deferred` retains crew/leader transfers until repair and terrain complete. All these stages are public save/network state; hands and authoritative RNG remain redacted. The terrain protocol signature rejects earlier binaries.

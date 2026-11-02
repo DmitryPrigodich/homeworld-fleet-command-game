@@ -41,6 +41,7 @@ public partial class Main
         Button(box, "КАМПАНИИ", CampaignMenu);
         Button(box, "УЧЕБНЫЙ БОЙ С КАРТАМИ", StartCardBattle);
         Button(box, "ПРАВИЛА / РЕЖИМ РАЗРАБОТКИ", () => { StartBattle(BasicCardBattle.TabletopMapId, true); QueueBot(); });
+        Button(box, "МИНЫ И АСТЕРОИДЫ", () => { StartBattle(BasicCardBattle.TerrainMapId, true); QueueBot(); });
         Button(box, "СКИРМИШ / ГЕНЕРАТОР", GeneratorMenu);
         Button(box, "ПРОДОЛЖИТЬ СКИРМИШ", () => LoadGame(false), !System.IO.File.Exists(SavePath(false)));
         Button(box, "НАЗАД", MainMenu);

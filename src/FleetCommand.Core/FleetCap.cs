@@ -16,14 +16,14 @@ public static class FleetCap
         var next = s with { Units = s.Units.Select(u => u.Id == unit.Id ? u with { CapUsed = true, Activated = true } : u).ToList(),
             Cards = s.Cards! with { Hand0 = s.Cards.Hand0.Where(id => id != command.Card).ToArray(), Hand1 = s.Cards.Hand1.Where(id => id != command.Card).ToArray(), Discard = s.Cards.Discard.Append(command.Card).ToArray() },
             Defense = frame with { Patroller = unit.Id, CapActive = true } };
-        unit = next.Units.Single(u => u.Id == unit.Id); var attacker = next.Units.Single(u => u.Id == frame.Attack.Unit);
+        unit = next.Units.Single(u => u.Id == unit.Id); var attacker = FleetTerrain.Find(next, frame.Attack.Unit)!;
         CommandResult result;
-        if (frame.Threat == "fighter")
+        if (FleetTerrain.Exchange(frame.Threat))
         {
             var incomingWeapon = FleetWeapons.Select(c, s, attacker, s.Units.Single(u => u.Id == frame.Attack.Target), frame.Attack.Weapon)!;
             uint random = next.RandomState;
             var cap = FleetCombat.PrepareReaction(c, next, unit, attacker, weapon, "cap", ref random);
-            var incoming = FleetCombat.PrepareReaction(c, next, attacker, unit, incomingWeapon, "dogfight", ref random);
+            var incoming = FleetCombat.PrepareReaction(c, next, attacker, unit, incomingWeapon, next.Hazard == null ? "dogfight" : "terrain-dogfight", ref random);
             next = next with { RandomState = random, Defense = next.Defense! with { PreparedIncoming = incoming } };
             result = FleetCombat.ReactionStart(c, next, cap);
         }
@@ -33,7 +33,7 @@ public static class FleetCap
     internal static CommandResult RecordVolley(ContentCatalog c, BattleState s, int successes)
     {
         var frame = s.Defense!; var combat = s.Combat!;
-        if (frame.Threat == "fighter")
+        if (FleetTerrain.Exchange(frame.Threat))
         {
             var stored = combat with { Ghost = FleetCombat.Actor(s, combat) };
             return new(true, "Бросок воздушного боя подтверждён; потери будут применены одновременно.", s with { Combat = null, Defense = combat.Kind == "cap" ? frame with { CapVolley = stored } : frame with { IncomingVolley = stored } });
@@ -44,20 +44,28 @@ public static class FleetCap
     internal static CommandResult AfterVolley(ContentCatalog c, BattleState before, CommandResult result)
     {
         var next = result.State; var frame = next.Defense!; string message = result.Message;
-        if (frame.Threat == "fighter")
+        if (FleetTerrain.Exchange(frame.Threat))
         {
             if (frame.IncomingVolley == null)
             {
                 var incoming = FleetCombat.ReactionStart(c, next, frame.PreparedIncoming!);
                 return incoming.State.Combat != null ? incoming with { State = incoming.State with { Sequence = before.Sequence + 1 } } : AfterVolley(c, before, incoming);
             }
-            var cap = FleetCombat.ReactionDamage(c, next, frame.CapVolley!); var response = FleetCombat.ReactionDamage(c, cap.State, frame.IncomingVolley);
-            next = response.State; message = cap.Message + " " + response.Message;
+            if (next.Hazard != null)
+            {
+                var exchange = FleetTerrain.CapExchange(c, next, frame); next = exchange.State; message = exchange.Message;
+                frame = next.Defense!;
+            }
+            else
+            {
+                var cap = FleetCombat.ReactionDamage(c, next, frame.CapVolley!); var response = FleetCombat.ReactionDamage(c, cap.State, frame.IncomingVolley);
+                next = response.State; message = cap.Message + " " + response.Message;
+            }
         }
         frame = frame with { CapActive = false, CapComplete = true, CapVolley = null, IncomingVolley = null, PreparedIncoming = null };
         next = next with { Defense = frame };
-        var attacker = next.Units.Find(u => u.Id == frame.Attack.Unit);
-        if (attacker is { Hulk: false } && FleetDefense.Weapons(c, next.Units.Single(u => u.Id == frame.Attack.Target)).Length > 0)
+        var attacker = FleetTerrain.Find(next, frame.Attack.Unit);
+        if (attacker is { Hulk: false, Models: > 0 } && FleetDefense.Weapons(c, next.Units.Single(u => u.Id == frame.Attack.Target)).Length > 0)
             return new(true, message + " CAP завершён. Можно применить защитный огонь корабля.", next with { Sequence = before.Sequence + 1 });
         return FleetDefense.Resume(c, before, next with { Defense = null }, frame, message);
     }
@@ -65,7 +73,7 @@ public static class FleetCap
     {
         if (s.Defense is not { CapActive: true } frame) return false;
         string actor = volley.Kind == "cap" ? frame.Patroller : frame.Attack.Unit, target = volley.Kind == "cap" ? frame.Attack.Unit : frame.Patroller;
-        var unit = s.Units.Find(u => u.Id == actor);
+        var unit = FleetTerrain.Find(s, actor);
         return unit != null && volley.Side == unit.Side && volley.Attacker == actor && volley.Target == target && FleetWeapons.Weapons(c, c.Ships[unit.Definition]).Any(w => w.Id == volley.Weapon);
     }
     public static BattleUnit[] Hosts(ContentCatalog c, BattleState s, BattleUnit unit) => unit.Patrol != "" || FleetRuleTools.Class(c.Ships[unit.Definition]) != "fighter" ? []
@@ -76,7 +84,7 @@ public static class FleetCap
         var parent = s.Units.Find(u => u.Id == unit.Patrol); if (parent == null || parent.Activated || unit.Activated) return [];
         var map = c.Maps[s.Map];
         return Enumerable.Range(0, 6).Select(d => new Hex(parent.Q, parent.R).Neighbor(d)).Where(h => h.Q >= 0 && h.R >= 0 && h.Q < map.Width && h.R < map.Height
-            && !SkirmishGeometry.Blocked(c, map, h) && !s.Units.Any(u => u.Patrol == "" && u.Q == h.Q && u.R == h.R)).ToArray();
+            && !SkirmishGeometry.Blocked(c, map, h, s) && !s.Units.Any(u => u.Patrol == "" && u.Q == h.Q && u.R == h.R)).ToArray();
     }
     internal static CommandResult? Expand(ContentCatalog c, BattleState s, int side, BattleCommand command)
     {
@@ -129,17 +137,21 @@ public static class FleetCap
             if (defense.CapActive)
             {
                 var cap = s.Units.Find(u => u.Id == defense.Patroller && u.Patrol == defense.Attack.Target && u.CapUsed);
-                if (cap == null || defense.CapComplete || defense.Fired || defense.Threat == "fighter" != (defense.PreparedIncoming != null)
-                    || s.Combat?.Kind == "dogfight" && defense.CapVolley?.Ghost == null || s.Combat?.Kind == "cap" && defense.CapVolley != null
-                    || defense.Threat != "fighter" && (defense.CapVolley != null || s.Combat?.Kind == "dogfight") || defense.IncomingVolley != null)
+                if (cap == null || defense.CapComplete || defense.Fired || FleetTerrain.Exchange(defense.Threat) != (defense.PreparedIncoming != null)
+                    || s.Combat?.Kind is "dogfight" or "terrain-dogfight" && defense.CapVolley?.Ghost == null || s.Combat?.Kind == "cap" && defense.CapVolley != null
+                    || !FleetTerrain.Exchange(defense.Threat) && (defense.CapVolley != null || s.Combat?.Kind is "dogfight" or "terrain-dogfight") || defense.IncomingVolley != null)
                     throw new InvalidDataException("Invalid CAP interception.");
             }
             else if (defense.CapVolley != null || defense.IncomingVolley != null || defense.PreparedIncoming != null) throw new InvalidDataException("Unexpected CAP exchange rolls.");
             foreach (var volley in new[] { defense.CapVolley, defense.IncomingVolley, defense.PreparedIncoming }.Where(v => v != null))
             {
-                if (volley!.Kind is not ("cap" or "dogfight") || !ValidVolley(c, s, volley) || volley.AbilityRerolls != 0 || volley.Rolls == null || volley.Rolls.Length is < 1 or > 10000 || volley.Rolls.Any(d => d is < 1 or > 6)) throw new InvalidDataException("Invalid saved CAP volley.");
-                if (volley.Ghost is { } ghost && !s.Units.Any(u => u.Id == ghost.Id && u.Side == ghost.Side && u.Definition == ghost.Definition && u.Models == ghost.Models && u.Leader == ghost.Leader
-                    && u.CapUsed == ghost.CapUsed && u.Patrol == ghost.Patrol && u.Q == ghost.Q && u.R == ghost.R && u.FocusFire == ghost.FocusFire && u.CrewDamage == ghost.CrewDamage)) throw new InvalidDataException("Invalid CAP volley actor snapshot.");
+                if (volley!.Kind is not ("cap" or "dogfight" or "terrain-dogfight") || !ValidVolley(c, s, volley) || volley.AbilityRerolls != 0 || volley.Rolls == null || volley.Rolls.Length is < 1 or > 10000 || volley.Rolls.Any(d => d is < 1 or > 6)) throw new InvalidDataException("Invalid saved CAP volley.");
+                if (volley.Ghost is { } ghost)
+                {
+                    var snapshotActor = FleetTerrain.Find(s, ghost.Id);
+                    if (snapshotActor == null || snapshotActor.Side != ghost.Side || snapshotActor.Definition != ghost.Definition || snapshotActor.Models != ghost.Models || snapshotActor.Leader != ghost.Leader
+                        || snapshotActor.CapUsed != ghost.CapUsed || snapshotActor.Patrol != ghost.Patrol || snapshotActor.Q != ghost.Q || snapshotActor.R != ghost.R || snapshotActor.FocusFire != ghost.FocusFire || snapshotActor.CrewDamage != ghost.CrewDamage) throw new InvalidDataException("Invalid CAP volley actor snapshot.");
+                }
             }
         }
         if (s.CapEntry is not { } entry) return;

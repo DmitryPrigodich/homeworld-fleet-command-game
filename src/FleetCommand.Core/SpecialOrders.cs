@@ -1,6 +1,6 @@
 namespace FleetCommand.Core;
 
-public sealed record PendingOrder(string Card, int Side, string[] Units, int Step, int Direction = -1, string BasicAction = "");
+public sealed record PendingOrder(string Card, int Side, string[] Units, int Step, int Direction = -1, string BasicAction = "", BattleCommand? Deferred = null);
 public static class SpecialOrders
 {
     public static bool Formation(string card) => card != null && card.Length >= 6 && int.TryParse(card.AsSpan(6), out int number) && number is >= 9 and <= 16;
@@ -37,7 +37,7 @@ public static class SpecialOrders
         var map = c.Maps[state.Map]; int cost = 0;
         for (var cell = new Hex(unit.Q, unit.R).Neighbor(direction); ; cell = cell.Neighbor(direction))
         {
-            if (SkirmishGeometry.Blocked(c, map, cell) || state.Units.Any(u => u.Q == cell.Q && u.R == cell.R && (u.Side != unit.Side || !c.Rules[map.Rules].FriendlyPassThrough))) return false;
+            if (SkirmishGeometry.Blocked(c, map, cell, state) || state.Units.Any(u => u.Q == cell.Q && u.R == cell.R && (u.Side != unit.Side || !c.Rules[map.Rules].FriendlyPassThrough))) return false;
             cost += map.Objects.Where(o => o.Q == cell.Q && o.R == cell.R).Select(o => c.Objects[o.Definition].MoveCost).DefaultIfEmpty(1).Max();
             if (cell == goal) break;
         }
@@ -76,7 +76,7 @@ public static class SpecialOrders
         string message = Name(command.Card) + ": приказ начат, подразделения назначены. ";
         if (FleetRuleTools.Enabled(c, state)) for (int i = 0; i < units.Length; i++)
         { if (units[i] == "") continue; next = FleetRuleTools.DamageControl(c, next, units[i], i == 0 ? command.Repair : command.OtherRepair, out var repair); message += repair; }
-        return new(true, message, next);
+        return FleetTerrain.Activation(c, state, next, units, "order", message);
     }
     public static CommandResult BeginBasic(ContentCatalog c, BattleState state, int side, BattleCommand command)
     {
@@ -90,7 +90,7 @@ public static class SpecialOrders
             Cards = cards with { Hand0 = cards.Hand0.Where(id => id != command.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != command.Card).ToArray(),
                 Discard = cards.Discard.Append(command.Card).ToArray(), Pending = new(command.Card, side, [unit.Id], 0, BasicAction: command.Target) } };
         next = FleetRuleTools.DamageControl(c, next, unit.Id, command.Repair, out var message);
-        return new(true, "Базовый приказ начат. " + message, next);
+        return FleetTerrain.Activation(c, state, next, [unit.Id], "order", "Базовый приказ начат. " + message);
     }
     public static CommandResult Apply(ContentCatalog c, BattleState state, int side, BattleCommand command)
     {
@@ -139,6 +139,6 @@ public static class SpecialOrders
             || order.Units.Any(id => state.Units.Any(u => u.Id == id && (u.Side != order.Side || !u.Activated)))
             || order.Step < 0 || order.Step >= Steps(order) || order.Direction is < -1 or > 5 || !state.Cards.Discard.Contains(order.Card))
             throw new InvalidDataException("Invalid pending special order.");
-        if (!state.Units.Any(u => u.Id == Actor(order))) throw new InvalidDataException("Pending actor is missing.");
+        if (!state.Units.Any(u => u.Id == Actor(order)) && state.Hazards is not { Length: > 0 }) throw new InvalidDataException("Pending actor is missing.");
     }
 }
