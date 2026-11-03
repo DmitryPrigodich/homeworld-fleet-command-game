@@ -62,6 +62,8 @@ public static class FleetCap
                 next = response.State; message = cap.Message + " " + response.Message;
             }
         }
+        next = FleetClose.Outcome(next, c);
+        if (next.Finished && FleetObjectives.Enabled(c, next)) return new(true, message, FleetObjectives.Close(next) with { Sequence = before.Sequence + 1 });
         frame = frame with { CapActive = false, CapComplete = true, CapVolley = null, IncomingVolley = null, PreparedIncoming = null };
         next = next with { Defense = frame };
         var attacker = FleetTerrain.Find(next, frame.Attack.Unit);

@@ -52,6 +52,7 @@ public partial class Main : Node3D
             if (_args.Contains("--smoke-defense")) ConfigureDefenseContent();
             if (_args.Contains("--smoke-cap")) ConfigureCapContent();
             if (_args.Contains("--smoke-terrain")) ConfigureTerrainContent();
+            if (_args.Contains("--smoke-objectives")) ConfigureObjectiveContent();
             if (_args.Contains("--capture-battle")) StartBattle("core:training", false);
             if (_args.Contains("--capture-generator")) GeneratorMenu();
             if (_args.Contains("--capture-tutorial")) StartTutorial();
@@ -62,12 +63,13 @@ public partial class Main : Node3D
             {
                 bool coop = _args.Contains("--smoke-coop");
                 if (coop) _campaign = FleetCommand.Core.Campaign.Start(_content, "core:patrol", ["host"]);
-                StartBattle(_args.Contains("--smoke-logistics") ? BasicCardBattle.LogisticsMapId : _args.Contains("--smoke-economy") ? BasicCardBattle.EconomyMapId : _args.Contains("--smoke-terrain") ? TerrainCheckMap : _args.Contains("--smoke-tabletop") || _args.Contains("--smoke-defense") || _args.Contains("--smoke-cap") ? BasicCardBattle.TabletopMapId : _args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop);
+                StartBattle(_args.Contains("--smoke-objectives") ? BasicCardBattle.ObjectivesMapId : _args.Contains("--smoke-logistics") ? BasicCardBattle.LogisticsMapId : _args.Contains("--smoke-economy") ? BasicCardBattle.EconomyMapId : _args.Contains("--smoke-terrain") ? TerrainCheckMap : _args.Contains("--smoke-tabletop") || _args.Contains("--smoke-defense") || _args.Contains("--smoke-cap") ? BasicCardBattle.TabletopMapId : _args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop);
                 if (_args.Contains("--smoke-defense")) ConfigureDefenseBattle();
                 if (_args.Contains("--smoke-cap")) ConfigureCapBattle();
                 if (_args.Contains("--smoke-terrain")) ConfigureTerrainBattle();
                 if (_args.Contains("--smoke-economy")) ConfigureEconomyBattle();
                 if (_args.Contains("--smoke-logistics")) ConfigureLogisticsBattle();
+                if (_args.Contains("--smoke-objectives")) { ConfigureObjectiveBattle(); _campaign = FleetCommand.Core.Campaign.Start(_content, "practice:objectives", ["host", "friend"]); }
                 if (_args.Contains("--smoke-special"))
                 {
                     var deck = _state!.Cards!.Deck.Concat(_state.Cards.Hand0).Concat(_state.Cards.Hand1).ToArray();
@@ -196,6 +198,7 @@ public partial class Main : Node3D
         if (_frames == 5 && _args.Contains("--check-close")) _ = CheckCloseCombat();
         if (_frames == 5 && _args.Contains("--check-defense")) _ = CheckDefense();
         if (_frames == 5 && _args.Contains("--check-cap")) _ = CheckCap();
+        if (_frames == 5 && _args.Contains("--check-objectives")) _ = CheckObjectives();
         if (_frames == 5 && _args.Contains("--check-logistics")) _ = CheckLogistics();
         if (_frames == 5 && _args.Contains("--check-economy")) _ = CheckEconomy();
         if (_frames == 5 && _args.Contains("--check-terrain")) _ = CheckTerrain();

@@ -10,17 +10,19 @@ public static class FleetClose
         var ship = c.Ships[unit.Definition];
         return kind == "board" ? ship.Crew > 0 : ship.Ram > 0 && (FleetRuleTools.Class(ship) == "fighter" || new Hex(unit.Q, unit.R).Neighbor(unit.Facing) == new Hex(target.Q, target.R));
     }
-    public static bool CaptureAllowed(ContentCatalog c, BattleState s, BattleUnit target) => (c.Maps[s.Map].CaptureTargets ?? []).Any(id => id == target.Id || id == target.Definition);
+    public static bool CaptureAllowed(ContentCatalog c, BattleState s, BattleUnit target) => (c.Maps[s.Map].CaptureTargets ?? []).Any(id => id == target.Id || id == target.Definition) || c.Maps[s.Map].Objectives?.Any(o => o.Kind == "capture" && o.Target == target.Id) == true;
     public static BattleUnit CheckHulk(ContentCatalog c, BattleUnit unit) => unit with { Hulk = FleetRuleTools.Class(c.Ships[unit.Definition]) is "capital" or "station" && unit.CrewDamage > c.Ships[unit.Definition].Armor };
     internal static BattleState Award(ContentCatalog c, BattleState s, BattleUnit destroyed, int side)
     {
         int Cost(BattleUnit unit) => c.Ships[unit.Definition].Stars + (unit.Leader == "" ? 0 : c.Leaders[unit.Leader].Stars);
         int stars = Cost(destroyed) + FleetLogistics.Children(s, destroyed.Id).Sum(Cost);
+        s = FleetObjectives.RecordLoss(c, s, destroyed, side);
         s = FleetLogistics.LoseChildren(s, destroyed.Id);
         return s with { Stars0 = s.Stars0 + (side == 0 ? stars : 0), Stars1 = s.Stars1 + (side == 1 ? stars : 0) };
     }
-    internal static BattleState Outcome(BattleState s)
+    internal static BattleState Outcome(BattleState s, ContentCatalog? c = null)
     {
+        if (c != null && FleetObjectives.Enabled(c, s)) return FleetObjectives.Check(c, s);
         bool a = FleetLogistics.HasForce(s, 0), b = FleetLogistics.HasForce(s, 1);
         return s with { Finished = !a || !b, Winner = a == b ? null : a ? 0 : 1 };
     }

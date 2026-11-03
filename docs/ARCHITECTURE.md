@@ -62,7 +62,7 @@ Round Hand/Play limits are frozen in `CardRound` and recalculated at cleanup fro
 
 ## Campaign progression
 
-A campaign is a graph of mission IDs. Each mission chooses a map and victory/defeat transitions. Loops are allowed for reversals. Progress stores completed missions, medals, unlock IDs, participants and an optional in-progress battle. The example campaign awards one prototype medal for a victory; it does not implement the board game's full reward economy.
+A campaign is a graph of mission IDs. Each mission chooses a map and victory/defeat transitions. Loops are allowed for reversals. Progress stores completed missions, medals, unlock IDs, participants and an optional in-progress battle. Legacy example maps award one prototype medal for a victory. Objective maps record actual medals for both sides and a per-mission result; full expansion purchases/rewards remain pending.
 
 ## Extension policy
 
@@ -88,4 +88,12 @@ A basic Harvest order has two steps: optional normal movement, then one deposit 
 
 A paid `PendingReinforce` owns placement decisions independently of normal unit orders: its carrier does not activate merely by launching. Deploy/build finish after one placement; a launch order remains open for further embarked units and explicit finish. Arrivals use the repair queue and terrain continuation before that frame resumes. `HazardJob.Resume = reinforce` avoids inventing a movement interrupt window for deployment. Placement previews use the same free-cell/setup-zone checks as commands. Launch counts refresh only at round cleanup.
 
-Embark commands convert to ordinary saved movement with a destination bay ID. Pathfinding reserves one movement for the final entry, observes straight/Lightning constraints and offers interrupts along the approach. The last entry moves the unit off board before order advancement, skipping any later actions assigned to it. Destruction removes embarked children with the parent's score award; the neutral-terrain branch removes them without awarding stars. Prototype force survival and turn availability include reserves so a deployable force is not eliminated solely because it is off board.
+Embark commands convert to ordinary saved movement with a destination bay ID. Pathfinding reserves one movement for the final entry, observes straight/Lightning constraints and offers interrupts along the approach. The last entry moves the unit off board before order advancement, skipping any later actions assigned to it. Destruction removes embarked children with the parent's score award; neutral terrain also awards their destroyed-star value to the opposing fleet. Prototype force survival and turn availability include reserves so a deployable force is not eliminated solely because it is off board.
+
+## Objectives and campaign results
+
+`FleetObjectives` derives medal totals from per-map objective definitions and unique claimed IDs. Capture owners and typed unit-loss records are public state. Permanent claims remain earned; reversible capture medals follow the last boarding capturer. Objective progress never reads private asteroid values. Definitions, claims, ledgers and terminal results validate on load and travel in authoritative snapshots.
+
+Combat checks objectives at resolution boundaries. Defense may end the battle before rebuilding the incoming attack; CAP waits until both simultaneous volleys apply. Harvest checks before advancing the paid order. `BattleEngine` settles the final public score, closes all decision frames on scenario completion and records medal changes in the log. Objective maps bypass prototype elimination; round expiry compares medals and destroyed stars. Legacy maps retain their prior rules.
+
+Campaign results include a hash of the finished authoritative battle, earned medals for both sides, winner and round. A client view cannot advance progress. A previously recorded result cannot be reused for another mission/attempt. Mission graph edges include an optional draw branch; co-op hosting chooses among loaded campaigns. Progress remains owned/saved by the host, with the current battle redacted inside peer campaign snapshots.

@@ -50,6 +50,7 @@ public static class FleetDefense
     }
     internal static CommandResult AfterRoll(ContentCatalog c, BattleState before, CommandResult result)
     {
+        if (result.State.Finished && FleetObjectives.Enabled(c, result.State)) return result with { State = FleetObjectives.Close(result.State) with { Sequence = before.Sequence + 1 } };
         var frame = result.State.Defense!;
         return Resume(c, before, result.State with { Defense = null }, frame, result.Message);
     }
@@ -64,7 +65,7 @@ public static class FleetDefense
         }
         var unit = next.Units.Find(u => u.Id == frame.Attack.Unit);
         if (unit == null || unit.Hulk)
-            return InterruptRules.CombatResolved(c, before, FleetClose.Outcome(next), message + " Атака остановлена защитным огнём.", frame.Interrupt);
+            return InterruptRules.CombatResolved(c, before, FleetClose.Outcome(next, c), message + " Атака остановлена защитным огнём.", frame.Interrupt);
         var attack = FleetCombat.RollAttack(c, next, frame.Side, frame.Attack, frame.Interrupt, frame.Reduction);
         if (attack.State.Combat != null || attack.State.Overrun != null)
             return attack with { Message = message + " " + attack.Message, State = attack.State with { Sequence = before.Sequence + 1 } };

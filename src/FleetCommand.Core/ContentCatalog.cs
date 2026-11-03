@@ -126,6 +126,7 @@ public sealed class ContentCatalog
                 || map.AsteroidStars.Any(n => n is < 0 or > 1000))) throw new InvalidDataException($"Invalid asteroid star bag: {map.Id}");
             if (map.ReserveFromRound < 1 || map.ReserveStars != null && (map.ReserveStars.Length != 2 || map.ReserveStars.Any(n => n is < 0 or > 1000000))
                 || map.SetupZones != null && (map.SetupZones.Length != 2 || map.SetupZones.Any(zone => zone == null || zone.Any(h => h.Q < 0 || h.R < 0 || h.Q >= map.Width || h.R >= map.Height)))) throw new InvalidDataException($"Invalid reinforcement setup: {map.Id}");
+            FleetObjectives.ValidateDefinitions(this, map);
             bool Inside(int q, int r) => q >= 0 && q < map.Width && r >= 0 && r < map.Height;
             var occupied = new HashSet<Hex>();
             foreach (var objectPlacement in map.Objects)
@@ -148,7 +149,7 @@ public sealed class ContentCatalog
             if (ids.Count != campaign.Missions.Length || !ids.Contains(campaign.Start)) throw new InvalidDataException($"Invalid campaign: {campaign.Id}");
             foreach (var mission in campaign.Missions)
                 if (!Maps.ContainsKey(mission.Map) || mission.OnVictory != null && !ids.Contains(mission.OnVictory)
-                    || mission.OnDefeat != null && !ids.Contains(mission.OnDefeat)) throw new InvalidDataException($"Invalid mission: {mission.Id}");
+                    || mission.OnDefeat != null && !ids.Contains(mission.OnDefeat) || mission.OnDraw != null && !ids.Contains(mission.OnDraw)) throw new InvalidDataException($"Invalid mission: {mission.Id}");
         }
     }
 }

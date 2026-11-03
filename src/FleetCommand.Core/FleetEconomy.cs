@@ -47,6 +47,7 @@ public static class FleetEconomy
         var deposits = new Dictionary<int, AsteroidDeposit>(s.Deposits) { [cmd.Object] = deposit with { Harvested = true } };
         var next = s with { Deposits = deposits, Units = s.Units.Select(u => u.Id == cmd.Unit ? u with { Cargo = u.Cargo + deposit.Stars } : u).ToList(),
             Harvested0 = s.Harvested0 + (side == 0 ? deposit.Stars : 0), Harvested1 = s.Harvested1 + (side == 1 ? deposit.Stars : 0) };
+        next = FleetObjectives.Check(c, next);
         return SpecialOrders.Advance(c, s, next, side, $"Добыто ресурсов: {deposit.Stars} ★. Астероиды остаются на поле.");
     }
     internal static CommandResult BeginTransfer(ContentCatalog c, BattleState s, int side, BattleCommand cmd)

@@ -100,6 +100,7 @@ public partial class Main
         Text(left, _tutorial != null ? "ОБУЧЕНИЕ" : _campaign == null ? "СКИРМИШ" : "КАМПАНИЯ", 18, _colors.Highlight);
         Text(left, _tutorial != null ? "СИНИЕ — МЫ / КРАСНЫЕ — ВРАГ" : _generation == null ? "Сценарий из данных" : $"Seed: {_generation.Seed}", 13, _colors.Muted);
         OwnerLegend(left);
+        DrawObjectives(left);
         DrawCards(left);
         var scroll = new ScrollContainer { CustomMinimumSize = new(0, _state.Cards == null ? 220 : 60), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         left.AddChild(scroll); var roster = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; scroll.AddChild(roster);
@@ -144,7 +145,7 @@ public partial class Main
         if (_interruptLesson) { Button(right, "ПОВТОРИТЬ УРОК", StartInterruptLesson); Button(right, "К ОБУЧЕНИЮ", CardGuide); }
         if (_state.Finished)
         {
-            Text(right, _state.Winner == null ? "Лимит раундов. Ничья." : $"Победа: {SideName(_state.Winner.Value)}", 18, _colors.Highlight);
+            Text(right, _state.EndReason == "" ? _state.Winner == null ? "Лимит раундов. Ничья." : $"Победа: {SideName(_state.Winner.Value)}" : FleetObjectives.ResultText(_state) + (_state.Winner == null ? "\nНичья." : $"\nПобеда: {SideName(_state.Winner.Value)}"), 18, _colors.Highlight);
             if (_campaign != null)
                 Button(right, "ДАЛЕЕ ПО КАМПАНИИ", AdvanceCampaign, _networkActive && !_isHost);
         }
@@ -329,9 +330,10 @@ public partial class Main
     }
     private void ShowCampaignEnd()
     {
-        int medals = _campaign?.Medals ?? 0; _state = null;
+        int medals = _campaign?.Medals ?? 0, opponent = _campaign?.OpponentMedals ?? 0; _state = null;
         ClearScreen(); Heading("Кампания завершена"); var box = Panel(70, 230, 560, 280);
-        Text(box, $"Демонстрационная кампания завершена.\nМедали: {medals}", 22, _colors.Highlight);
+        Text(box, $"Учебная кампания завершена.\nМедали флота: {medals}\nМедали противника: {opponent}", 22, _colors.Highlight);
+        foreach (var result in _campaign?.Results ?? []) Text(box, $"{result.Mission}: {result.Medals0}:{result.Medals1} медалей, раунд {result.Round}", 15);
         Button(box, "ГЛАВНОЕ МЕНЮ", MainMenu); MenuScene();
     }
 }

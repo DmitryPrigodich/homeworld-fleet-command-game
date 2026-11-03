@@ -137,19 +137,21 @@ public static class FleetCombat
         bool captured = capture && killed == target.Models;
         if (captured)
         {
+            next = FleetObjectives.RecordCapture(c, next, target.Id, unit.Side);
             // Retain the last ship instead of removing the unit; activation state is retained.
             survivor = survivor with { Side = unit.Side, Models = 1, CrewDamage = Math.Min(survivor.CrewDamage, defender.Armor) };
             next = next with { Units = next.Units.Select(u => u.Id == unit.Id ? FleetClose.CheckHulk(c, u with { CrewDamage = u.CrewDamage + 1, Effects = (u.Effects ?? []).Except(FleetRuleTools.Buffs).ToArray() }) : u).ToList() };
         }
         if (survivor.Models > 0) next.Units.Add(FleetClose.CheckHulk(c, survivor));
-        else if (combat.Kind is not ("terrain" or "terrain-dogfight") || c.Maps[s.Map].Objects[s.Hazard!.Job.Object].Owner >= 0) next = FleetClose.Award(c, next, target, combat.Side);
-        if (survivor.Models == 0) next = FleetLogistics.LoseChildren(next, target.Id);
+        else next = FleetClose.Award(c, next, target, combat.Side);
         if (combat.Kind == "terrain") next = next with { Hazard = next.Hazard! with { DamageReduction = killed > 0 || focus > 0 } };
         next = FleetCap.Sync(s, next);
         if (combat.Kind is "ranged" or "ram" or "board") next = next with { Units = next.Units.Select(u => u.Id == unit.Id ? u with { AttackWindow = FleetClose.Window(s), LastAction = combat.Kind, LastTarget = target.Id, LastActionRound = s.Round } : u).ToList() };
         bool fighterSuicide = combat.Kind == "ram" && FleetRuleTools.Class(ship) == "fighter" && successes > 0;
         if (fighterSuicide) { next = FleetClose.Award(c, next, unit, 1 - unit.Side); next = next with { Units = next.Units.Where(u => u.Id != unit.Id).ToList() }; }
         string message = $"{FleetPresentation.UnitName(c, s, unit)} → {FleetPresentation.UnitName(c, s, target)} ({combat.Kind}): [{string.Join(", ", combat.Rolls)}], броня {armor}, потери {killed}, Focus Fire +{focus}, Crew Damage +{crew}." + (captured ? " Цель захвачена." : "");
+        if (combat.Kind is not ("cap" or "dogfight" or "terrain-dogfight")) next = FleetObjectives.Check(c, next);
+        if (next.Finished) return new(true, message, next);
         if (combat.Kind is "defense" or "cap" or "dogfight" or "terrain-dogfight") return new(true, message, next);
         if (combat.Kind == "ram" && !fighterSuicide)
         {
@@ -158,7 +160,7 @@ public static class FleetCombat
             next = next with { RandomState = random, Finished = false, Winner = null, Combat = new(target.Side, target.Id, unit.Id, "collision", false, rolls, combat.Interrupt, Kind: "collision", Ghost: target) };
             var collision = WaitOrResolve(c, next); return collision with { Message = message + " " + collision.Message };
         }
-        next = FleetClose.Outcome(next);
+        next = FleetClose.Outcome(next, c);
         if (combat.Kind == "board" && survivor.Models == 0) next = FleetClose.OfferOverrun(c, next, unit, target, combat.Interrupt);
         if (combat.Kind == "collision" && combat.Ghost != null && !next.Units.Any(u => u.Id == combat.Ghost.Id)) next = FleetClose.OfferOverrun(c, next, target, combat.Ghost, combat.Interrupt);
         return new(true, message, next);
@@ -196,6 +198,7 @@ public static class FleetCombat
         return new(true, $"Переброс [{string.Join(", ", rolls)}]. Подтвердите результат.", next);
     }
     private static CommandResult Finish(ContentCatalog c, BattleState before, CommandResult result, PendingCombat combat) =>
+        result.State.Finished && FleetObjectives.Enabled(c, result.State) ? result with { State = FleetObjectives.Close(result.State) with { Sequence = before.Sequence + 1 } } :
         result.State.Combat != null || result.State.Overrun != null ? result with { State = result.State with { Sequence = before.Sequence + 1 } }
             : combat.Kind == "terrain" ? FleetTerrain.AfterDamage(c, before, result) : combat.Kind == "defense" ? FleetDefense.AfterRoll(c, before, result) : combat.Kind is "cap" or "dogfight" or "terrain-dogfight" ? FleetCap.AfterVolley(c, before, result) : InterruptRules.CombatResolved(c, before, result.State, result.Message, combat.Interrupt);
     internal static void Validate(ContentCatalog c, BattleState s)

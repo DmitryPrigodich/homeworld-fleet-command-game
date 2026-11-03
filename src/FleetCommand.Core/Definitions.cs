@@ -34,7 +34,8 @@ public sealed record ObjectDefinition(string Id, string Name, string Model = "",
 public sealed record HazardDefinition(int Dice, int Success = 5, int Penetrating = 1);
 public sealed record MapObject(string Definition, int Q, int R, int Owner = -1);
 public sealed record MapDefinition(string Id, string Name, int Width, int Height,
-    string Background, MapObject[] Objects, string[] Fleets, string Rules, string[]? CaptureTargets = null, int[]? AsteroidStars = null, int[]? ReserveStars = null, Hex[][]? SetupZones = null, int ReserveFromRound = 1);
+    string Background, MapObject[] Objects, string[] Fleets, string Rules, string[]? CaptureTargets = null, int[]? AsteroidStars = null, int[]? ReserveStars = null, Hex[][]? SetupZones = null, int ReserveFromRound = 1, ObjectiveDefinition[]? Objectives = null, int VictoryMedals = 3);
+public sealed record ObjectiveDefinition(string Id, string Name, int Side, string Kind, int Medals, int Threshold = 1, string Target = "", bool Reversible = false, string[]? Classes = null);
 public sealed record RulesDefinition(string Id, string Name, string Handler = "skirmish-v1",
     int RoundLimit = 12, int OrdersPerSide = 3, bool AlternatingOrders = true,
     bool FriendlyPassThrough = true, bool RearShots = true, bool FocusFire = true, bool Tabletop = false);
@@ -44,7 +45,7 @@ public sealed record ContentPack(ShipDefinition[]? Ships = null, AbilityDefiniti
     CampaignDefinition[]? Campaigns = null, LeaderDefinition[]? Leaders = null);
 public sealed record ThemeDefinition(string Id, string Name, string Background, string Panel,
     string Text, string Muted, string Accent, string Highlight, string Enemy, string Grid);
-public sealed record CampaignMission(string Id, string Name, string Map, string? OnVictory = null, string? OnDefeat = null);
+public sealed record CampaignMission(string Id, string Name, string Map, string? OnVictory = null, string? OnDefeat = null, string? OnDraw = null);
 public sealed record CampaignDefinition(string Id, string Name, string Start, CampaignMission[] Missions);
 
 public readonly record struct Hex(int Q, int R)

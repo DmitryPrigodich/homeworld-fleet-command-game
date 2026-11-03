@@ -12,7 +12,7 @@ public static class BattleLog
         void Add(int round, int actor, string text) => entries.Add(new((entries.LastOrDefault()?.Number ?? -1) + 1, round, actor, text));
         Add(before.Round, side, message);
         if (after.Finished)
-            Add(after.Round, after.Winner ?? -1, after.Winner == null ? "Бой завершён: лимит раундов, ничья." : "Победа. Бой завершён.");
+            Add(after.Round, after.Winner ?? -1, after.EndReason != "" ? FleetObjectives.ResultText(after) + (after.Winner == null ? " Ничья." : " Победа.") : after.Winner == null ? "Бой завершён: лимит раундов, ничья." : "Победа. Бой завершён.");
         else
         {
             if (after.Round != before.Round) Add(after.Round, -1, $"Начался раунд {after.Round}. Подразделения снова готовы к приказам.");

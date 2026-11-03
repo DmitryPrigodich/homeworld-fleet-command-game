@@ -33,7 +33,8 @@
 - [x] Hidden asteroid bags, private Survey, free-move Harvest, cargo/loss and bidirectional resource transfers.
 - [x] Bays, saved embark paths, reserves, Reinforce placement and factory production from cargo/reserve funds.
 - [ ] Colored force-building tabs, published reserve exceptions and scenario setup.
-- [ ] Scenario objectives, medals, heroes/upgrades and campaign purchases.
+- [x] Data-defined capture/recapture, destruction and harvest medals, immediate/round-limit results and actual campaign medal history.
+- [ ] Escort/artifact/event objectives, published scenario exceptions, heroes/upgrades and campaign purchases.
 - [ ] Actual book campaigns as separate data packs after card coverage is complete.
 
 ## Content and multiplayer

@@ -14,24 +14,30 @@ public partial class Main
     private int _terrainNetworkStep;
     private int _economyNetworkStep;
     private int _logisticsNetworkStep;
+    private int _objectiveNetworkStep;
     private int LocalCommandSide => _networkActive ? _localSide : _bot || _tutorial != null ? 0 : _state?.CapEntry is { } entry ? entry.Side : _state?.Overrun is { } overrun ? overrun.Side : _state?.Repairs is { Length: > 0 } ? _state.Repairs[0].Side : _state?.Combat is { } combat ? FleetCombat.DecisionSide(combat) : _state?.Defense is { } defense ? 1 - defense.Side : _state?.Cards?.Response is { } pause ? 1 - pause.Side
         : _state?.Cards is { Phase: "initiative" or "cleanup" } phase ? phase.Ready0 ? 1 : 0 : _state?.ActiveSide ?? 0;
     private readonly Dictionary<long, int> _sideByPeer = [];
     private void NetworkMenu()
     {
-        ClearScreen(); Heading("Совместная игра"); var box = Panel(70, 200, 640, 570);
+        ClearScreen(); Heading("Совместная игра"); var outer = Panel(70, 175, 720, 640);
+        var scroll = new ScrollContainer { CustomMinimumSize = new(0, 600), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled }; outer.AddChild(scroll);
+        var box = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; box.AddThemeConstantOverride("separation", 10); scroll.AddChild(box);
         var cooperative = new CheckBox { Text = "Кооператив: общий синий флот против AI", ButtonPressed = true }; box.AddChild(cooperative);
         var cardMode = new CheckBox { Text = "Учебный бой с картами" }; box.AddChild(cardMode);
+        var objectives = new CheckBox { Text = "Цели и медали (учебная карта)" }; box.AddChild(objectives);
         var logistics = new CheckBox { Text = "Ангары и подкрепления (учебная карта)" }; box.AddChild(logistics);
         var economy = new CheckBox { Text = "Разведка и добыча (учебная карта)" }; box.AddChild(economy);
         var tabletop = new CheckBox { Text = "Механики правил (режим разработки)" }; box.AddChild(tabletop);
         var address = new LineEdit { Text = "127.0.0.1", PlaceholderText = "Адрес хоста", CustomMinimumSize = new(0, 40) }; box.AddChild(address);
         Text(box, "Прототип: прямое подключение ENet, UDP-порт 24560. Комнаты по приглашению и relay — следующий этап.", 15, _colors.Muted);
-        Button(box, "СОЗДАТЬ СКИРМИШ", () => { StartBattle(logistics.ButtonPressed ? BasicCardBattle.LogisticsMapId : economy.ButtonPressed ? BasicCardBattle.EconomyMapId : tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
+        Button(box, "СОЗДАТЬ СКИРМИШ", () => { StartBattle(objectives.ButtonPressed ? BasicCardBattle.ObjectivesMapId : logistics.ButtonPressed ? BasicCardBattle.LogisticsMapId : economy.ButtonPressed ? BasicCardBattle.EconomyMapId : tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
+        var campaignChoices = _content.Campaigns.Values.ToArray(); var campaignPicker = new OptionButton(); foreach (var definition in campaignChoices) campaignPicker.AddItem("Кампания: " + definition.Name); box.AddChild(campaignPicker);
         Button(box, "СОЗДАТЬ КООП-КАМПАНИЮ", () =>
         {
-            _campaign = FleetCommand.Core.Campaign.Start(_content, "core:patrol", ["host"]);
-            StartBattle("core:training", true, preserveCampaign: true); StartNetwork(true, address.Text, 24560, true);
+            var campaign = campaignChoices[campaignPicker.Selected];
+            _campaign = FleetCommand.Core.Campaign.Start(_content, campaign.Id, ["host"]);
+            StartBattle(campaign.Missions.Single(m => m.Id == campaign.Start).Map, true, preserveCampaign: true); StartNetwork(true, address.Text, 24560, true);
         });
         Button(box, "ПРОДОЛЖИТЬ КООП-КАМПАНИЮ", () => { LoadGame(true); StartNetwork(true, address.Text, 24560, true); }, !System.IO.File.Exists(SavePath(true)));
         Button(box, "ПОДКЛЮЧИТЬСЯ", () => { StartBattle("core:training", false, persist: false); StartNetwork(false, address.Text, 24560, cooperative.ButtonPressed); });
@@ -48,7 +54,7 @@ public partial class Main
         if (host) InitializeCommanders();
         if (!_networkSignalsBound)
         {
-            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-logistics-v1:" + _content.Fingerprint,
+            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-objectives-v1:" + _content.Fingerprint,
                 JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
             Multiplayer.ConnectionFailed += () => { _status = "Не удалось подключиться."; StopNetwork(); DrawBattle(); };
             Multiplayer.ServerDisconnected += () => { _status = "Хост отключился. Продолжение — из сохранения у хоста."; StopNetwork(); DrawBattle(); };
@@ -69,7 +75,7 @@ public partial class Main
     {
         if (!_networkActive || !_isHost) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (fingerprint != "fleet-logistics-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        if (fingerprint != "fleet-objectives-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
         PlayerProfile profile;
         try { profile = FleetPresentation.Normalize(JsonSerializer.Deserialize<PlayerProfile>(profileJson, JsonData.Options)); }
         catch (JsonException) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
@@ -83,7 +89,7 @@ public partial class Main
         }
         if (_campaign != null) _campaign = _campaign with { Participants = (_campaign.Participants ?? []).Append("peer-" + sender).Distinct().ToArray() };
         DrawBattle(); Broadcast(); SaveGame();
-        if (_args.Contains("--smoke-terrain") || _args.Contains("--smoke-economy") || _args.Contains("--smoke-logistics")) return;
+        if (_args.Contains("--smoke-terrain") || _args.Contains("--smoke-economy") || _args.Contains("--smoke-logistics") || _args.Contains("--smoke-objectives")) return;
         if (_args.Contains("--smoke-cap"))
         {
             ApplyCommand(0, new("attack", "s0-0", "s1-5", Card: "order-01"));
@@ -126,6 +132,24 @@ public partial class Main
         {
             var command = JsonSerializer.Deserialize<BattleCommand>(json, JsonData.Options);
             if (command != null && !ApplyCommand(side, command)) RpcId(Multiplayer.GetRemoteSenderId(), nameof(ReceiveCommandFeedback), _status);
+            if (_args.Contains("--smoke-objectives"))
+            {
+                if (command?.Kind == "attack")
+                {
+                    var saved = JsonData.Read<SavedGame>(SavePath(true)); _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
+                    if (_state.Combat?.Kind != "board" || !FleetCombat.CanCapture(_content, _state) || _state.Medals1 != 0) throw new InvalidDataException("Objective capture decision was not restored.");
+                    GD.Print("OBJECTIVE_CAPTURE_NETWORK_RESUMED"); Broadcast();
+                }
+                if (command?.Kind == "capture-result")
+                {
+                    if (!_state.Finished || _state.Medals1 != 3 || _state.Winner != 1) throw new InvalidDataException("Objective victory was not settled.");
+                    _campaign = FleetCommand.Core.Campaign.CompleteMission(_content, _campaign!, _state); SaveGame();
+                    var saved = JsonData.Read<SavedGame>(SavePath(true)); _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options)); _campaign = saved.Campaign;
+                    if (_campaign?.OpponentMedals != 3 || _campaign.Results?.Length != 1) throw new InvalidDataException("Campaign medal history was not restored.");
+                    GD.Print("OBJECTIVE_CAMPAIGN_NETWORK_RESUMED"); Broadcast(); GD.Print("OBJECTIVE_NETWORK_OK"); GetTree().CreateTimer(0.5).Timeout += () => GetTree().Quit();
+                }
+                return;
+            }
             if (_args.Contains("--smoke-logistics"))
             {
                 if (command?.Kind is "launch" or "build" or "deploy")
@@ -297,6 +321,17 @@ public partial class Main
             {
                 if (_state.Cards is not { IsView: true } cards || cards.Deck.Length != 0 || cards.Hand0.Length != 0 || _state.RandomState != 1)
                     throw new InvalidDataException("Private card state leaked over ENet.");
+                if (_args.Contains("--smoke-objectives"))
+                {
+                    if (_objectiveNetworkStep == 2 && _state.Finished && _state.Winner == 1 && _state.Medals1 == 3 && _state.EndReason == "medals" && _campaign?.OpponentMedals == 3 && _campaign.Results is { Length: 1 })
+                    {
+                        if (_campaign.Battle?.Cards is not { IsView: true, Deck.Length: 0 } || _campaign.Battle.RandomState != 1) throw new InvalidDataException("Campaign objective snapshot leaked authority.");
+                        GD.Print("OBJECTIVE_NETWORK_OK"); GetTree().Quit(); return;
+                    }
+                    if (_objectiveNetworkStep == 0 && cards.Phase == "orders" && _state.ActiveSide == 1) { _objectiveNetworkStep = 1; _attackKindChoice = "board"; Submit(new("attack", "s1-3", "s1-6", Card: "order-21", AttackKind: "board")); }
+                    else if (_objectiveNetworkStep == 1 && _state.Combat?.Kind == "board") { _objectiveNetworkStep = 2; Submit(new("capture-result")); }
+                    return;
+                }
                 if (_args.Contains("--smoke-logistics"))
                 {
                     if (_logisticsNetworkStep == 7 && _state.Round == 2 && cards.Phase == "cleanup" && _state.Units.Any(u => u.Id == "s1-8" && u.Q == 9 && u.R == 0) && _state.Units.Single(u => u.Id == "s1-5") is { Cargo: 5, Launches: 0 } && _state.Funds1 == 2 && FleetLogistics.Children(_state, "s1-5").Length == 2)

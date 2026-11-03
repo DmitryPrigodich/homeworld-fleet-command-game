@@ -144,12 +144,12 @@ internal static class LogisticsScenarios
             s.Check(s.S.Hazard?.Job.Resume == "reinforce" && s.S.Cards!.Response == null && s.S.Reinforce?.Mode == "deploy", "Arrival terrain lost the paid reinforcement continuation");
             s.Do(0, new("ability-reroll", Dice: [])); s.Check(s.S.Reinforce == null && s.S.Units.Single(u => u.Id == Reserve).Activated && s.S.Orders0 == 1, "Terrain failed to finish the arriving unit's original order");
         });
-        Case("logistics-neutral-terrain-removes-parent-and-bays-without-credit", s =>
+        Case("logistics-neutral-terrain-awards-enemy-parent-and-bay-stars", s =>
         {
             s.C.Maps[s.S.Map] = s.C.Maps[s.S.Map] with { Objects = [new("core:asteroids", 1, 3)] };
             s.SetCarrier(ship => ship with { Armor = 0, Evasive = 1, Weapons = [] });
             s.Do(0, new("begin-order", Parent, "move", Card: "order-01")); s.Do(0, new("ability-reroll", Dice: []));
-            s.Check(!s.S.Units.Any(u => u.Id == Parent) && FleetLogistics.Children(s.S, Parent).Length == 0 && s.S.Stars1 == 0, "Neutral terrain left orphaned bays or awarded destroyed-star credit");
+            s.Check(!s.S.Units.Any(u => u.Id == Parent) && FleetLogistics.Children(s.S, Parent).Length == 0 && s.S.Stars1 == 9, "Neutral terrain left orphaned bays or failed to award parent/embarked stars to the enemy");
         });
         Case("logistics-arriving-leader-changes-budgets-next-round", s =>
         {

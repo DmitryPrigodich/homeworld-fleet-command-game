@@ -10,6 +10,7 @@ public static class BasicCardBattle
 {
     public const string MapId = "practice:cards";
     public const string TabletopMapId = "practice:rules";
+    public const string ObjectivesMapId = "practice:objectives";
     public const string LogisticsMapId = "practice:logistics";
     public const string EconomyMapId = "practice:economy";
     public const string TerrainMapId = "practice:hazards";
@@ -41,6 +42,21 @@ public static class BasicCardBattle
             c.Fleets[fleet] = new(fleet, "Учебные подкрепления", [new(carrier, q, 3, facing, Cargo: 6), new(wing, -1, -1, EmbarkedOn: 0), new(wing, -1, -1, EmbarkedOn: 0), new(frigate, -1, -1, facing, Reserve: true), new(wing, q + (facing == 0 ? 1 : -1), 3, facing)]);
         }
         c.Maps[LogisticsMapId] = c.Maps[TabletopMapId] with { Id = LogisticsMapId, Name = "Ангары и подкрепления / учебный бой", Fleets = ["practice:kushan-logistics", "practice:taiidan-logistics"], Objects = [new("core:asteroids", 4, 2)], ReserveStars = [3, 3] };
+        foreach (string faction in new[] { "kushan", "taiidan" })
+        {
+            string boarding = "practice:" + faction + "-boarder";
+            c.Ships[boarding] = c.Ships["core:" + faction + "-frigate"] with { Id = boarding, Name = "Учебный абордажник", Label = "Абордажный фрегат", Class = "frigate", Models = 1, Crew = 3, Stars = 3, Success = 4 };
+            int q = faction == "kushan" ? 1 : 7, facing = faction == "kushan" ? 0 : 3;
+            string fleet = "practice:" + faction + "-objectives";
+            c.Fleets[fleet] = new(fleet, "Учебные цели", [new(boarding, q, 2, facing), new("practice:" + faction + "-collector", q, 4, facing), new("practice:" + faction + "-wing", q + (facing == 0 ? -1 : 1), 3, facing)]);
+        }
+        c.Ships["practice:station"] = new("practice:station", "Учебная станция", "taiidan", "", 1, 0, 0, 5, 2, 0, Class: "station", Weapons: [], Crew: 2, Stars: 4, VisualSize: 0.8f);
+        var defender = c.Fleets["practice:taiidan-objectives"]; c.Fleets[defender.Id] = defender with { Units = defender.Units.Append(new FleetUnit("practice:station", 4, 3, 3)).ToArray() };
+        c.Maps[ObjectivesMapId] = c.Maps[EconomyMapId] with { Id = ObjectivesMapId, Name = "Цели и медали / учебный бой", Fleets = ["practice:kushan-objectives", "practice:taiidan-objectives"], Objectives = [
+            new("harvest", "Собрать 2 звезды ресурсов", 0, "harvest-stars", 1, 2), new("station", "Захватить станцию", 0, "capture", 2, Target: "s1-6", Reversible: true),
+            new("stars", "Уничтожить 3 звезды противника", 1, "destroy-stars", 1, 3), new("boarder", "Уничтожить абордажный фрегат", 1, "destroy-unit", 2, Target: "s0-0") ] };
+        c.Campaigns["practice:objectives"] = new("practice:objectives", "Медали — учебная кампания", "first", [new("first", "Борьба за станцию", ObjectivesMapId, "second"), new("second", "Вторая миссия", ObjectivesMapId)]);
+
 
 
     }

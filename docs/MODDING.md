@@ -24,11 +24,11 @@ Definitions have namespaced IDs: `myfleet:ship-name`. A new definition must use 
 | `abilities` | id, handler, value |
 | `fleets` | id, name, units: ship, q, r, facing, leader, cargo, reserve, embarkedOn |
 | `objects` | id, name, model, blocksMovement, attackPenalty, moveCost, color, label, kind, hazard |
-| `maps` | id, name, width, height, background, objects, fleets, rules, captureTargets, asteroidStars, reserveStars, setupZones, reserveFromRound |
+| `maps` | id, name, width, height, background, objects, fleets, rules, captureTargets, asteroidStars, reserveStars, setupZones, reserveFromRound, objectives, victoryMedals |
 | `rules` | id, name, handler, roundLimit, ordersPerSide, alternatingOrders, friendlyPassThrough, rearShots, focusFire, tabletop |
 | `leaders` | id, name, faction, classes, hand, play, stars, coolUnderPressure, attackDice |
 | `themes` | id, name, background, panel, text, muted, accent, highlight, enemy, grid |
-| `campaigns` | id, name, start, missions: id, name, map, onVictory, onDefeat |
+| `campaigns` | id, name, start, missions: id, name, map, onVictory, onDefeat, onDraw |
 
 The C# records in `src/FleetCommand.Core/Definitions.cs` are the canonical schema. All content colors use `#RRGGBB` or `#RRGGBBAA`. A ship's empty `color` selects its placeholder hull color from the current theme. Ownership footprints are separate: their color comes from the player profile, or reserved gray for NPCs/neutral objects. `visualSize` changes cube size without changing combat stats. `model` is a future visual asset reference and is not loaded by the cube renderer.
 
@@ -89,3 +89,22 @@ A fleet placement uses `reserve: true` for an off-board frigate/capital, or `emb
 Maps may provide `reserveStars: [3, 3]` as public building funds, distinct from unit cargo and destroyed-star scores. `setupZones` optionally supplies two arrays of `{ "q": 0, "r": 0 }` cells; the default is each side's outer two columns. `reserveFromRound` (default 1) gates hyperspace reserve deployment. It is not a universal scenario event script. Specific exception rules, including bypassing Launch Tubes, still belong to the published scenario implementation work.
 
 Off-board state is stored in `Reserves`; an empty `Embarked` means reserve, otherwise it names the parent. `Launches` resets at round cleanup. `PendingReinforce` retains a paid placement, and `NextUnit` prevents produced IDs being reused after loss or reload. Public reserve rosters and placement decisions synchronize over ENet; private cards and resource surveys remain redacted.
+
+## Scenario medals
+
+A tabletop card map opts into scenario scoring with a nonempty `objectives` array (up to 32). `victoryMedals` defaults to 3. Each goal has a map-unique `id`, readable `name`, `side` (0/1), `kind`, `medals` (1–3) and optional `threshold` (default 1), `target`, `reversible` and `classes`.
+
+```json
+"objectives": [
+  { "id": "harvest", "name": "Collect resources", "side": 0, "kind": "harvest-stars", "medals": 1, "threshold": 2 },
+  { "id": "station", "name": "Capture the station", "side": 0, "kind": "capture", "medals": 2, "target": "s1-6", "reversible": true },
+  { "id": "fighters", "name": "Destroy strike craft", "side": 1, "kind": "destroy-stars", "medals": 1, "threshold": 4, "classes": ["fighter", "platform"] },
+  { "id": "target", "name": "Destroy the carrier", "side": 1, "kind": "destroy-unit", "medals": 2, "target": "s0-0" }
+]
+```
+
+Targets are initial unit IDs (including initial reserves); count every fleet placement, including embarked units, when determining the global numeric suffix. Capture objectives also authorize boarding capture for that target. They do not turn ordinary terrain objects into boardable units. A station currently uses a `station` ship definition/placement. Capture/destroy-unit thresholds must be 1; class filters are for destroyed-star goals only. Positive numeric thresholds are cumulative; transfer/spending/loss of cargo does not reduce harvested totals.
+
+Every objective awards once. Only capture goals may be reversible: their medals follow the last boarding capturer, without accumulating repeated awards. Medals persist through target destruction until a scenario-specific condition says otherwise; more general hold/escort/artifact/event goals remain future work. At the medal threshold the match stops; the round limit compares medals, then destroyed-unit stars. Maps without `objectives` preserve prototype elimination rules.
+
+Campaign missions may set `onDraw`; omission preserves the prior defeat fallback. Objective mission results retain both fleets' medal totals even after a loss. Expansion purchases and major/minor final-campaign scoring are not included in this interface yet.
