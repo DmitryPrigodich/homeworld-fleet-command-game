@@ -143,8 +143,10 @@ public partial class Main
                 Button(right, "ДАЛЕЕ ПО КАМПАНИИ", AdvanceCampaign, _networkActive && !_isHost);
         }
         Button(right, "ГЛАВНОЕ МЕНЮ", () => { SaveGame(); MainMenu(); });
+        DrawEconomy(right, selected);
         DrawFleetUnitOptions(right, selected);
         if (_tutorial == null) Text(right, _interruptLesson ? "УРОК / БЕЗ СОХРАНЕНИЯ" : _networkActive ? (_cooperative ? "CO-OP / ОБЩИЙ ФЛОТ" : "PVP") : _bot ? "ОДИНОЧНАЯ / AI" : "ЛОКАЛЬНАЯ / HOTSEAT", 13, _colors.Muted);
+        if (_state.Deposits != null) { ConstrainEconomyPanel(left); ConstrainEconomyPanel(right); }
         DrawEventLog();
     }
     public override void _UnhandledInput(InputEvent input)
@@ -161,6 +163,7 @@ public partial class Main
         if (tile == null || distance > 1.05f) return;
         var target = _state.Units.Find(u => u.Patrol == "" && u.Q == tile.Value.Q && u.R == tile.Value.R);
         var obj = FleetTerrain.Objects(_content, _state).FirstOrDefault(o => o.Q == tile.Value.Q && o.R == tile.Value.R);
+        if (obj != null && TryHarvestObject(obj)) return;
         if (obj != null && target == null && (_selected == "" || _content.Objects[obj.Definition].BlocksMovement)) { InspectObject(obj); return; }
         if (target != null && (target.Side == LocalCommandSide || string.IsNullOrEmpty(_selected))) { SelectUnit(target.Id); return; }
         if (string.IsNullOrEmpty(_selected)) return;
@@ -223,8 +226,15 @@ public partial class Main
         if (_state.ActiveSide != 1) return;
         if (_state.Cards?.Pending is { } order)
         {
-            var actor = SpecialOrders.Actor(order); var options = _engine.GetActions(_state, 1, actor);
-            var unit = _state.Units.Single(u => u.Id == actor);
+            var actor = SpecialOrders.Actor(order); var unit = _state.Units.Single(u => u.Id == actor);
+            if (SpecialOrders.Action(order) == "harvest")
+            {
+                var fields = FleetEconomy.Targets(_content, _state, 1, actor);
+                ApplyCommand(1, fields.Length == 0 ? new("skip") : new("harvest", actor, Object: fields[0])); return;
+            }
+            if (order.BasicAction == "harvest" && order.Step == 0 && HasHarvestTarget(unit))
+            { ApplyCommand(1, new("skip")); return; }
+            var options = _engine.GetActions(_state, 1, actor);
             var attack = options.AttackTargets.Select(t => BotAttack(unit, t)).FirstOrDefault(cmd => cmd != null);
             if (attack != null) ApplyCommand(1, attack);
             else if (options.MoveCells.Length > 0) { var h = options.MoveCells[0]; ApplyCommand(1, new("move", actor, Q: h.Q, R: h.R)); }
@@ -235,6 +245,9 @@ public partial class Main
         foreach (var unit in _state.Units.Where(u => u.Side == 1 && !u.Activated && !u.Hulk).ToArray())
         {
             var enemies = _state.Units.Where(u => u.Side == 0).ToArray();
+            if (FleetBattle && _state.Cards!.Hand1.Length > 0 && HasHarvestTarget(unit))
+            { ApplyCommand(1, new("begin-order", unit.Id, "harvest", Card: _state.Cards.Hand1[0], Repair: "ask")); return; }
+
             if (FleetBattle && _state.Cards!.Hand1.Length > 0 && (unit.FocusFire > 0 || (unit.Effects ?? []).Any(FleetRuleTools.Debuffs.Contains)))
             {
                 string action = FleetRuleTools.Has(unit, "weapons") || _engine.GetActions(_state, 1, unit.Id).AttackTargets.Length > 0 ? "attack" : "move";

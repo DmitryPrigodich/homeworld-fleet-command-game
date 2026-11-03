@@ -95,7 +95,7 @@ public partial class Main
             Text(parent, pending.BasicAction == "" ? SpecialOrders.Name(pending.Card) : "БАЗОВЫЙ ПРИКАЗ", 15, _colors.Highlight);
             Text(parent, $"Действие {pending.Step + 1}/{SpecialOrders.Steps(pending)}: " + SpecialOrders.ActionName(pending) + "\n" +
                 FleetPresentation.UnitName(_content, _state, _state.Units.Single(u => u.Id == SpecialOrders.Actor(pending))), 13);
-            Text(parent, pending.BasicAction != "" ? "Карта и Play уже потрачены. Выбери цель действия или пропусти его." : SpecialOrders.Formation(pending.Card) ? "Move → Attack / Afterburners → Attack\nLightning Move: закончить рядом с первым отрядом." : "Два Move в одном направлении.\nКаждое действие можно пропустить.", 12, _colors.Muted);
+            Text(parent, pending.BasicAction == "harvest" ? "Бесплатное перемещение → добыча. Оба шага можно пропустить." : pending.BasicAction != "" ? "Карта и Play уже потрачены. Выбери цель действия или пропусти его." : SpecialOrders.Formation(pending.Card) ? "Move → Attack / Afterburners → Attack\nLightning Move: закончить рядом с первым отрядом." : "Два Move в одном направлении.\nКаждое действие можно пропустить.", 12, _colors.Muted);
             Button(parent, "ПРОПУСТИТЬ ДЕЙСТВИЕ", () => Submit(new("skip")), LocalCommandSide != pending.Side);
             Button(parent, "ЗАВЕРШИТЬ ПРИКАЗ", () => Submit(new("finish-order")), LocalCommandSide != pending.Side);
             DrawCardPreview(parent, pending.Card);
@@ -137,7 +137,7 @@ public partial class Main
                 Repair: _repairChoice, OtherRepair: _repairOtherChoice)), selected == null || side != _state.ActiveSide);
             play.CustomMinimumSize = new(0, 32);
         }
-        Text(parent, $"Рука {(side == 0 ? cards.HandLimit0 : cards.HandLimit1)} / Play {(side == 0 ? cards.PlayLimit0 : cards.PlayLimit1)} · Move/Attack = базовый приказ", 11, _colors.Muted);
+        Text(parent, $"Рука {(side == 0 ? cards.HandLimit0 : cards.HandLimit1)} / Play {(side == 0 ? cards.PlayLimit0 : cards.PlayLimit1)} · Move / Attack / Harvest", 11, _colors.Muted);
         DrawCardPreview(parent, _selectedCard);
     }
 }

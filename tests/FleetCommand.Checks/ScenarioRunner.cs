@@ -67,6 +67,7 @@ internal static class ScenarioRunner
         DefenseScenarios.Run(root);
         CapScenarios.Run(root);
         TerrainScenarios.Run(root);
+        EconomyScenarios.Run(root);
         File.WriteAllText(Path.Combine(output, "scenarios.json"), JsonSerializer.Serialize(reports, JsonData.Options));
     }
     private static BattleCommand Plan(BattleEngine engine, ContentCatalog content, BattleState state, int side, bool specials)

@@ -11,6 +11,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - This mode also supports ramming and return collisions, boarding/crew damage, drifting hulks, scenario-authorized capture, optional post-combat movement and crew/leader transfers. Defensive fire happens before the incoming roll and changes its pool after casualties; adjacent support, projectiles, powered-drone Evasive and Barrage are covered. Rapid Fire/Evasive owners select the actual dice to reroll.
 - Fighter CAP can be assigned after movement, follows its host, can be targeted separately, exits into a chosen adjacent hex before a new order and returns activated when its host is destroyed. Interception spends a chosen card without Play; fighter exchanges resolve simultaneous casualties before the original attack and hull defense continue.
 - **МИНЫ И АСТЕРОИДЫ** adds attacks on activation/entry, mine ownership and 5 → 3 → removed tokens, CAP/defensive fire and saved movement continuation. Removed fields disappear from rendering and geometry.
+- **РАЗВЕДКА И ДОБЫЧА** adds privately surveyed asteroid values, a Harvest order with optional free movement, cargo, depleted fields and resource transfers in either direction. The sample collectors are explicitly training profiles. Economy state survives saves and redacted multiplayer snapshots.
 - Optional card artwork packs selected in **Options → Card appearance**. Text mode is the default; removing an art pack does not affect match fingerprints or saves. Original blank frames can be rendered locally with `scripts/Import-CardFrames.ps1` and are never distributed.
 
 - Russian main menu: tutorial, single player, multiplayer, options, mods, exit.
@@ -28,7 +29,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - Player name, color and emblem in **Options → Player**. Flattened cube footprints use the player's color; NPCs and neutral objects use reserved gray. PvP color collisions are resolved by the host.
 - Optional local import of Kushan, Taiidan and five kiith emblems from an owned HWRM installation. Only the importer code is distributed.
 
-**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Other printed cards/leader abilities, resource collection and production, full scenario objectives and supplied book campaigns remain in progress. The simplified combat module is `skirmish-v1`; card modes use `cards-basic-v1`, with the new mechanics enabled by the rules definition's `tabletop` flag.
+**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Other printed cards/leader abilities, bays/reinforcements and production, full scenario objectives and supplied book campaigns remain in progress. The simplified combat module is `skirmish-v1`; card modes use `cards-basic-v1`, with the new mechanics enabled by the rules definition's `tabletop` flag.
 
 ## Run on Windows
 
@@ -53,6 +54,8 @@ The same guide has **ТРЕНИРОВКА: ПРЕРЫВАНИЕ**, a repeatable 
 Selecting a unit ready for your current turn highlights **green movement hexes** and **red enemy target hexes** together. Movement includes terrain costs, obstacles, occupied cells and ability bonuses; attacks use current range and line of sight. Use Movement or Attack to issue the corresponding order. Spent activations, other players' units and finished battles have no actionable highlights. Tutorial highlights also respect its current task. Calculating the preview does not roll dice, spend orders or add history entries.
 
 The bottom **battle log** records accepted orders, dice and actual casualties, turn/round transitions and the result. Scroll over it to read earlier events. A status line above the history explains rejected orders and tutorial instructions. History is retained in saves and network snapshots; older saves without a history remain compatible and begin recording at the next order. The previous `showLabels` setting is accepted when loading old settings but no longer overrides the Alt control.
+
+**ОДИНОЧНАЯ ИГРА → РАЗВЕДКА И ДОБЫЧА** opens the economy training map. Select a ready collector and press **ДОБЫЧА РЕСУРСОВ**. Move normally for free or skip that step on the left, then select a field with a **ДОБЫТЬ** button or on the map. Survey reveals adjacent fields only after movement finishes, for your fleet alone. Harvest flips the field publicly and puts its stars aboard the collector. To move cargo, select a ready adjacent allied ship, choose direction/amount and press **ПЕРЕДАТЬ РЕСУРСЫ**. The neighboring ship may already be activated. These resources are distinct from destruction-score stars; spending them through factories remains pending.
 
 ## Multiplayer
 

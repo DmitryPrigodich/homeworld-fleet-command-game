@@ -23,7 +23,9 @@ public static class FleetTransfers
     }
     internal static CommandResult Complete(ContentCatalog c, BattleState before, BattleState next, string message)
     {
-        var cmd = next.Cards!.Pending!.Deferred!; var sender = next.Units.Single(u => u.Id == cmd.Unit); var target = next.Units.Single(u => u.Id == cmd.Target);
+        var cmd = next.Cards!.Pending!.Deferred!;
+        if (cmd.Kind == "transfer-stars") return FleetEconomy.CompleteTransfer(c, before, next, message);
+        var sender = next.Units.Single(u => u.Id == cmd.Unit); var target = next.Units.Single(u => u.Id == cmd.Target);
         int side = sender.Side;
         next = next with { Cards = next.Cards with { Pending = next.Cards.Pending with { Deferred = null } }, Units = next.Units.Select(u => u.Id == sender.Id ? sender with { CrewDamage = sender.CrewDamage + cmd.Amount, Leader = cmd.TransferLeader ? "" : sender.Leader,
                 Effects = cmd.Amount > 0 ? (sender.Effects ?? []).Except(FleetRuleTools.Buffs).ToArray() : sender.Effects }

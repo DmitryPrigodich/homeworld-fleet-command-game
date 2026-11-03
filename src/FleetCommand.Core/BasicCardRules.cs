@@ -10,6 +10,7 @@ public static class BasicCardBattle
 {
     public const string MapId = "practice:cards";
     public const string TabletopMapId = "practice:rules";
+    public const string EconomyMapId = "practice:economy";
     public const string TerrainMapId = "practice:hazards";
     public static void Register(ContentCatalog c)
     {
@@ -19,6 +20,16 @@ public static class BasicCardBattle
         c.Maps[TabletopMapId] = c.Maps["core:training"] with { Id = TabletopMapId, Name = "Бой по правилам / разработка", Rules = TabletopMapId };
         c.Objects["practice:mines"] = new("practice:mines", "Минное поле", Kind: "mine", Color: "#9a8782");
         c.Maps[TerrainMapId] = c.Maps[TabletopMapId] with { Id = TerrainMapId, Name = "Мины и астероиды", Objects = [new("practice:mines", 3, 2), new("core:asteroids", 4, 2), new("core:asteroids", 3, 3), new("core:planet", 5, 3)] };
+        foreach (string faction in new[] { "kushan", "taiidan" })
+        {
+            string id = "practice:" + faction + "-collector";
+            c.Ships[id] = c.Ships["core:" + faction + "-frigate"] with { Id = id, Name = "Учебный сборщик / " + faction, Label = "Учебный сборщик", Models = 1, Move = 3, Class = "frigate", Harvest = 2, Survey = true, Weapons = [], DicePerModel = 0, Range = 0 };
+            var fleet = c.Fleets["core:" + faction + "-patrol"];
+            c.Fleets["practice:" + faction + "-economy"] = fleet with { Id = "practice:" + faction + "-economy", Units = fleet.Units.Select((u, i) => i == 0 ? u with { Ship = id } : u).ToArray() };
+        }
+        c.Maps[EconomyMapId] = c.Maps[TabletopMapId] with { Id = EconomyMapId, Name = "Разведка и добыча / учебный бой", Fleets = ["practice:kushan-economy", "practice:taiidan-economy"],
+            Objects = [new("core:asteroids", 3, 2), new("core:asteroids", 4, 4), new("core:asteroids", 6, 2)], AsteroidStars = [0, 2, 3] };
+
     }
 }
 
@@ -111,6 +122,7 @@ public sealed class BasicCardRules : IRuleModule
         if (command.Kind == "begin-order") return SpecialOrders.BeginBasic(c, state, side, command);
         if (command.Kind == "special") return SpecialOrders.Start(c, state, side, command);
         if (command.Kind != "pass" && !hand.Contains(command.Card)) return Reject("Выберите карту из своей руки для базового приказа.");
+        if (command.Kind == "transfer-stars") return FleetEconomy.BeginTransfer(c, state, side, command);
         if (command.Kind == "transfer-crew") return FleetTransfers.Apply(c, state, side, command);
         if (command.Kind is "move" or "attack") return InterruptRules.Start(c, state, side, command, basic: true);
         var result = new SkirmishRules().Apply(c, state, side, command);
@@ -126,7 +138,7 @@ public sealed class BasicCardRules : IRuleModule
     {
         if (state.Cards == null) return state;
         var cards = state.Cards;
-        return state with { RandomState = 1, Cards = cards with { Deck = [], DeckCount = cards.Deck.Length, IsView = true,
+        return state with { Deposits = FleetEconomy.View(state, side), RandomState = 1, Cards = cards with { Deck = [], DeckCount = cards.Deck.Length, IsView = true,
             Hand0 = side == 0 ? cards.Hand0 : [], Hand1 = side == 1 ? cards.Hand1 : [], HiddenHandCount = side == 0 ? cards.Hand1.Length : cards.Hand0.Length,
             Bid0 = side == 0 ? cards.Bid0 : "", Bid1 = side == 1 ? cards.Bid1 : "", Bids0 = side == 0 ? cards.Bids0 : null, Bids1 = side == 1 ? cards.Bids1 : null } };
     }

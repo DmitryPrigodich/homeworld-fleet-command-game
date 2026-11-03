@@ -30,7 +30,8 @@
 - [x] Ship classes, proper turning/arcs, boarding, ramming/collision, crew/leader transfers, hulks and defensive fire.
 - [x] CAP entry/exit, off-board targeting, movement with host, simultaneous interception and return after host destruction.
 - [x] Terrain activation/entry attacks, owned/neutral mines, reductions, CAP/defense and resumed paths.
-- [ ] Bays, reinforcements, surveying/harvesting, resource cargo and production.
+- [x] Hidden asteroid bags, private Survey, free-move Harvest, cargo/loss and bidirectional resource transfers.
+- [ ] Bays, reserves, reinforcements and factory production.
 - [ ] Scenario objectives, medals, heroes/upgrades and campaign purchases.
 - [ ] Actual book campaigns as separate data packs after card coverage is complete.
 

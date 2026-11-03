@@ -133,6 +133,9 @@ public static class InterruptRules
             }
             if (Offer(c, next, pause)) return Paused(original, next, message + $" {FleetPresentation.UnitName(c, next, unit)}: перемещение в клетку ({cell.Q + 1}, {cell.R + 1}).");
         }
+        var surveyed = FleetEconomy.Survey(c, next, unit);
+        if (!ReferenceEquals(surveyed, next)) message += " Разведаны соседние астероиды; запасы видны только вашему флоту.";
+        next = surveyed;
         string completed = message + $" {FleetPresentation.UnitName(c, next, unit)}: перемещение завершено ({unit.Q + 1}, {unit.R + 1}).";
         if (FleetRuleTools.Enabled(c, next) && FleetCap.Hosts(c, next, unit).Length > 0)
             return new(true, completed + " Можно назначить истребители в CAP.", next with { CapEntry = new(pause.Side, unit.Id), Sequence = original.Sequence + 1 });

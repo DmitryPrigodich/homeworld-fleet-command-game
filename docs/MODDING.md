@@ -20,11 +20,11 @@ Definitions have namespaced IDs: `myfleet:ship-name`. A new definition must use 
 
 | Array | Main fields |
 | --- | --- |
-| `ships` | id, name, faction, model, models, move, dicePerModel, success, armor, range, abilities, visualSize, color, tacticalIcon, label, afterburners, class, weapons, evasive, crew, ram, stars, prowArmor, capSuccess |
+| `ships` | id, name, faction, model, models, move, dicePerModel, success, armor, range, abilities, visualSize, color, tacticalIcon, label, afterburners, class, weapons, evasive, crew, ram, stars, prowArmor, capSuccess, harvest, survey |
 | `abilities` | id, handler, value |
-| `fleets` | id, name, units: ship, q, r, facing |
+| `fleets` | id, name, units: ship, q, r, facing, leader, cargo |
 | `objects` | id, name, model, blocksMovement, attackPenalty, moveCost, color, label, kind, hazard |
-| `maps` | id, name, width, height, background, objects, fleets, rules, captureTargets |
+| `maps` | id, name, width, height, background, objects, fleets, rules, captureTargets, asteroidStars |
 | `rules` | id, name, handler, roundLimit, ordersPerSide, alternatingOrders, friendlyPassThrough, rearShots, focusFire, tabletop |
 | `leaders` | id, name, faction, classes, hand, play, stars, coolUnderPressure, attackDice |
 | `themes` | id, name, background, panel, text, muted, accent, highlight, enemy, grid |
@@ -71,3 +71,11 @@ For code-based rule extensions, implement `IRuleModule` and pass the instance in
 In tabletop mode, object `kind: "asteroid"` defaults to three dice, and `kind: "mine"` to one die per remaining mine. Both default to success 5 and Penetrating 1. Override with `hazard: { "dice": 3, "success": 5, "penetrating": 1 }`; `dice: 0` disables the attack. The existing `core:asteroids` ID also receives asteroid behavior for compatibility. Other object kinds retain ordinary movement/cover behavior. Hazards are inactive in simplified skirmish mode.
 
 A map object placement accepts `owner: -1` (neutral, default), `0` or `1`. Owned mines spare their own fleet; changed tokens are battle state, not edits to the mod. Each minefield starts at five, reduces to three, then disappears. `attackPenalty`, blocking and movement cost remain independent data. Removing a field removes those geometry effects too. Generated `runtime:terrain/…` profiles are internal derivations, not fleet entries; do not reference them in mods. **МИНЫ И АСТЕРОИДЫ** is a training map rather than a published scenario.
+
+## Survey, harvesting and cargo
+
+In tabletop card rules, `ship.harvest` is the range in hexes (`-1`, default, means no Harvest ability; `0` reaches its own hex). `ship.survey: true` reveals all adjacent resource tokens when that ship finishes a movement action. These fields do not change movement/attack statistics. Use `fleet.units[].cargo` to supply initial resources aboard a unit; this is separate from any future off-board reserve pool and from victory stars.
+
+A map opts into resource tokens with `asteroidStars`, a multiset with exactly one integer for each asteroid object (for example `[0, 2, 3]`). At setup, the authority privately shuffles those values and assigns them to asteroid object indices in map order. The array does not fix values to coordinates. Maps without this field keep terrain-only asteroids. Values currently validate as 0–1000 per token, Harvest range as -1–50 and cargo as 0–1,000,000; these are implementation bounds, not tabletop limits. Economy maps currently require `tabletop: true` and `handler: "cards-basic-v1"`.
+
+`BattleState.Deposits` stores the assigned value, harvested flag and per-side Survey knowledge. Host saves retain all values; private views replace unknown values with `-1` and strip the other side's knowledge. Cargo and revealed harvested values are public. Harvest never removes the object or its cover/attack effects. `Harvested0/1` are cumulative collection totals for future objective rules; `Stars0/1` remain the destruction ledger. The example map uses synthetic, clearly labeled training collectors rather than asserting missing published card statistics.

@@ -1,6 +1,6 @@
 namespace FleetCommand.Core;
 
-public sealed record UnitActions(Hex[] MoveCells, string[] AttackTargets)
+public sealed record UnitActions(Hex[] MoveCells, string[] AttackTargets, int[]? HarvestObjects = null)
 {
     public static UnitActions Empty { get; } = new([], []);
 }

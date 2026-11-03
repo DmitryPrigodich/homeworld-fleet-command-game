@@ -62,12 +62,15 @@ public partial class Main
     private void InspectObject(MapObject obj)
     {
         if (_tutorial != null) { _status = FleetPresentation.ObjectName(_content.Objects[obj.Definition]) + ": " + FleetPresentation.ObjectEffects(_content.Objects[obj.Definition]); DrawBattle(); return; }
+        if (TryHarvestObject(obj)) return;
         _inspectedObject = obj; _selected = ""; DrawBattle();
     }
     private string TerrainEffects(MapObject placement)
     {
         var definition = _content.Objects[placement.Definition]; string text = FleetPresentation.ObjectEffects(definition);
         if (!FleetBattle) return text;
+        int depositIndex = Array.FindIndex(_content.Maps[_state!.Map].Objects, p => ReferenceEquals(p, placement));
+        string deposit = DepositDescription(depositIndex); if (deposit != "") text += "\n" + deposit;
         var attack = FleetTerrain.Attack(definition);
         if (attack is not { Dice: > 0 }) return text;
         if (FleetTerrain.Kind(definition) == "mine")
