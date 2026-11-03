@@ -86,7 +86,7 @@ public sealed class ContentCatalog
     public void Validate()
     {
         foreach (var t in Themes.Values)
-            foreach (var color in new[] { t.Background, t.Panel, t.Text, t.Muted, t.Accent, t.Highlight, t.Enemy, t.Grid })
+            foreach (var color in new[] { t.Background, t.Panel, t.Text, t.Muted, t.Accent, t.Highlight, t.Enemy, t.Grid, t.TabBlue, t.TabYellow, t.TabGrey })
                 if (!System.Text.RegularExpressions.Regex.IsMatch(color, "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"))
                     throw new InvalidDataException($"Invalid color in {t.Id}: {color}");
         foreach (var a in Abilities.Values)
@@ -111,9 +111,10 @@ public sealed class ContentCatalog
         foreach (var leader in Leaders.Values)
             if (leader.Hand < 0 || leader.Play < 0 || leader.Stars < 0 || leader.CoolUnderPressure < 0 || leader.AttackDice < 0 || leader.Classes == null
                 || leader.Classes.Any(t => !FleetRuleTools.Classes.Contains(t))) throw new InvalidDataException($"Invalid leader: {leader.Id}");
+        ForceBuilder.ValidateDefinitions(this);
         foreach (var f in Fleets.Values)
             foreach (var u in f.Units)
-                if (u.Cargo is < 0 or > 1000000 || !Ships.ContainsKey(u.Ship) || u.Facing is < 0 or > 5 || !FleetRuleTools.ValidLeader(this, new("", u.Ship, 0, u.Q, u.R, u.Facing, 1, Leader: u.Leader))) throw new InvalidDataException($"Invalid fleet unit: {f.Id}");
+                if (u.Cargo is < 0 or > 1000000 || !Ships.ContainsKey(u.Ship) || u.Facing is < 0 or > 5 || !FleetRuleTools.ValidLeader(this, new("", u.Ship, 0, u.Q, u.R, u.Facing, 1, Leader: u.Leader, AdditionalLeaders: u.AdditionalLeaders))) throw new InvalidDataException($"Invalid fleet unit: {f.Id}");
         foreach (var o in Objects.Values)
             if (o.MoveCost < 1 || o.AttackPenalty < 0 || o.Hazard is { } hazard && (hazard.Dice is < 0 or > 100 || hazard.Success is < 2 or > 6 || hazard.Penetrating < 0)) throw new InvalidDataException($"Invalid object: {o.Id}");
         foreach (var rule in Rules.Values)

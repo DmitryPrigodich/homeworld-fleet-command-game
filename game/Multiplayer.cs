@@ -31,6 +31,8 @@ public partial class Main
         var tabletop = new CheckBox { Text = "Механики правил (режим разработки)" }; box.AddChild(tabletop);
         var address = new LineEdit { Text = "127.0.0.1", PlaceholderText = "Адрес хоста", CustomMinimumSize = new(0, 40) }; box.AddChild(address);
         Text(box, "Прототип: прямое подключение ENet, UDP-порт 24560. Комнаты по приглашению и relay — следующий этап.", 15, _colors.Muted);
+        Button(box, "ПОДГОТОВИТЬ ФЛОТЫ ДЛЯ СЕТИ", () => ForceMenu(true));
+        Button(box, "ПРОДОЛЖИТЬ СКИРМИШ ХОСТОМ", () => { LoadGame(false); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); }, !System.IO.File.Exists(SavePath(false)));
         Button(box, "СОЗДАТЬ СКИРМИШ", () => { StartBattle(objectives.ButtonPressed ? BasicCardBattle.ObjectivesMapId : logistics.ButtonPressed ? BasicCardBattle.LogisticsMapId : economy.ButtonPressed ? BasicCardBattle.EconomyMapId : tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
         var campaignChoices = _content.Campaigns.Values.ToArray(); var campaignPicker = new OptionButton(); foreach (var definition in campaignChoices) campaignPicker.AddItem("Кампания: " + definition.Name); box.AddChild(campaignPicker);
         Button(box, "СОЗДАТЬ КООП-КАМПАНИЮ", () =>
@@ -54,7 +56,7 @@ public partial class Main
         if (host) InitializeCommanders();
         if (!_networkSignalsBound)
         {
-            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-objectives-v1:" + _content.Fingerprint,
+            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-forces-v1:" + _content.Fingerprint,
                 JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
             Multiplayer.ConnectionFailed += () => { _status = "Не удалось подключиться."; StopNetwork(); DrawBattle(); };
             Multiplayer.ServerDisconnected += () => { _status = "Хост отключился. Продолжение — из сохранения у хоста."; StopNetwork(); DrawBattle(); };
@@ -75,7 +77,7 @@ public partial class Main
     {
         if (!_networkActive || !_isHost) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (fingerprint != "fleet-objectives-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        if (fingerprint != "fleet-forces-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
         PlayerProfile profile;
         try { profile = FleetPresentation.Normalize(JsonSerializer.Deserialize<PlayerProfile>(profileJson, JsonData.Options)); }
         catch (JsonException) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
@@ -280,6 +282,12 @@ public partial class Main
                 if (_state.Cards is { Phase: "initiative", Ready0: false }) ApplyCommand(0, new("initiative"));
                 if (_state.Cards is { Phase: "orders" } && _state.ActiveSide == 0) ApplyCommand(0, new("pass"));
                 if (_args.Contains("--smoke-special") && command?.Kind == "finish-order") { GD.Print("SPECIAL_NETWORK_OK"); GetTree().CreateTimer(0.5).Timeout += () => GetTree().Quit(); }
+                if (command?.Kind == "pass" && _args.Contains("--smoke-forces"))
+                {
+                    string before = _engine.Save(_state); LoadGame(false);
+                    if (_preparation == null || _engine.Save(_state!) != before) throw new InvalidDataException("Prepared network save was not restored.");
+                    GD.Print("FORCE_NETWORK_RESUMED"); Broadcast();
+                }
                 if (command?.Kind == "pass") { GD.Print("CARD_NETWORK_OK"); GetTree().CreateTimer(0.5).Timeout += () => GetTree().Quit(); }
             }
             if (!_args.Contains("--smoke-cards") && _args.Contains("--smoke-host") && _state.Sequence == (_cooperative ? 1 : 2))
@@ -294,7 +302,7 @@ public partial class Main
         {
             var view = BasicCardRules.View(_state, _sideByPeer[peer]);
             var campaign = _campaign == null ? null : _campaign with { Battle = view };
-            var saved = new SavedGame(view, _generation, campaign, _cooperative, _commanders);
+            var saved = new SavedGame(view, _generation, campaign, _cooperative, _commanders, _preparation);
             RpcId(peer, nameof(ReceiveSnapshot), JsonSerializer.Serialize(saved, JsonData.Options), _cooperative);
         }
     }
@@ -312,11 +320,17 @@ public partial class Main
         {
             var saved = JsonSerializer.Deserialize<SavedGame>(json, JsonData.Options) ?? throw new InvalidDataException("Empty snapshot.");
             if (saved.Generation != null) MapGenerator.Generate(_content, saved.Generation);
+            RestorePreparation(saved);
             if (saved.State.Map == BasicCardBattle.MapId) BasicCardBattle.Register(_content);
             _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
             _generation = saved.Generation; _campaign = saved.Campaign; _cooperative = cooperative; _localSide = cooperative ? 0 : 1;
             _commanders = ValidateCommanders(saved.Commanders);
             _status = "Синхронизация с хостом: действие " + _state.Sequence; DrawBattle();
+            if (_args.Contains("--smoke-forces"))
+            {
+                if (_preparation == null || _state.Map != ForceBattle.MapId || _state.Reserves?.Count != 2 || _state.Funds0 != 3 || _content.Fleets["prepared:side-1"].Units[0].Leader != "practice:taiidan-admiral") throw new InvalidDataException("Prepared forces were not synchronized.");
+                GD.Print("FORCE_NETWORK_SETUP_OK");
+            }
             if (_args.Contains("--smoke-cards"))
             {
                 if (_state.Cards is not { IsView: true } cards || cards.Deck.Length != 0 || cards.Hand0.Length != 0 || _state.RandomState != 1)

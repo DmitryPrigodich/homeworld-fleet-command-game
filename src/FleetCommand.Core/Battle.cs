@@ -5,7 +5,7 @@ namespace FleetCommand.Core;
 public sealed record BattleUnit(string Id, string Definition, int Side, int Q, int R, int Facing,
     int Models, int FocusFire = 0, bool Activated = false, string Leader = "", int CrewDamage = 0, string[]? Effects = null,
     bool Hulk = false, string AttackWindow = "", string LastAction = "", string LastTarget = "", int LastActionRound = 0,
-    string Patrol = "", bool CapUsed = false, int Cargo = 0, string Embarked = "", int Launches = 0);
+    string Patrol = "", bool CapUsed = false, int Cargo = 0, string Embarked = "", int Launches = 0, string[]? AdditionalLeaders = null);
 public sealed record BattleState(string Map, string ContentFingerprint, List<BattleUnit> Units,
     int Round = 1, int ActiveSide = 0, int Orders0 = 0, int Orders1 = 0, int Sequence = 0,
     uint RandomState = 12345, int? Winner = null, bool Finished = false, List<BattleLogEntry>? Log = null, CardRound? Cards = null,
@@ -41,7 +41,7 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
             {
                 bool offboard = placement.Reserve || placement.EmbarkedOn >= 0;
                 var unit = new BattleUnit($"s{side}-{counter++}", placement.Ship, side, offboard ? -1 : placement.Q, offboard ? -1 : placement.R, placement.Facing,
-                    content.Ships[placement.Ship].Models, Leader: placement.Leader, Cargo: placement.Cargo, Embarked: placement.EmbarkedOn >= 0 ? $"s{side}-{first + placement.EmbarkedOn}" : "");
+                    content.Ships[placement.Ship].Models, Leader: placement.Leader, Cargo: placement.Cargo, Embarked: placement.EmbarkedOn >= 0 ? $"s{side}-{first + placement.EmbarkedOn}" : "", AdditionalLeaders: placement.AdditionalLeaders);
                 (offboard ? reserves : units).Add(unit);
             }
         }

@@ -12,8 +12,19 @@ public static class FleetRuleTools
     public static bool Strike(ShipDefinition ship) => Class(ship) is "fighter" or "corvette" or "platform";
     public static bool Has(BattleUnit unit, string effect) => (unit.Effects ?? []).Contains(effect);
     public static bool ValidEffects(string[]? effects) => effects == null || effects.Distinct().Count() == effects.Length && effects.All(e => Buffs.Contains(e) || Debuffs.Contains(e));
-    public static bool ValidLeader(ContentCatalog c, BattleUnit unit) => unit.Leader == "" || c.Leaders.TryGetValue(unit.Leader, out var leader)
-        && c.Ships.TryGetValue(unit.Definition, out var ship) && leader.Faction == ship.Faction && leader.Classes.Contains(Class(ship));
+    public static string[] LeaderIds(BattleUnit unit) => (unit.Leader == "" ? Array.Empty<string>() : new[] { unit.Leader }).Concat(unit.AdditionalLeaders ?? []).ToArray();
+    public static IEnumerable<LeaderDefinition> AssignedLeaders(ContentCatalog c, BattleUnit unit) => LeaderIds(unit).Select(id => c.Leaders[id]);
+    public static BattleUnit WithLeaders(BattleUnit unit, IEnumerable<string> leaders)
+    {
+        var ids = leaders.ToArray(); return unit with { Leader = ids.FirstOrDefault() ?? "", AdditionalLeaders = ids.Length <= 1 ? null : ids.Skip(1).ToArray() };
+    }
+    public static bool ValidLeader(ContentCatalog c, BattleUnit unit)
+    {
+        if (unit.Leader == null || (unit.AdditionalLeaders ?? []).Any(id => string.IsNullOrWhiteSpace(id))) return false;
+        var ids = LeaderIds(unit);
+        return ids.Distinct().Count() == ids.Length && c.Ships.TryGetValue(unit.Definition, out var ship)
+            && ids.All(id => c.Leaders.TryGetValue(id, out var leader) && leader.Faction == ship.Faction && leader.Classes.Contains(Class(ship)));
+    }
     public static BattleUnit NewOrder(BattleUnit u) => u with { Effects = (u.Effects ?? []).Except(Buffs).ToArray() };
     public static int PlayLimit(ContentCatalog c, BattleState s, int side) => Enabled(c, s) && s.Cards != null
         ? side == 0 ? s.Cards.PlayLimit0 : s.Cards.PlayLimit1 : c.Rules[c.Maps[s.Map].Rules].OrdersPerSide;
@@ -21,7 +32,7 @@ public static class FleetRuleTools
     {
         var cards = s.Cards!;
         if (!Enabled(c, s)) return cards;
-        int Sum(int side, bool hand) => s.Units.Where(u => u.Side == side && u.Leader != "").Sum(u => hand ? c.Leaders[u.Leader].Hand : c.Leaders[u.Leader].Play);
+        int Sum(int side, bool hand) => s.Units.Where(u => u.Side == side).SelectMany(u => AssignedLeaders(c, u)).Sum(l => hand ? l.Hand : l.Play);
         return cards with { HandLimit0 = 2 + Sum(0, true), HandLimit1 = 2 + Sum(1, true), PlayLimit0 = 1 + Sum(0, false), PlayLimit1 = 1 + Sum(1, false) };
     }
     public static int Roll(ref uint random) { random ^= random << 13; random ^= random >> 17; random ^= random << 5; return (int)(random % 6) + 1; }
@@ -31,7 +42,7 @@ public static class FleetRuleTools
         if (unit.Hulk || choice == "" || choice != "ask" && choice != "focus" && !Debuffs.Contains(choice)) return s;
         if (choice == "ask" && unit.FocusFire == 0 && !(unit.Effects ?? []).Any(Debuffs.Contains)) return s;
         var ship = c.Ships[unit.Definition]; uint random = s.RandomState;
-        int dice = 1 + (unit.Leader != "" ? c.Leaders[unit.Leader].CoolUnderPressure : 0);
+        int dice = 1 + AssignedLeaders(c, unit).Sum(l => l.CoolUnderPressure);
         var rolls = new int[dice]; for (int i = 0; i < dice; i++) rolls[i] = Roll(ref random);
         int successes = rolls.Count(d => d >= ship.Success);
         if (choice == "ask")

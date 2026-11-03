@@ -7,7 +7,7 @@ public partial class Main
 {
     private void MainMenu()
     {
-        StopNetwork(); EndTutorial(); _state = null; _campaign = null; _generation = null; _namesHeld = false; ClearScreen();
+        StopNetwork(); EndTutorial(); _state = null; _campaign = null; _generation = null; _preparation = null; _namesHeld = false; ClearScreen();
         Heading("ТАКТИЧЕСКАЯ СИМУЛЯЦИЯ ФЛОТА");
         var menu = Panel(70, 245, 385, 420);
         Text(menu, "ГЛАВНОЕ МЕНЮ", 15, _colors.Highlight);
@@ -37,8 +37,11 @@ public partial class Main
     }
     private void SinglePlayerMenu()
     {
-        ClearScreen(); Heading("Одиночная игра"); var box = Panel(70, 200, 470, 470);
+        ClearScreen(); Heading("Одиночная игра"); var outer = Panel(70, 170, 540, 650);
+        var scroll = new ScrollContainer { CustomMinimumSize = new(0, 618), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled }; outer.AddChild(scroll);
+        var box = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; box.AddThemeConstantOverride("separation", 8); scroll.AddChild(box);
         Button(box, "КАМПАНИИ", CampaignMenu);
+        Button(box, "ПОДГОТОВКА ФЛОТОВ", () => ForceMenu());
         Button(box, "УЧЕБНЫЙ БОЙ С КАРТАМИ", StartCardBattle);
         Button(box, "ПРАВИЛА / РЕЖИМ РАЗРАБОТКИ", () => { StartBattle(BasicCardBattle.TabletopMapId, true); QueueBot(); });
         Button(box, "ЦЕЛИ И МЕДАЛИ", () => { StartBattle(BasicCardBattle.ObjectivesMapId, true); QueueBot(); });

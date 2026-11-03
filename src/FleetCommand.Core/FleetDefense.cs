@@ -34,7 +34,7 @@ public static class FleetDefense
         var incoming = FleetTerrain.Find(s, frame.Attack.Unit)!;
         if (weapon.Barrage > 0) return Math.Max(1, (FleetTerrain.Diffuse(frame.Threat) ? frame.IncomingDice : incoming.Models) - unit.FocusFire);
         int support = s.Units.Count(u => u.Patrol == "" && u.Id != unit.Id && u.Side == unit.Side && new Hex(u.Q, u.R).Distance(new(unit.Q, unit.R)) == 1 && Weapons(c, u).Length > 0);
-        return Math.Max(1, weapon.DicePerModel * unit.Models + support - unit.FocusFire + (unit.Leader == "" ? 0 : c.Leaders[unit.Leader].AttackDice));
+        return Math.Max(1, weapon.DicePerModel * unit.Models + support - unit.FocusFire + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.AttackDice));
     }
     public static CommandResult Apply(ContentCatalog c, BattleState s, int side, BattleCommand command)
     {

@@ -56,6 +56,17 @@ public static class BasicCardBattle
             new("harvest", "Собрать 2 звезды ресурсов", 0, "harvest-stars", 1, 2), new("station", "Захватить станцию", 0, "capture", 2, Target: "s1-6", Reversible: true),
             new("stars", "Уничтожить 3 звезды противника", 1, "destroy-stars", 1, 3), new("boarder", "Уничтожить абордажный фрегат", 1, "destroy-unit", 2, Target: "s0-0") ] };
         c.Campaigns["practice:objectives"] = new("practice:objectives", "Медали — учебная кампания", "first", [new("first", "Борьба за станцию", ObjectivesMapId, "second"), new("second", "Вторая миссия", ObjectivesMapId)]);
+        foreach (string faction in new[] { "kushan", "taiidan" })
+        {
+            string carrier = "practice:" + faction + "-carrier", wing = "practice:" + faction + "-wing";
+            c.Ships[carrier] = c.Ships[carrier] with { Tabs = [new("assigned", "blue", GrantedUnit: wing), new("bay1", "blue"), new("bay2", "blue")] };
+            c.Leaders["practice:" + faction + "-admiral"] = new("practice:" + faction + "-admiral", "Учебный адмирал", faction, ["capital"], Hand: 1, Play: 1, Stars: 2, CoolUnderPressure: 1,
+                Tabs: [new("command", "yellow", true, ["capital"]), new("frigate", "yellow", Classes: ["frigate"]), new("escort", "blue")]);
+            c.Leaders["practice:" + faction + "-pilot"] = new("practice:" + faction + "-pilot", "Учебный командир звена", faction, ["fighter"], Hand: 1, Stars: 1,
+                Tabs: [new("squadron", "blue", true, ["fighter"]), new("extra", "blue", Classes: ["fighter"])]);
+            c.Leaders["practice:" + faction + "-officer"] = new("practice:" + faction + "-officer", "Учебный офицер", faction, ["capital", "frigate"], Stars: 1, CoolUnderPressure: 1, AttackDice: 1);
+        }
+
 
 
 

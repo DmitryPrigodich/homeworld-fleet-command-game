@@ -14,6 +14,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - **РАЗВЕДКА И ДОБЫЧА** adds privately surveyed asteroid values, a Harvest order with optional free movement, cargo, depleted fields and resource transfers in either direction. The sample collectors are explicitly training profiles. Economy state survives saves and redacted multiplayer snapshots.
 - **АНГАРЫ И ПОДКРЕПЛЕНИЯ** adds movement into bays, a separate off-board reserve roster, round-wide Launch Tubes limits, reserve deployment and factories paid from cargo/reserve stars. Placement has green hex previews. Carrier destruction also removes and scores embarked units/leaders; the launch itself leaves the carrier unactivated.
 - **ЦЕЛИ И МЕДАЛИ** adds one-time capture/recapture, destroyed-star, class-filtered, target-unit and harvest objectives. Three medals end the battle immediately; the round limit compares medals, then destroyed stars. Campaigns retain both fleets' actual medals and per-mission results. A co-op host can choose a campaign from the network menu.
+- **ПОДГОТОВКА ФЛОТОВ** adds two independently editable faction rosters, star budgets and reserve funds, leader assignment, compulsory/optional blue and yellow tabs, derived free assigned units, deployment and carrier bays. Rosters save as local JSON; validated setup travels in battle saves and ENet snapshots. Available costs/tabs are explicitly synthetic training profiles until the actual cards arrive.
 - Optional card artwork packs selected in **Options → Card appearance**. Text mode is the default; removing an art pack does not affect match fingerprints or saves. Original blank frames can be rendered locally with `scripts/Import-CardFrames.ps1` and are never distributed.
 
 - Russian main menu: tutorial, single player, multiplayer, options, mods, exit.
@@ -31,7 +32,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - Player name, color and emblem in **Options → Player**. Flattened cube footprints use the player's color; NPCs and neutral objects use reserved gray. PvP color collisions are resolved by the host.
 - Optional local import of Kushan, Taiidan and five kiith emblems from an owned HWRM installation. Only the importer code is distributed.
 
-**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Other printed cards/leader abilities, full force-building rules, published scenario packs and supplied book campaigns remain in progress. The simplified combat module is `skirmish-v1`; card modes use `cards-basic-v1`, with the new mechanics enabled by the rules definition's `tabletop` flag.
+**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Other printed cards/leader abilities, exact published force profiles, scenario packs and supplied book campaigns remain in progress. The simplified combat module is `skirmish-v1`; card modes use `cards-basic-v1`, with the new mechanics enabled by the rules definition's `tabletop` flag.
 
 ## Run on Windows
 
@@ -101,3 +102,11 @@ The user's current rule/campaign/card reference collection is catalogued in [ref
 ## Project status and rights
 
 This is an unofficial fan project. It is not endorsed by the Homeworld rights holders. Importing from a local installation avoids bundling proprietary assets; it does not itself establish permission for every possible use. Do not upload extracted assets or original rulebooks to this repository.
+
+## Preparing custom forces
+
+Open **ОДИНОЧНАЯ ИГРА → ПОДГОТОВКА ФЛОТОВ**. Select our fleet or the opponent, choose a faction, buy units and leaders, then assign each leader to a compatible unit. Full tabs are compulsory, half-filled tabs optional, and grey tabs already belong to free assigned units. Each purchased unit uses one matching tab. Craft bought against carrier tabs must start in that carrier's bay. Multiple distinct leaders may share a compatible unit; their bonuses stack.
+
+The budget includes units, leaders and the explicitly reserved stars. Unspent budget is not added to match funds. Place units in either of your two edge columns, keep eligible frigates/capital ships in reserve, or embark strike craft in available bays. The editor reports both fleets' errors and enables launch once both are valid. Disabling tab checks allows free composition while retaining cost, faction, leader and placement validation. You may save invalid drafts, then fix them later. Personal rosters are stored under `.local/fleets/<id>.json`; modded ship/leader definitions are rechecked when a roster is loaded.
+
+Field controls set dimensions, object count, seed and background color. Custom battles use minor/major destruction objectives at 40%/60% of the opposing committed budget (purchased units, leaders and reserved funds), awarding one/two medals. These are generated skirmish defaults, not a published scenario. For direct PvP or shared-fleet co-op use **СОВМЕСТНАЯ ИГРА → ПОДГОТОВИТЬ ФЛОТЫ ДЛЯ СЕТИ**; the host configures both fleets. Peers receive the setup and private battle view. The host can resume a saved skirmish from that menu. Opponents do not yet negotiate individual rosters in a ready room.

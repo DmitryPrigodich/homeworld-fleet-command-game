@@ -210,7 +210,7 @@ public partial class Main
         _transferCrew = Math.Clamp(_transferCrew, 0, maximum);
         var amount = new SpinBox { MinValue = 0, MaxValue = maximum, Step = 1, Value = _transferCrew, Prefix = "Crew Damage цели -" };
         amount.ValueChanged += n => _transferCrew = (int)n; parent.AddChild(amount);
-        var leader = new CheckBox { Text = "Передать лидера", ButtonPressed = _transferLeader, Disabled = unit.Leader == "" || target.Leader != "" };
+        var leader = new CheckBox { Text = unit.Leader == "" ? "Передать лидера" : "Передать: " + _content.Leaders[unit.Leader].Name, ButtonPressed = _transferLeader, Disabled = FleetRuleTools.LeaderIds(unit).Length == 0 };
         leader.Toggled += on => _transferLeader = on; parent.AddChild(leader);
         Button(parent, "ПЕРЕДАТЬ ЭКИПАЖ / ЛИДЕРА", () => Submit(new("transfer-crew", unit.Id, _transferTarget, Amount: _transferCrew, TransferLeader: _transferLeader, Repair: _repairChoice)));
     }

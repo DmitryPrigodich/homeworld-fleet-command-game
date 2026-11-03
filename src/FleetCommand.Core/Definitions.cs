@@ -21,13 +21,14 @@ public sealed record ModManifest(string Id, string Version, int SchemaVersion = 
 public sealed record ShipDefinition(string Id, string Name, string Faction, string Model,
     int Models, int Move, int DicePerModel, int Success, int Armor, int Range,
     string[]? Abilities = null, float VisualSize = 0.55f, string Color = "", string TacticalIcon = "", string Label = "", int Afterburners = -1,
-    string Class = "", WeaponDefinition[]? Weapons = null, int Evasive = 0, int Crew = 0, int Ram = 0, int Stars = 0, bool ProwArmor = false, int CapSuccess = 0, int Harvest = -1, bool Survey = false, int Bays = 0, int LaunchTubes = 0, string[]? Factory = null);
+    string Class = "", WeaponDefinition[]? Weapons = null, int Evasive = 0, int Crew = 0, int Ram = 0, int Stars = 0, bool ProwArmor = false, int CapSuccess = 0, int Harvest = -1, bool Survey = false, int Bays = 0, int LaunchTubes = 0, string[]? Factory = null, ForceTab[]? Tabs = null, bool TabExempt = false);
 public sealed record WeaponDefinition(string Id, string Name, int DicePerModel, int Range, string Kind = "gun", string Arc = "all",
     string[]? Targets = null, int Penetrating = 0, int RapidFire = 0, int PowerDice = 0, int PowerPenetrating = 0, bool DefensiveFire = false, string[]? RapidTargets = null, int Barrage = 0);
 public sealed record LeaderDefinition(string Id, string Name, string Faction, string[] Classes, int Hand = 0, int Play = 0,
-    int Stars = 0, int CoolUnderPressure = 0, int AttackDice = 0);
+    int Stars = 0, int CoolUnderPressure = 0, int AttackDice = 0, ForceTab[]? Tabs = null);
+public sealed record ForceTab(string Id, string Color, bool Required = false, string[]? Classes = null, string GrantedUnit = "");
 public sealed record AbilityDefinition(string Id, string Handler, int Value = 1);
-public sealed record FleetUnit(string Ship, int Q, int R, int Facing = 0, string Leader = "", int Cargo = 0, bool Reserve = false, int EmbarkedOn = -1);
+public sealed record FleetUnit(string Ship, int Q, int R, int Facing = 0, string Leader = "", int Cargo = 0, bool Reserve = false, int EmbarkedOn = -1, string[]? AdditionalLeaders = null);
 public sealed record FleetDefinition(string Id, string Name, FleetUnit[] Units);
 public sealed record ObjectDefinition(string Id, string Name, string Model = "", bool BlocksMovement = false,
     int AttackPenalty = 0, int MoveCost = 1, string Color = "#8792a2", string Label = "", string Kind = "none", HazardDefinition? Hazard = null);
@@ -44,7 +45,7 @@ public sealed record ContentPack(ShipDefinition[]? Ships = null, AbilityDefiniti
     MapDefinition[]? Maps = null, RulesDefinition[]? Rules = null, ThemeDefinition[]? Themes = null,
     CampaignDefinition[]? Campaigns = null, LeaderDefinition[]? Leaders = null);
 public sealed record ThemeDefinition(string Id, string Name, string Background, string Panel,
-    string Text, string Muted, string Accent, string Highlight, string Enemy, string Grid);
+    string Text, string Muted, string Accent, string Highlight, string Enemy, string Grid, string TabBlue = "#36a9de", string TabYellow = "#d8ad37", string TabGrey = "#87929c");
 public sealed record CampaignMission(string Id, string Name, string Map, string? OnVictory = null, string? OnDefeat = null, string? OnDraw = null);
 public sealed record CampaignDefinition(string Id, string Name, string Start, CampaignMission[] Missions);
 

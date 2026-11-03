@@ -32,14 +32,16 @@
 - [x] Terrain activation/entry attacks, owned/neutral mines, reductions, CAP/defense and resumed paths.
 - [x] Hidden asteroid bags, private Survey, free-move Harvest, cargo/loss and bidirectional resource transfers.
 - [x] Bays, saved embark paths, reserves, Reinforce placement and factory production from cargo/reserve funds.
-- [ ] Colored force-building tabs, published reserve exceptions and scenario setup.
+- [x] Free-form fleet editor: budgets, leaders, colored tabs, assigned free units, reserve/bay placement, personal rosters and saved/networked preparation.
+- [ ] Exact published tab/card profiles, reserve exceptions and official scenario setup.
 - [x] Data-defined capture/recapture, destruction and harvest medals, immediate/round-limit results and actual campaign medal history.
 - [ ] Escort/artifact/event objectives, published scenario exceptions, heroes/upgrades and campaign purchases.
 - [ ] Actual book campaigns as separate data packs after card coverage is complete.
 
 ## Content and multiplayer
 
-- [ ] Generator fleet selectors, object density/types and map presets exposed in UI.
+- [x] Prepared-skirmish fleet selectors, dimensions, object count, seed and background color exposed in UI.
+- [ ] Object type/density presets and ready-room roster negotiation.
 - [x] Per-player private card views, with authoritative deck/RNG retained on the host.
 - [ ] Reconnection UX, stable player identities and optional subfleet ownership in co-op.
 - [ ] Relay/invitation rooms for internet play without manual reachable hosting.

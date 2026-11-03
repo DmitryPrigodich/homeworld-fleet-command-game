@@ -58,7 +58,7 @@ public static class FleetCombat
         var ship = c.Ships[unit.Definition];
         var weapon = cmd.AttackKind == "ranged" ? FleetWeapons.Select(c, s, unit, target!, cmd.Weapon)!
             : new WeaponDefinition(cmd.AttackKind, cmd.AttackKind, cmd.AttackKind == "board" ? ship.Crew : ship.Ram, 1, Kind: "close");
-        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + (cmd.Power ? weapon.PowerDice : 0) + (unit.Leader == "" ? 0 : c.Leaders[unit.Leader].AttackDice);
+        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + (cmd.Power ? weapon.PowerDice : 0) + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.AttackDice);
         if (cmd.AttackKind == "ranged") dice -= FleetWeapons.Attack(c, s, unit, target, weapon.Id).Cover;
         if (cmd.AttackKind == "board") dice -= unit.CrewDamage;
         if (cmd.AttackKind == "ram" && FleetRuleTools.Strike(ship)) dice += SpecialOrders.Lightning(ship);
@@ -86,7 +86,7 @@ public static class FleetCombat
     }
     internal static PendingCombat PrepareReaction(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit target, WeaponDefinition weapon, string kind, ref uint random)
     {
-        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + (unit.Leader == "" ? 0 : c.Leaders[unit.Leader].AttackDice);
+        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.AttackDice);
         return new(unit.Side, unit.Id, target.Id, weapon.Id, false, Roll(Math.Max(1, dice), ref random), s.Defense!.Interrupt, Kind: kind);
     }
     internal static CommandResult ReactionStart(ContentCatalog c, BattleState s, PendingCombat combat) => WaitOrResolve(c, Abilities(c, s with { Combat = combat }));

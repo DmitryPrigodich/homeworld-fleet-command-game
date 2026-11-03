@@ -47,7 +47,7 @@ public static class FleetObjectives
         if (!Enabled(c, s)) return s;
         var losses = new Dictionary<string, UnitLoss>(s.Losses ?? []);
         foreach (var lost in new[] { unit }.Concat(FleetLogistics.Children(s, unit.Id)))
-            losses.TryAdd(lost.Id, new(lost.Definition, credit, c.Ships[lost.Definition].Stars + (lost.Leader == "" ? 0 : c.Leaders[lost.Leader].Stars)));
+            losses.TryAdd(lost.Id, new(lost.Definition, credit, c.Ships[lost.Definition].Stars + FleetRuleTools.AssignedLeaders(c, lost).Sum(l => l.Stars)));
         return s with { Losses = losses };
     }
     public static string Changes(BattleState before, BattleState after) => before.Medals0 == after.Medals0 && before.Medals1 == after.Medals1 ? "" : $" Медали: {before.Medals0}:{before.Medals1} → {after.Medals0}:{after.Medals1}.";

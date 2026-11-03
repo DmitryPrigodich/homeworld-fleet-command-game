@@ -8,7 +8,7 @@ public sealed record AppSettings(string Theme = "core:hw1", string[]? EnabledMod
     // ShowLabels remains readable for older settings files; holding Alt now controls battlefield names.
     string HwrmInstallation = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Homeworld", bool ShowLabels = true, string CardStyle = "text");
 public sealed record SavedGame(BattleState State, GenerationOptions? Generation = null, CampaignProgress? Campaign = null,
-    bool ComputerOpponent = true, CommanderAppearance[]? Commanders = null);
+    bool ComputerOpponent = true, CommanderAppearance[]? Commanders = null, PreparedBattle? Preparation = null);
 
 public partial class Main : Node3D
 {
@@ -17,6 +17,7 @@ public partial class Main : Node3D
     private BattleState? _state;
     private CampaignProgress? _campaign;
     private GenerationOptions? _generation;
+    private PreparedBattle? _preparation;
     private AppSettings _settings = new();
     private ThemeDefinition _colors = new("core:hw1", "Deep Space", "#07121f", "#102436", "#b4d9e7", "#6c96aa", "#39a4c5", "#e2b361", "#d07858", "#234355");
     private Control _ui = null!;
@@ -55,6 +56,7 @@ public partial class Main : Node3D
             if (_args.Contains("--smoke-objectives")) ConfigureObjectiveContent();
             if (_args.Contains("--capture-battle")) StartBattle("core:training", false);
             if (_args.Contains("--capture-generator")) GeneratorMenu();
+            if (_args.Contains("--capture-forces")) ForceMenu();
             if (_args.Contains("--capture-tutorial")) StartTutorial();
             if (_args.Contains("--capture-player")) PlayerMenu();
             if (_args.Contains("--capture-cards")) StartCardBattle();
@@ -64,6 +66,7 @@ public partial class Main : Node3D
                 bool coop = _args.Contains("--smoke-coop");
                 if (coop) _campaign = FleetCommand.Core.Campaign.Start(_content, "core:patrol", ["host"]);
                 StartBattle(_args.Contains("--smoke-objectives") ? BasicCardBattle.ObjectivesMapId : _args.Contains("--smoke-logistics") ? BasicCardBattle.LogisticsMapId : _args.Contains("--smoke-economy") ? BasicCardBattle.EconomyMapId : _args.Contains("--smoke-terrain") ? TerrainCheckMap : _args.Contains("--smoke-tabletop") || _args.Contains("--smoke-defense") || _args.Contains("--smoke-cap") ? BasicCardBattle.TabletopMapId : _args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop);
+                if (_args.Contains("--smoke-forces")) StartPrepared(new([ForceBattle.PracticeForce("kushan"), ForceBattle.PracticeForce("taiidan")]), false);
                 if (_args.Contains("--smoke-defense")) ConfigureDefenseBattle();
                 if (_args.Contains("--smoke-cap")) ConfigureCapBattle();
                 if (_args.Contains("--smoke-terrain")) ConfigureTerrainBattle();
@@ -199,6 +202,7 @@ public partial class Main : Node3D
         if (_frames == 5 && _args.Contains("--check-defense")) _ = CheckDefense();
         if (_frames == 5 && _args.Contains("--check-cap")) _ = CheckCap();
         if (_frames == 5 && _args.Contains("--check-objectives")) _ = CheckObjectives();
+        if (_frames == 5 && _args.Contains("--check-forces")) _ = CheckForces();
         if (_frames == 5 && _args.Contains("--check-logistics")) _ = CheckLogistics();
         if (_frames == 5 && _args.Contains("--check-economy")) _ = CheckEconomy();
         if (_frames == 5 && _args.Contains("--check-terrain")) _ = CheckTerrain();

@@ -84,7 +84,7 @@ A map opts into resource tokens with `asteroidStars`, a multiset with exactly on
 
 `ship.bays` is the number of embarked units (default 0); `launchTubes` is the number of units it can disembark per round. Both validate as 0–100. `factory` lists producible ship classes, for example `["fighter", "corvette"]`. Factories offer positive-star-cost profiles of their own definition's faction. This is whole-unit production; neither ship models nor costs are guessed from missing card data. A parent with Crippled Bays cannot launch, but may still accept/build strike craft into a free bay.
 
-A fleet placement uses `reserve: true` for an off-board frigate/capital, or `embarkedOn: 0` to start a strike unit aboard placement index 0 in the same fleet. Use `q: -1, r: -1` for readability; off-board coordinates are ignored at setup and normalized to -1. The parent can itself start in reserve. Attach leaders and cargo with the existing fields; parent assignment, capacity and strike class are checked. Nested embarked carriers are rejected. Preset bays have no colored-tab requirement; a force-building tab system is still future work.
+A fleet placement uses `reserve: true` for an off-board frigate/capital, or `embarkedOn: 0` to start a strike unit aboard placement index 0 in the same fleet. Use `q: -1, r: -1` for readability; off-board coordinates are ignored at setup and normalized to -1. The parent can itself start in reserve. Attach leaders and cargo with the existing fields; parent assignment, capacity and strike class are checked. Nested embarked carriers are rejected. Preset bays have no colored-tab requirement; the separate free-form builder applies the tab system documented below.
 
 Maps may provide `reserveStars: [3, 3]` as public building funds, distinct from unit cargo and destroyed-star scores. `setupZones` optionally supplies two arrays of `{ "q": 0, "r": 0 }` cells; the default is each side's outer two columns. `reserveFromRound` (default 1) gates hyperspace reserve deployment. It is not a universal scenario event script. Specific exception rules, including bypassing Launch Tubes, still belong to the published scenario implementation work.
 
@@ -108,3 +108,26 @@ Targets are initial unit IDs (including initial reserves); count every fleet pla
 Every objective awards once. Only capture goals may be reversible: their medals follow the last boarding capturer, without accumulating repeated awards. Medals persist through target destruction until a scenario-specific condition says otherwise; more general hold/escort/artifact/event goals remain future work. At the medal threshold the match stops; the round limit compares medals, then destroyed-unit stars. Maps without `objectives` preserve prototype elimination rules.
 
 Campaign missions may set `onDraw`; omission preserves the prior defeat fallback. Objective mission results retain both fleets' medal totals even after a loss. Expansion purchases and major/minor final-campaign scoring are not included in this interface yet.
+
+## Force-building data
+
+Ships and leaders may supply `tabs`. Each tab has a source-local unique `id` (letters/digits/underscore/hyphen, up to 48), `color` (`blue` or `yellow`), `required` (default false), optional `classes`, and `grantedUnit` (default empty). Blue accepts fighter/corvette/platform; yellow accepts frigate/capital/station. A class filter narrows that group. The builder matches purchases automatically, using one tab per purchase, and will rearrange assignments to satisfy mandatory slots where possible. A mandatory leader slot must match that leader's assigned purchased unit.
+
+Example carrier tabs, referencing ship definitions supplied by the same pack:
+
+```json
+"tabs": [
+  { "id": "assigned", "color": "blue", "grantedUnit": "example:wing" },
+  { "id": "extra", "color": "blue", "classes": ["fighter", "corvette"] }
+]
+```
+
+Ship tabs are blue and require that unit to start embarked in the source ship. Only ships can supply `grantedUnit`: the builder derives it as `<purchased-entry-id>~<tab-id>`, includes it in bay capacity, charges no extra purchase cost and marks the occupied tab grey. Derived units cannot themselves grant another unit or satisfy a purchased-unit tab. The source and granted unit must share a faction. `ship.tabExempt: true` exempts that purchased unit from needing a slot, while it may still satisfy one mandatory slot. Without this flag, a missing tab profile does not silently permit an unrepresented purchase. Profiles with `stars: 0` are not offered for purchase; explicitly granted units may be free.
+
+Personal roster files are separate from mod-defined fixed `fleets`. A `ForcePlan` stores `id`, `name`, `faction`, `budget`, `reserveStars`, `checkTabs`, purchased `units` and `leaders`. Unit entries use a unique safe `id`, `ship`, `placement` (`board`, `reserve`, `bay`), local `column` (0–1), `row` (0-based), `parent` (carrier entry ID), and `facing` (-1 = towards opponent, otherwise 0–5). Leader choices use `leader` (definition ID) and `unit` (entry ID, including a derived free unit where compatible). The roster is validated against currently enabled content, so changing a mod can invalidate a saved draft. Turning off `checkTabs` bypasses only slot coverage/compulsory purchases.
+
+Multiple different leader cards may attach to one unit and sum their bonuses. Fixed fleet definitions keep the backward-compatible `leader` field and add `additionalLeaders: ["example:second-leader"]`. Card budgets count board leaders only and remain frozen for the round. The current transfer action moves the first/named leader and preserves all other assignments; selecting arbitrary simultaneous leader groups is not implemented.
+
+Optional theme fields `tabBlue`, `tabYellow` and `tabGrey` control the editor's slot palette independently of player ownership colors. They default to `#36a9de`, `#d8ad37` and `#87929c`.
+
+The core `PreparedBattle` envelope stores two plans, field dimensions, objects, seed/background and optional two-sided `ForceLimit` records. A limit can cap `budget` and `reserveStars`, whitelist `ships`/`leaders`, or disable `allowReserve`. These restrictions are a core interface for future scenario packs; the editor currently exposes custom skirmishes. This envelope is stored with saves and sent by the host, then validated and registered before battle state loads. Cards, private deposits and RNG still follow normal private-view filtering. The network signature is `fleet-forces-v1` to reject older binaries.

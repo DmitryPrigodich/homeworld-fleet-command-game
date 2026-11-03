@@ -8,11 +8,12 @@ public partial class Main
 {
     private Label? _battleStatus;
     private static Vector3 World(Hex h) => new(h.Q * 1.5f, 0, (h.R + h.Q * 0.5f) * 1.73205f);
-    private void StartBattle(string mapId, bool bot, bool preserveCampaign = false, bool preserveGeneration = false, bool persist = true, bool preserveTutorial = false)
+    private void StartBattle(string mapId, bool bot, bool preserveCampaign = false, bool preserveGeneration = false, bool persist = true, bool preserveTutorial = false, bool preservePreparation = false)
     {
         if (!preserveTutorial) EndTutorial();
         if (!preserveCampaign) _campaign = null;
         if (!preserveGeneration) _generation = null;
+        if (!preservePreparation) _preparation = null;
         if (mapId is BasicCardBattle.MapId or BasicCardBattle.TabletopMapId) BasicCardBattle.Register(_content);
         uint battleSeed = _args.Any(a => a.StartsWith("--check-") || a.StartsWith("--smoke-")) ? 12345u : BitConverter.ToUInt32(System.Security.Cryptography.RandomNumberGenerator.GetBytes(4));
         _state = _engine.Create(mapId, battleSeed);
@@ -134,6 +135,7 @@ public partial class Main
         {
             var def = _content.Ships[selected.Definition];
             Text(right, $"Ход {def.Move} / Дальность {def.Range}\nБроня {def.Armor} / Кубики {def.DicePerModel} × {selected.Models}\nFocus Fire: {selected.FocusFire}", 15);
+            foreach (var leader in FleetRuleTools.AssignedLeaders(_content, selected)) Text(right, "Лидер: " + leader.Name, 14, _colors.Highlight);
         }
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
         {
@@ -301,7 +303,7 @@ public partial class Main
     private void SaveGame()
     {
         if (_state == null || _tutorial != null || _interruptLesson || _networkActive && !_isHost) return;
-        var saved = new SavedGame(_state, _generation, _campaign == null ? null : _campaign with { Battle = _state }, _bot, _commanders);
+        var saved = new SavedGame(_state, _generation, _campaign == null ? null : _campaign with { Battle = _state }, _bot, _commanders, _preparation);
         string path = SavePath(_campaign != null), temp = path + ".pending";
         System.IO.File.WriteAllText(temp, JsonSerializer.Serialize(saved, JsonData.Options));
         System.IO.File.Move(temp, path, true);
@@ -313,6 +315,7 @@ public partial class Main
         if (saved.State.Map == BasicCardBattle.MapId) BasicCardBattle.Register(_content);
         _generation = saved.Generation;
         if (_generation != null) MapGenerator.Generate(_content, _generation);
+        RestorePreparation(saved);
         _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
         _tutorial = null; _campaign = saved.Campaign; _bot = saved.ComputerOpponent; _selected = ""; _action = "move"; _status = "Партия восстановлена.";
         _inspectedObject = null; _commanders = ValidateCommanders(saved.Commanders);

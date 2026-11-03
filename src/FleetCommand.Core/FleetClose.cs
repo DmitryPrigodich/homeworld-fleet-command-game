@@ -14,7 +14,7 @@ public static class FleetClose
     public static BattleUnit CheckHulk(ContentCatalog c, BattleUnit unit) => unit with { Hulk = FleetRuleTools.Class(c.Ships[unit.Definition]) is "capital" or "station" && unit.CrewDamage > c.Ships[unit.Definition].Armor };
     internal static BattleState Award(ContentCatalog c, BattleState s, BattleUnit destroyed, int side)
     {
-        int Cost(BattleUnit unit) => c.Ships[unit.Definition].Stars + (unit.Leader == "" ? 0 : c.Leaders[unit.Leader].Stars);
+        int Cost(BattleUnit unit) => c.Ships[unit.Definition].Stars + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.Stars);
         int stars = Cost(destroyed) + FleetLogistics.Children(s, destroyed.Id).Sum(Cost);
         s = FleetObjectives.RecordLoss(c, s, destroyed, side);
         s = FleetLogistics.LoseChildren(s, destroyed.Id);

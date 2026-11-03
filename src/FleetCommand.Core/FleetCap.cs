@@ -151,7 +151,7 @@ public static class FleetCap
                 if (volley.Ghost is { } ghost)
                 {
                     var snapshotActor = FleetTerrain.Find(s, ghost.Id);
-                    if (snapshotActor == null || snapshotActor.Side != ghost.Side || snapshotActor.Definition != ghost.Definition || snapshotActor.Models != ghost.Models || snapshotActor.Leader != ghost.Leader
+                    if (snapshotActor == null || snapshotActor.Side != ghost.Side || snapshotActor.Definition != ghost.Definition || snapshotActor.Models != ghost.Models || !FleetRuleTools.LeaderIds(snapshotActor).SequenceEqual(FleetRuleTools.LeaderIds(ghost))
                         || snapshotActor.CapUsed != ghost.CapUsed || snapshotActor.Patrol != ghost.Patrol || snapshotActor.Q != ghost.Q || snapshotActor.R != ghost.R || snapshotActor.FocusFire != ghost.FocusFire || snapshotActor.CrewDamage != ghost.CrewDamage) throw new InvalidDataException("Invalid CAP volley actor snapshot.");
                 }
             }
