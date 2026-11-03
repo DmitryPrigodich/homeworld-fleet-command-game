@@ -5,16 +5,16 @@ namespace FleetCommand.Core;
 public sealed record BattleUnit(string Id, string Definition, int Side, int Q, int R, int Facing,
     int Models, int FocusFire = 0, bool Activated = false, string Leader = "", int CrewDamage = 0, string[]? Effects = null,
     bool Hulk = false, string AttackWindow = "", string LastAction = "", string LastTarget = "", int LastActionRound = 0,
-    string Patrol = "", bool CapUsed = false, int Cargo = 0);
+    string Patrol = "", bool CapUsed = false, int Cargo = 0, string Embarked = "", int Launches = 0);
 public sealed record BattleState(string Map, string ContentFingerprint, List<BattleUnit> Units,
     int Round = 1, int ActiveSide = 0, int Orders0 = 0, int Orders1 = 0, int Sequence = 0,
     uint RandomState = 12345, int? Winner = null, bool Finished = false, List<BattleLogEntry>? Log = null, CardRound? Cards = null,
     bool FactionUsed0 = false, bool FactionUsed1 = false, PendingCombat? Combat = null, int ValorOwner = -1, int ValorUsedMask = 0, PendingRepair[]? Repairs = null,
     PendingOverrun? Overrun = null, int Stars0 = 0, int Stars1 = 0, PendingDefense? Defense = null, PendingCapEntry? CapEntry = null,
-    Dictionary<int, int>? Mines = null, HazardJob[]? Hazards = null, PendingHazard? Hazard = null, Dictionary<int, AsteroidDeposit>? Deposits = null, int Harvested0 = 0, int Harvested1 = 0);
+    Dictionary<int, int>? Mines = null, HazardJob[]? Hazards = null, PendingHazard? Hazard = null, Dictionary<int, AsteroidDeposit>? Deposits = null, int Harvested0 = 0, int Harvested1 = 0, List<BattleUnit>? Reserves = null, PendingReinforce? Reinforce = null, int Funds0 = 0, int Funds1 = 0, int NextUnit = 0);
 public sealed record UnitDeployment(string Unit, int Q, int R);
 public sealed record BattleCommand(string Kind, string Unit = "", string Target = "", int Q = 0, int R = 0, int Facing = 0, string Card = "", string OtherUnit = "",
-    string[]? Cards = null, string Weapon = "", bool Power = false, string Repair = "", bool AutoFacing = true, string OtherRepair = "", string AttackKind = "ranged", string Effect = "weapons", int Amount = 0, bool TransferLeader = false, int[]? Dice = null, UnitDeployment[]? Deployments = null, int Object = -1, bool Receive = false);
+    string[]? Cards = null, string Weapon = "", bool Power = false, string Repair = "", bool AutoFacing = true, string OtherRepair = "", string AttackKind = "ranged", string Effect = "weapons", int Amount = 0, bool TransferLeader = false, int[]? Dice = null, UnitDeployment[]? Deployments = null, int Object = -1, bool Receive = false, string Definition = "", bool ToBay = false, int ReserveSpend = 0, string Embark = "");
 public sealed record CommandResult(bool Accepted, string Message, BattleState State);
 
 // Rule implementations are ordinary C# modules. JSON selects/configures one; it never executes code.
@@ -33,12 +33,19 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
         FleetTerrain.Register(content);
         var map = content.Maps[mapId];
         if (!_modules.ContainsKey(content.Rules[map.Rules].Handler)) throw new InvalidDataException("Unknown rule module.");
-        var units = new List<BattleUnit>();
+        var units = new List<BattleUnit>(); var reserves = new List<BattleUnit>(); int counter = 0;
         for (int side = 0; side < map.Fleets.Length; side++)
-            foreach (var placement in content.Fleets[map.Fleets[side]].Units)
-                units.Add(new($"s{side}-{units.Count}", placement.Ship, side, placement.Q, placement.R, placement.Facing,
-                    content.Ships[placement.Ship].Models, Leader: placement.Leader, Cargo: placement.Cargo));
-        var state = new BattleState(mapId, content.Fingerprint, units, RandomState: seed == 0 ? 1u : seed,
+        {
+            int first = counter; var placements = content.Fleets[map.Fleets[side]].Units;
+            foreach (var placement in placements)
+            {
+                bool offboard = placement.Reserve || placement.EmbarkedOn >= 0;
+                var unit = new BattleUnit($"s{side}-{counter++}", placement.Ship, side, offboard ? -1 : placement.Q, offboard ? -1 : placement.R, placement.Facing,
+                    content.Ships[placement.Ship].Models, Leader: placement.Leader, Cargo: placement.Cargo, Embarked: placement.EmbarkedOn >= 0 ? $"s{side}-{first + placement.EmbarkedOn}" : "");
+                (offboard ? reserves : units).Add(unit);
+            }
+        }
+        var state = new BattleState(mapId, content.Fingerprint, units, Reserves: reserves.Count == 0 ? null : reserves, NextUnit: counter, Funds0: map.ReserveStars?[0] ?? 0, Funds1: map.ReserveStars?[1] ?? 0, RandomState: seed == 0 ? 1u : seed,
             Log: [new(0, 1, -1, "Бой начался."), new(1, 1, 0, "Первый приказ.")]);
         state = FleetEconomy.Initialize(content, state);
         return content.Rules[map.Rules].Handler == "cards-basic-v1" ? BasicCardRules.Initialize(state, content) : state;
@@ -74,11 +81,12 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
                 || u.LastAction is not ("" or "move" or "ranged" or "ram" or "board") || u.LastTarget == null || u.LastActionRound < 0 || u.LastActionRound > s.Round
                 || FleetRuleTools.Enabled(content, s) && u.Hulk != FleetClose.CheckHulk(content, u).Hulk
                 || u.Q < 0 || u.Q >= map.Width || u.R < 0 || u.R >= map.Height
-                || u.Patrol == null || u.Patrol == "" && !cells.Add(new(u.Q, u.R))) throw new InvalidDataException("Invalid unit in save.");
+                || u.Embarked != "" || u.Launches < 0 || u.Patrol == null || u.Patrol == "" && !cells.Add(new(u.Q, u.R))) throw new InvalidDataException("Invalid unit in save.");
         if (s.Log != null && (s.Log.Count > BattleLog.Capacity || s.Log.Any(e => e.Number < 0 || e.Round < 1 || e.Round > s.Round
                 || e.Side is < -1 or > 1 || string.IsNullOrWhiteSpace(e.Text) || e.Text.Length > 4096)
             || !s.Log.Select(e => e.Number).SequenceEqual(s.Log.Select(e => e.Number).Distinct().Order())))
             throw new InvalidDataException("Invalid battle log in save.");
+        FleetLogistics.Validate(content, s);
         FleetEconomy.Validate(content, s);
         FleetTerrain.Validate(content, s);
         FleetCap.Validate(content, s);
@@ -172,13 +180,14 @@ public sealed class SkirmishRules : IRuleModule
     {
         var rules = c.Rules[c.Maps[state.Map].Rules];
         int Remaining(int s) => FleetRuleTools.PlayLimit(c, state, s) - (s == 0 ? state.Orders0 : state.Orders1);
-        bool CanAct(int s) => Remaining(s) > 0 && state.Units.Any(u => u.Side == s && !u.Activated && !u.Hulk && (u.Patrol == "" || FleetCap.ExitCells(c, state, u).Length > 0));
-        if (!state.Units.Any(u => u.Side == 0) || !state.Units.Any(u => u.Side == 1))
-            state = state with { Winner = state.Units.Count == 0 ? null : state.Units.Any(u => u.Side == 0) ? 0 : 1, Finished = true };
+        bool CanAct(int s) => Remaining(s) > 0 && (FleetLogistics.CanReinforce(c, state, s) || state.Units.Any(u => u.Side == s && !u.Activated && !u.Hulk && (u.Patrol == "" || FleetCap.ExitCells(c, state, u).Length > 0)));
+        if (!FleetLogistics.HasForce(state, 0) || !FleetLogistics.HasForce(state, 1))
+            state = FleetClose.Outcome(state);
         else if (!CanAct(0) && !CanAct(1))
         {
             state = state with { Round = state.Round + 1, Orders0 = 0, Orders1 = 0, ActiveSide = state.Round % 2,
-                Units = state.Units.Select(u => u with { Activated = false, CapUsed = false }).ToList() };
+                Units = state.Units.Select(u => u with { Activated = false, CapUsed = false, Launches = 0 }).ToList(),
+                Reserves = state.Reserves?.Select(u => u with { Activated = false, Launches = 0 }).ToList() };
             if (state.Round > rules.RoundLimit) state = state with { Finished = true };
         }
         else state = state with { ActiveSide = CanAct(1 - side) && (rules.AlternatingOrders || !CanAct(side)) ? 1 - side : side };

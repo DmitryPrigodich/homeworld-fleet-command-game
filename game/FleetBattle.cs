@@ -12,7 +12,7 @@ public partial class Main
     private bool _transferLeader;
     private int _facingChoice = -1;
     private bool FleetBattle => _state != null && FleetRuleTools.Enabled(_content, _state);
-    private bool FleetDecision => _state?.Hazard != null || _state?.Combat != null || _state?.Defense != null || _state?.CapEntry != null || _state?.Overrun != null || _state?.Repairs is { Length: > 0 };
+    private bool FleetDecision => _state?.Reinforce != null || _state?.Hazard != null || _state?.Combat != null || _state?.Defense != null || _state?.CapEntry != null || _state?.Overrun != null || _state?.Repairs is { Length: > 0 };
     private BattleCommand? BotAttack(BattleUnit unit, string target, bool interrupt = false)
     {
         string card = interrupt ? _state!.Cards!.Hand1.FirstOrDefault(InterruptRules.IsAttack) ?? "" : _state?.Cards?.Hand1.FirstOrDefault() ?? "";
@@ -35,6 +35,7 @@ public partial class Main
     private bool DrawFleetPhase(Control parent)
     {
         if (!FleetBattle) return false;
+        if (_state!.Reinforce != null && _state.Hazard == null && _state.Combat == null && _state.Defense == null) return DrawReinforcePhase(parent);
         if (_state!.CapEntry is { } entry)
         {
             Text(parent, "НАЗНАЧИТЬ CAP", 16, _colors.Highlight);

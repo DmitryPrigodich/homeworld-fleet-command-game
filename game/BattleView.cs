@@ -36,6 +36,7 @@ public partial class Main
                 _selected = _state.Units.FirstOrDefault(u => _engine.GetActions(_state, LocalCommandSide, u.Id).AttackTargets.Length > 0)?.Id
                     ?? _state.Units.FirstOrDefault(u => u.Side == LocalCommandSide)?.Id ?? "";
         }
+        else if (_state.Reinforce != null) _selected = _state.Reinforce.Source;
         else if (_state.Cards?.Pending is { } pending) { _selected = SpecialOrders.Actor(pending); _action = SpecialOrders.Action(pending) == "attack" ? "attack" : "move"; }
         ClearScreen(); var map = _content.Maps[_state.Map];
         _cameraTarget = World(new(map.Width - 1, map.Height - 1)) * 0.5f;
@@ -111,11 +112,16 @@ public partial class Main
             b.CustomMinimumSize = new(0, 54);
             b.TooltipText = _content.Ships[unit.Definition].Name + (unit.Activated ? " — приказ уже выполнен" : " — готово к приказу");
         }
+        foreach (var unit in _state.Reserves ?? [])
+        {
+            var ship = _content.Ships[unit.Definition];
+            Button(roster, (unit.Embarked == "" ? "РЕЗЕРВ · " : "АНГАР · ") + FleetPresentation.UnitName(_content, _state, unit) + (unit.Activated ? " · ✓" : ""), () => SelectUnit(unit.Id));
+        }
         Text(left, _state.Cards?.Response != null ? "ЛКМ — выбор / ответ\nПКМ — обзор · Alt — имена" : "ЛКМ — выбор / приказ\nПКМ + мышь — обзор\nКолёсико — масштаб\nAlt — названия на поле\nF — исходный ракурс", 14, _colors.Muted);
         var right = ScrollBattlePanel(Panel(_tutorial == null ? 1150 : 1060, 112, _tutorial == null ? 260 : 350, 610));
         if (_tutorial != null) right.AddThemeConstantOverride("separation", 7);
         DrawTutorial(right);
-        var selected = FleetTerrain.Find(_state, _selected) ?? _state.Combat?.Ghost;
+        var selected = FleetTerrain.Find(_state, _selected) ?? _state.Reserves?.Find(u => u.Id == _selected) ?? _state.Combat?.Ghost;
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
             Text(right, _inspectedObject != null ? FleetPresentation.ObjectName(_content.Objects[_inspectedObject.Definition]) : selected == null ? "ПРИКАЗЫ" : FleetPresentation.UnitName(_content, _state, selected), 19, _colors.Highlight);
         if (_inspectedObject != null && _tutorial == null)
@@ -143,10 +149,11 @@ public partial class Main
                 Button(right, "ДАЛЕЕ ПО КАМПАНИИ", AdvanceCampaign, _networkActive && !_isHost);
         }
         Button(right, "ГЛАВНОЕ МЕНЮ", () => { SaveGame(); MainMenu(); });
+        DrawLogistics(right, selected);
         DrawEconomy(right, selected);
         DrawFleetUnitOptions(right, selected);
         if (_tutorial == null) Text(right, _interruptLesson ? "УРОК / БЕЗ СОХРАНЕНИЯ" : _networkActive ? (_cooperative ? "CO-OP / ОБЩИЙ ФЛОТ" : "PVP") : _bot ? "ОДИНОЧНАЯ / AI" : "ЛОКАЛЬНАЯ / HOTSEAT", 13, _colors.Muted);
-        if (_state.Deposits != null) { ConstrainEconomyPanel(left); ConstrainEconomyPanel(right); }
+        if (_state.Deposits != null || _state.Reserves != null || _state.Reinforce != null) { ConstrainEconomyPanel(left); ConstrainEconomyPanel(right); }
         DrawEventLog();
     }
     public override void _UnhandledInput(InputEvent input)
@@ -161,6 +168,7 @@ public partial class Main
             float d = World(new(q, r)).DistanceTo(hit.Value); if (d < distance) { distance = d; tile = new(q, r); }
         }
         if (tile == null || distance > 1.05f) return;
+        if (_state.Reinforce != null && !(_state.Hazard != null || _state.Combat != null || _state.Defense != null || _state.Repairs is { Length: > 0 })) { PlaceReinforcement(tile.Value); return; }
         var target = _state.Units.Find(u => u.Patrol == "" && u.Q == tile.Value.Q && u.R == tile.Value.R);
         var obj = FleetTerrain.Objects(_content, _state).FirstOrDefault(o => o.Q == tile.Value.Q && o.R == tile.Value.R);
         if (obj != null && TryHarvestObject(obj)) return;
@@ -224,6 +232,25 @@ public partial class Main
         }
         if (_state.Cards?.Phase == "initiative") { ApplyCommand(1, new("initiative")); return; }
         if (_state.ActiveSide != 1) return;
+        if (_state.Reinforce is { } reinforce)
+        {
+            var cells = ReinforceCells();
+            if (reinforce.Mode == "launch")
+            {
+                var child = FleetLogistics.Children(_state, reinforce.Source).FirstOrDefault(u => !u.Activated);
+                var host = _state.Units.Find(u => u.Id == reinforce.Source);
+                ApplyCommand(1, child != null && host != null && FleetLogistics.CanLaunch(_content, _state, host) && cells.Length > 0 ? new("launch", child.Id, Q: cells[0].Q, R: cells[0].R) : new("finish-reinforce"));
+            }
+            else ApplyCommand(1, reinforce.Mode == "deploy" && cells.Length > 0 ? new("deploy", Q: cells[0].Q, R: cells[0].R) : new("finish-reinforce"));
+            return;
+        }
+        if (_state.Cards is { Pending: null, Response: null } && FleetLogistics.CanReinforce(_content, _state, 1) && _state.Cards.Hand1.Length > 0)
+        {
+            var reserve = _state.Reserves?.FirstOrDefault(u => u.Side == 1 && u.Embarked == "" && !u.Activated);
+            if (reserve != null && FleetLogistics.DeployCells(_content, _state, 1).Length > 0) { ApplyCommand(1, new("begin-reinforce", reserve.Id, "deploy", Card: _state.Cards.Hand1[0])); return; }
+            var carrier = _state.Units.FirstOrDefault(u => u.Side == 1 && FleetLogistics.CanLaunch(_content, _state, u) && FleetLogistics.Children(_state, u.Id).Any(child => !child.Activated) && FleetLogistics.Adjacent(_content, _state, u).Length > 0);
+            if (carrier != null) { ApplyCommand(1, new("begin-reinforce", carrier.Id, "launch", Card: _state.Cards.Hand1[0])); return; }
+        }
         if (_state.Cards?.Pending is { } order)
         {
             var actor = SpecialOrders.Actor(order); var unit = _state.Units.Single(u => u.Id == actor);

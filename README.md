@@ -12,6 +12,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - Fighter CAP can be assigned after movement, follows its host, can be targeted separately, exits into a chosen adjacent hex before a new order and returns activated when its host is destroyed. Interception spends a chosen card without Play; fighter exchanges resolve simultaneous casualties before the original attack and hull defense continue.
 - **МИНЫ И АСТЕРОИДЫ** adds attacks on activation/entry, mine ownership and 5 → 3 → removed tokens, CAP/defensive fire and saved movement continuation. Removed fields disappear from rendering and geometry.
 - **РАЗВЕДКА И ДОБЫЧА** adds privately surveyed asteroid values, a Harvest order with optional free movement, cargo, depleted fields and resource transfers in either direction. The sample collectors are explicitly training profiles. Economy state survives saves and redacted multiplayer snapshots.
+- **АНГАРЫ И ПОДКРЕПЛЕНИЯ** adds movement into bays, a separate off-board reserve roster, round-wide Launch Tubes limits, reserve deployment and factories paid from cargo/reserve stars. Placement has green hex previews. Carrier destruction also removes and scores embarked units/leaders; the launch itself leaves the carrier unactivated.
 - Optional card artwork packs selected in **Options → Card appearance**. Text mode is the default; removing an art pack does not affect match fingerprints or saves. Original blank frames can be rendered locally with `scripts/Import-CardFrames.ps1` and are never distributed.
 
 - Russian main menu: tutorial, single player, multiplayer, options, mods, exit.
@@ -29,7 +30,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - Player name, color and emblem in **Options → Player**. Flattened cube footprints use the player's color; NPCs and neutral objects use reserved gray. PvP color collisions are resolved by the host.
 - Optional local import of Kushan, Taiidan and five kiith emblems from an owned HWRM installation. Only the importer code is distributed.
 
-**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Other printed cards/leader abilities, bays/reinforcements and production, full scenario objectives and supplied book campaigns remain in progress. The simplified combat module is `skirmish-v1`; card modes use `cards-basic-v1`, with the new mechanics enabled by the rules definition's `tabletop` flag.
+**This is an early prototype, not a complete implementation of Homeworld: Fleet Command.** Other printed cards/leader abilities, full force-building rules, scenario objectives and supplied book campaigns remain in progress. The simplified combat module is `skirmish-v1`; card modes use `cards-basic-v1`, with the new mechanics enabled by the rules definition's `tabletop` flag.
 
 ## Run on Windows
 
@@ -55,7 +56,9 @@ Selecting a unit ready for your current turn highlights **green movement hexes**
 
 The bottom **battle log** records accepted orders, dice and actual casualties, turn/round transitions and the result. Scroll over it to read earlier events. A status line above the history explains rejected orders and tutorial instructions. History is retained in saves and network snapshots; older saves without a history remain compatible and begin recording at the next order. The previous `showLabels` setting is accepted when loading old settings but no longer overrides the Alt control.
 
-**ОДИНОЧНАЯ ИГРА → РАЗВЕДКА И ДОБЫЧА** opens the economy training map. Select a ready collector and press **ДОБЫЧА РЕСУРСОВ**. Move normally for free or skip that step on the left, then select a field with a **ДОБЫТЬ** button or on the map. Survey reveals adjacent fields only after movement finishes, for your fleet alone. Harvest flips the field publicly and puts its stars aboard the collector. To move cargo, select a ready adjacent allied ship, choose direction/amount and press **ПЕРЕДАТЬ РЕСУРСЫ**. The neighboring ship may already be activated. These resources are distinct from destruction-score stars; spending them through factories remains pending.
+**ОДИНОЧНАЯ ИГРА → РАЗВЕДКА И ДОБЫЧА** opens the economy training map. Select a ready collector and press **ДОБЫЧА РЕСУРСОВ**. Move normally for free or skip that step on the left, then select a field with a **ДОБЫТЬ** button or on the map. Survey reveals adjacent fields only after movement finishes, for your fleet alone. Harvest flips the field publicly and puts its stars aboard the collector. To move cargo, select a ready adjacent allied ship, choose direction/amount and press **ПЕРЕДАТЬ РЕСУРСЫ**. The neighboring ship may already be activated. These resources are distinct from destruction-score stars; factories can spend them through the logistics controls below.
+
+**ОДИНОЧНАЯ ИГРА → АНГАРЫ И ПОДКРЕПЛЕНИЯ** opens a separate training map. Select a carrier and use **ВЫПУСТИТЬ ИЗ АНГАРА** or **ПРОИЗВОДСТВО**. Select the squadron/ship and a green arrival hex, or build strike craft directly into an available bay. Set the amount paid from the reserve; the rest comes from factory cargo. Select an off-board frigate in the roster to **ВВЕСТИ ИЗ РЕЗЕРВА**. Ready strike craft can use **В АНГАР** to move to a carrier and pay one movement for the final embark step. Launches share a per-round limit; released units count as activated, while the carrier does not. All sample carrier/wing profiles remain clearly labeled training data.
 
 ## Multiplayer
 

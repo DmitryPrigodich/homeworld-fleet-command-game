@@ -106,6 +106,12 @@ public static class SpecialOrders
             if (next.Repairs is { Length: > 0 }) return new(true, message, next with { Sequence = state.Sequence + 1 });
             return Advance(c, state, next, side, message);
         }
+        if (command.Kind == "embark" && Action(order) is "move" or "lightning" && command.Unit == Actor(order))
+        {
+            if (order.BasicAction == "" && !Formation(order.Card) && order.Direction >= 0
+                && !state.Units.Any(p => p.Id == command.Target && StraightDirection(new(state.Units.Single(u => u.Id == command.Unit).Q, state.Units.Single(u => u.Id == command.Unit).R), new(p.Q, p.R)) == order.Direction)) return Reject("Посадка должна продолжать прямой курс приказа.");
+            return InterruptRules.Start(c, state, side, command, basic: false);
+        }
         if (command.Kind == "harvest") return FleetEconomy.Harvest(c, state, side, command);
         if (command.Kind is "skip" or "finish-order") message = command.Kind == "skip" ? "Действие пропущено." : "Оставшиеся действия пропущены.";
         else

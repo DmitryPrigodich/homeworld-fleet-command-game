@@ -116,7 +116,7 @@ public static class FleetCombat
     {
         if (s.Combat is not { Kind: "board" } combat) return false;
         var target = s.Units.Single(u => u.Id == combat.Target);
-        return FleetCap.Patrol(s, target.Id) == null && FleetClose.CaptureAllowed(c, s, target) && combat.Rolls.Count(d => d >= c.Ships[Actor(s, combat).Definition].Success) - Armor(c, s, combat, target) >= target.Models;
+        return FleetLogistics.Children(s, target.Id).Length == 0 && FleetCap.Patrol(s, target.Id) == null && FleetClose.CaptureAllowed(c, s, target) && combat.Rolls.Count(d => d >= c.Ships[Actor(s, combat).Definition].Success) - Armor(c, s, combat, target) >= target.Models;
     }
     private static CommandResult Resolve(ContentCatalog c, BattleState s, bool capture = false, bool reactionDamage = false)
     {
@@ -143,6 +143,7 @@ public static class FleetCombat
         }
         if (survivor.Models > 0) next.Units.Add(FleetClose.CheckHulk(c, survivor));
         else if (combat.Kind is not ("terrain" or "terrain-dogfight") || c.Maps[s.Map].Objects[s.Hazard!.Job.Object].Owner >= 0) next = FleetClose.Award(c, next, target, combat.Side);
+        if (survivor.Models == 0) next = FleetLogistics.LoseChildren(next, target.Id);
         if (combat.Kind == "terrain") next = next with { Hazard = next.Hazard! with { DamageReduction = killed > 0 || focus > 0 } };
         next = FleetCap.Sync(s, next);
         if (combat.Kind is "ranged" or "ram" or "board") next = next with { Units = next.Units.Select(u => u.Id == unit.Id ? u with { AttackWindow = FleetClose.Window(s), LastAction = combat.Kind, LastTarget = target.Id, LastActionRound = s.Round } : u).ToList() };

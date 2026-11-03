@@ -31,7 +31,8 @@
 - [x] CAP entry/exit, off-board targeting, movement with host, simultaneous interception and return after host destruction.
 - [x] Terrain activation/entry attacks, owned/neutral mines, reductions, CAP/defense and resumed paths.
 - [x] Hidden asteroid bags, private Survey, free-move Harvest, cargo/loss and bidirectional resource transfers.
-- [ ] Bays, reserves, reinforcements and factory production.
+- [x] Bays, saved embark paths, reserves, Reinforce placement and factory production from cargo/reserve funds.
+- [ ] Colored force-building tabs, published reserve exceptions and scenario setup.
 - [ ] Scenario objectives, medals, heroes/upgrades and campaign purchases.
 - [ ] Actual book campaigns as separate data packs after card coverage is complete.
 

@@ -41,6 +41,7 @@ public partial class Main
         Button(box, "КАМПАНИИ", CampaignMenu);
         Button(box, "УЧЕБНЫЙ БОЙ С КАРТАМИ", StartCardBattle);
         Button(box, "ПРАВИЛА / РЕЖИМ РАЗРАБОТКИ", () => { StartBattle(BasicCardBattle.TabletopMapId, true); QueueBot(); });
+        Button(box, "АНГАРЫ И ПОДКРЕПЛЕНИЯ", () => { StartBattle(BasicCardBattle.LogisticsMapId, true); QueueBot(); });
         Button(box, "РАЗВЕДКА И ДОБЫЧА", () => { StartBattle(BasicCardBattle.EconomyMapId, true); QueueBot(); });
         Button(box, "МИНЫ И АСТЕРОИДЫ", () => { StartBattle(BasicCardBattle.TerrainMapId, true); QueueBot(); });
         Button(box, "СКИРМИШ / ГЕНЕРАТОР", GeneratorMenu);

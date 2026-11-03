@@ -9,6 +9,8 @@ public partial class Main
 
     private void DrawActionHighlights()
     {
+        if (_state?.Reinforce is { } frame && frame.Side == LocalCommandSide && _state.Hazard == null && _state.Combat == null && _state.Defense == null && _state.Repairs is not { Length: > 0 })
+        { _unitActions = UnitActions.Empty; if (!_productionToBay || frame.Mode != "build") HighlightHexes(ReinforceCells(), C("#3bdb7b"), "ReinforceHighlights"); return; }
         _unitActions = _state == null || _selected == "" ? UnitActions.Empty : _engine.GetActions(_state, LocalCommandSide, _selected);
         if (FleetBattle && _state!.Units.Find(u => u.Id == _selected) is { } selected)
         {

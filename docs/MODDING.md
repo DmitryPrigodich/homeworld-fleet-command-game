@@ -20,11 +20,11 @@ Definitions have namespaced IDs: `myfleet:ship-name`. A new definition must use 
 
 | Array | Main fields |
 | --- | --- |
-| `ships` | id, name, faction, model, models, move, dicePerModel, success, armor, range, abilities, visualSize, color, tacticalIcon, label, afterburners, class, weapons, evasive, crew, ram, stars, prowArmor, capSuccess, harvest, survey |
+| `ships` | id, name, faction, model, models, move, dicePerModel, success, armor, range, abilities, visualSize, color, tacticalIcon, label, afterburners, class, weapons, evasive, crew, ram, stars, prowArmor, capSuccess, harvest, survey, bays, launchTubes, factory |
 | `abilities` | id, handler, value |
-| `fleets` | id, name, units: ship, q, r, facing, leader, cargo |
+| `fleets` | id, name, units: ship, q, r, facing, leader, cargo, reserve, embarkedOn |
 | `objects` | id, name, model, blocksMovement, attackPenalty, moveCost, color, label, kind, hazard |
-| `maps` | id, name, width, height, background, objects, fleets, rules, captureTargets, asteroidStars |
+| `maps` | id, name, width, height, background, objects, fleets, rules, captureTargets, asteroidStars, reserveStars, setupZones, reserveFromRound |
 | `rules` | id, name, handler, roundLimit, ordersPerSide, alternatingOrders, friendlyPassThrough, rearShots, focusFire, tabletop |
 | `leaders` | id, name, faction, classes, hand, play, stars, coolUnderPressure, attackDice |
 | `themes` | id, name, background, panel, text, muted, accent, highlight, enemy, grid |
@@ -79,3 +79,13 @@ In tabletop card rules, `ship.harvest` is the range in hexes (`-1`, default, mea
 A map opts into resource tokens with `asteroidStars`, a multiset with exactly one integer for each asteroid object (for example `[0, 2, 3]`). At setup, the authority privately shuffles those values and assigns them to asteroid object indices in map order. The array does not fix values to coordinates. Maps without this field keep terrain-only asteroids. Values currently validate as 0–1000 per token, Harvest range as -1–50 and cargo as 0–1,000,000; these are implementation bounds, not tabletop limits. Economy maps currently require `tabletop: true` and `handler: "cards-basic-v1"`.
 
 `BattleState.Deposits` stores the assigned value, harvested flag and per-side Survey knowledge. Host saves retain all values; private views replace unknown values with `-1` and strip the other side's knowledge. Cargo and revealed harvested values are public. Harvest never removes the object or its cover/attack effects. `Harvested0/1` are cumulative collection totals for future objective rules; `Stars0/1` remain the destruction ledger. The example map uses synthetic, clearly labeled training collectors rather than asserting missing published card statistics.
+
+## Bays, reinforcements and factories
+
+`ship.bays` is the number of embarked units (default 0); `launchTubes` is the number of units it can disembark per round. Both validate as 0–100. `factory` lists producible ship classes, for example `["fighter", "corvette"]`. Factories offer positive-star-cost profiles of their own definition's faction. This is whole-unit production; neither ship models nor costs are guessed from missing card data. A parent with Crippled Bays cannot launch, but may still accept/build strike craft into a free bay.
+
+A fleet placement uses `reserve: true` for an off-board frigate/capital, or `embarkedOn: 0` to start a strike unit aboard placement index 0 in the same fleet. Use `q: -1, r: -1` for readability; off-board coordinates are ignored at setup and normalized to -1. The parent can itself start in reserve. Attach leaders and cargo with the existing fields; parent assignment, capacity and strike class are checked. Nested embarked carriers are rejected. Preset bays have no colored-tab requirement; a force-building tab system is still future work.
+
+Maps may provide `reserveStars: [3, 3]` as public building funds, distinct from unit cargo and destroyed-star scores. `setupZones` optionally supplies two arrays of `{ "q": 0, "r": 0 }` cells; the default is each side's outer two columns. `reserveFromRound` (default 1) gates hyperspace reserve deployment. It is not a universal scenario event script. Specific exception rules, including bypassing Launch Tubes, still belong to the published scenario implementation work.
+
+Off-board state is stored in `Reserves`; an empty `Embarked` means reserve, otherwise it names the parent. `Launches` resets at round cleanup. `PendingReinforce` retains a paid placement, and `NextUnit` prevents produced IDs being reused after loss or reload. Public reserve rosters and placement decisions synchronize over ENet; private cards and resource surveys remain redacted.

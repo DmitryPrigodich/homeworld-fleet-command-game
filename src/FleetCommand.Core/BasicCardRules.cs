@@ -10,6 +10,7 @@ public static class BasicCardBattle
 {
     public const string MapId = "practice:cards";
     public const string TabletopMapId = "practice:rules";
+    public const string LogisticsMapId = "practice:logistics";
     public const string EconomyMapId = "practice:economy";
     public const string TerrainMapId = "practice:hazards";
     public static void Register(ContentCatalog c)
@@ -29,6 +30,18 @@ public static class BasicCardBattle
         }
         c.Maps[EconomyMapId] = c.Maps[TabletopMapId] with { Id = EconomyMapId, Name = "Разведка и добыча / учебный бой", Fleets = ["practice:kushan-economy", "practice:taiidan-economy"],
             Objects = [new("core:asteroids", 3, 2), new("core:asteroids", 4, 4), new("core:asteroids", 6, 2)], AsteroidStars = [0, 2, 3] };
+        foreach (string faction in new[] { "kushan", "taiidan" })
+        {
+            string carrier = "practice:" + faction + "-carrier", wing = "practice:" + faction + "-wing", frigate = "practice:" + faction + "-reserve-frigate";
+            c.Ships[carrier] = c.Ships["core:" + faction + "-frigate"] with { Id = carrier, Name = "Учебный носитель", Label = "Учебный носитель", Class = "capital", Models = 1, Stars = 5, Bays = 3, LaunchTubes = 2, Factory = ["fighter", "corvette"] };
+            c.Ships[wing] = c.Ships["core:" + faction + "-interceptor"] with { Id = wing, Name = "Учебное звено", Label = "Учебное звено", Class = "fighter", Models = 3, Stars = 2, Abilities = [], Weapons = [new("gun", "Пушки", 1, 1)] };
+            c.Ships[frigate] = c.Ships["core:" + faction + "-frigate"] with { Id = frigate, Name = "Резервный фрегат", Label = "Резервный фрегат", Models = 1, Stars = 3, Class = "frigate" };
+            int q = faction == "kushan" ? 1 : 8, facing = faction == "kushan" ? 0 : 3;
+            string fleet = "practice:" + faction + "-logistics";
+            c.Fleets[fleet] = new(fleet, "Учебные подкрепления", [new(carrier, q, 3, facing, Cargo: 6), new(wing, -1, -1, EmbarkedOn: 0), new(wing, -1, -1, EmbarkedOn: 0), new(frigate, -1, -1, facing, Reserve: true), new(wing, q + (facing == 0 ? 1 : -1), 3, facing)]);
+        }
+        c.Maps[LogisticsMapId] = c.Maps[TabletopMapId] with { Id = LogisticsMapId, Name = "Ангары и подкрепления / учебный бой", Fleets = ["practice:kushan-logistics", "practice:taiidan-logistics"], Objects = [new("core:asteroids", 4, 2)], ReserveStars = [3, 3] };
+
 
     }
 }
@@ -63,7 +76,7 @@ public sealed class BasicCardRules : IRuleModule
         return state with { RandomState = random, Cards = new(deck.ToArray(), hands[0].ToArray(), hands[1].ToArray(), discard.ToArray(), HandLimit0: cards.HandLimit0, HandLimit1: cards.HandLimit1, PlayLimit0: cards.PlayLimit0, PlayLimit1: cards.PlayLimit1) };
     }
     public UnitActions GetActions(ContentCatalog c, BattleState state, int side, string unitId) =>
-        state.Hazard != null || state.Hazards is { Length: > 0 } || state.Combat != null || state.Defense != null || state.CapEntry != null || state.Overrun != null || state.Repairs is { Length: > 0 } ? UnitActions.Empty :
+        state.Reinforce != null || state.Hazard != null || state.Hazards is { Length: > 0 } || state.Combat != null || state.Defense != null || state.CapEntry != null || state.Overrun != null || state.Repairs is { Length: > 0 } ? UnitActions.Empty :
         state.Cards?.Response != null ? InterruptRules.Actions(c, state, side, unitId) :
         state.Cards?.Pending != null ? SpecialOrders.Actions(c, state, side, unitId) :
         state.Cards is { Phase: "orders" } cards && (side == 0 ? cards.Hand0 : cards.Hand1).Length > 0
@@ -77,6 +90,7 @@ public sealed class BasicCardRules : IRuleModule
         if (state.Overrun != null) return FleetClose.Apply(c, state, side, command);
         if (state.Combat != null) return FleetCombat.Apply(c, state, side, command);
         if (state.Defense != null) return FleetDefense.Apply(c, state, side, command);
+        if (state.Reinforce != null) return FleetLogistics.Apply(c, state, side, command);
         if (state.CapEntry != null) return FleetCap.ApplyEntry(c, state, side, command);
         if (cards.Response != null) return InterruptRules.Apply(c, state, side, command);
         if (cards.Pending != null) return SpecialOrders.Apply(c, state, side, command);
@@ -118,13 +132,14 @@ public sealed class BasicCardRules : IRuleModule
                 next with { Cards = cards, RandomState = random, ActiveSide = a > b ? 0 : 1,
                     ValorOwner = FleetRuleTools.Enabled(c, state) && a != b && state.ValorOwner == -1 ? a > b ? 1 : 0 : state.ValorOwner });
         }
+        if (command.Kind == "begin-reinforce") return FleetLogistics.Begin(c, state, side, command);
         if (command.Kind == "faction") return FleetRuleTools.FactionRepair(c, state, side, command);
         if (command.Kind == "begin-order") return SpecialOrders.BeginBasic(c, state, side, command);
         if (command.Kind == "special") return SpecialOrders.Start(c, state, side, command);
         if (command.Kind != "pass" && !hand.Contains(command.Card)) return Reject("Выберите карту из своей руки для базового приказа.");
         if (command.Kind == "transfer-stars") return FleetEconomy.BeginTransfer(c, state, side, command);
         if (command.Kind == "transfer-crew") return FleetTransfers.Apply(c, state, side, command);
-        if (command.Kind is "move" or "attack") return InterruptRules.Start(c, state, side, command, basic: true);
+        if (command.Kind is "move" or "attack" or "embark") return InterruptRules.Start(c, state, side, command, basic: true);
         var result = new SkirmishRules().Apply(c, state, side, command);
         if (!result.Accepted) return result;
         if (command.Kind != "pass")

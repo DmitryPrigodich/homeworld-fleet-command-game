@@ -13,6 +13,7 @@ public partial class Main
     private int _capNetworkStep;
     private int _terrainNetworkStep;
     private int _economyNetworkStep;
+    private int _logisticsNetworkStep;
     private int LocalCommandSide => _networkActive ? _localSide : _bot || _tutorial != null ? 0 : _state?.CapEntry is { } entry ? entry.Side : _state?.Overrun is { } overrun ? overrun.Side : _state?.Repairs is { Length: > 0 } ? _state.Repairs[0].Side : _state?.Combat is { } combat ? FleetCombat.DecisionSide(combat) : _state?.Defense is { } defense ? 1 - defense.Side : _state?.Cards?.Response is { } pause ? 1 - pause.Side
         : _state?.Cards is { Phase: "initiative" or "cleanup" } phase ? phase.Ready0 ? 1 : 0 : _state?.ActiveSide ?? 0;
     private readonly Dictionary<long, int> _sideByPeer = [];
@@ -21,11 +22,12 @@ public partial class Main
         ClearScreen(); Heading("Совместная игра"); var box = Panel(70, 200, 640, 570);
         var cooperative = new CheckBox { Text = "Кооператив: общий синий флот против AI", ButtonPressed = true }; box.AddChild(cooperative);
         var cardMode = new CheckBox { Text = "Учебный бой с картами" }; box.AddChild(cardMode);
+        var logistics = new CheckBox { Text = "Ангары и подкрепления (учебная карта)" }; box.AddChild(logistics);
         var economy = new CheckBox { Text = "Разведка и добыча (учебная карта)" }; box.AddChild(economy);
         var tabletop = new CheckBox { Text = "Механики правил (режим разработки)" }; box.AddChild(tabletop);
         var address = new LineEdit { Text = "127.0.0.1", PlaceholderText = "Адрес хоста", CustomMinimumSize = new(0, 40) }; box.AddChild(address);
         Text(box, "Прототип: прямое подключение ENet, UDP-порт 24560. Комнаты по приглашению и relay — следующий этап.", 15, _colors.Muted);
-        Button(box, "СОЗДАТЬ СКИРМИШ", () => { StartBattle(economy.ButtonPressed ? BasicCardBattle.EconomyMapId : tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
+        Button(box, "СОЗДАТЬ СКИРМИШ", () => { StartBattle(logistics.ButtonPressed ? BasicCardBattle.LogisticsMapId : economy.ButtonPressed ? BasicCardBattle.EconomyMapId : tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
         Button(box, "СОЗДАТЬ КООП-КАМПАНИЮ", () =>
         {
             _campaign = FleetCommand.Core.Campaign.Start(_content, "core:patrol", ["host"]);
@@ -46,7 +48,7 @@ public partial class Main
         if (host) InitializeCommanders();
         if (!_networkSignalsBound)
         {
-            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-economy-v1:" + _content.Fingerprint,
+            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-logistics-v1:" + _content.Fingerprint,
                 JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
             Multiplayer.ConnectionFailed += () => { _status = "Не удалось подключиться."; StopNetwork(); DrawBattle(); };
             Multiplayer.ServerDisconnected += () => { _status = "Хост отключился. Продолжение — из сохранения у хоста."; StopNetwork(); DrawBattle(); };
@@ -67,7 +69,7 @@ public partial class Main
     {
         if (!_networkActive || !_isHost) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (fingerprint != "fleet-economy-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        if (fingerprint != "fleet-logistics-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
         PlayerProfile profile;
         try { profile = FleetPresentation.Normalize(JsonSerializer.Deserialize<PlayerProfile>(profileJson, JsonData.Options)); }
         catch (JsonException) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
@@ -81,7 +83,7 @@ public partial class Main
         }
         if (_campaign != null) _campaign = _campaign with { Participants = (_campaign.Participants ?? []).Append("peer-" + sender).Distinct().ToArray() };
         DrawBattle(); Broadcast(); SaveGame();
-        if (_args.Contains("--smoke-terrain") || _args.Contains("--smoke-economy")) return;
+        if (_args.Contains("--smoke-terrain") || _args.Contains("--smoke-economy") || _args.Contains("--smoke-logistics")) return;
         if (_args.Contains("--smoke-cap"))
         {
             ApplyCommand(0, new("attack", "s0-0", "s1-5", Card: "order-01"));
@@ -124,6 +126,27 @@ public partial class Main
         {
             var command = JsonSerializer.Deserialize<BattleCommand>(json, JsonData.Options);
             if (command != null && !ApplyCommand(side, command)) RpcId(Multiplayer.GetRemoteSenderId(), nameof(ReceiveCommandFeedback), _status);
+            if (_args.Contains("--smoke-logistics"))
+            {
+                if (command?.Kind is "launch" or "build" or "deploy")
+                {
+                    var saved = JsonData.Read<SavedGame>(SavePath(false)); _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
+                    if (command.Kind == "launch")
+                    {
+                        if (_state.Reinforce?.Mode != "launch" || _state.Units.Single(u => u.Id == "s1-5") is not { Activated: false, Launches: 1 }) throw new InvalidDataException("Launch state was not restored.");
+                        GD.Print("LOGISTICS_LAUNCH_NETWORK_RESUMED");
+                    }
+                    if (command.Kind == "build")
+                    {
+                        if (!_state.Reserves!.Any(u => u.Id == "s1-10" && u.Embarked == "s1-5" && u.Activated) || _state.Funds1 != 2 || _state.Units.Single(u => u.Id == "s1-5").Cargo != 5) throw new InvalidDataException("Built unit or funding was not restored.");
+                        GD.Print("LOGISTICS_BUILD_NETWORK_RESUMED");
+                    }
+                    if (command.Kind == "deploy") { GD.Print("LOGISTICS_NETWORK_OK"); GetTree().CreateTimer(0.5).Timeout += () => GetTree().Quit(); }
+                    Broadcast();
+                }
+                if (command?.Kind == "finish-reinforce") ApplyCommand(0, new("pass"));
+                return;
+            }
             if (_args.Contains("--smoke-economy"))
             {
                 if (command?.Kind == "move")
@@ -274,6 +297,19 @@ public partial class Main
             {
                 if (_state.Cards is not { IsView: true } cards || cards.Deck.Length != 0 || cards.Hand0.Length != 0 || _state.RandomState != 1)
                     throw new InvalidDataException("Private card state leaked over ENet.");
+                if (_args.Contains("--smoke-logistics"))
+                {
+                    if (_logisticsNetworkStep == 7 && _state.Round == 2 && cards.Phase == "cleanup" && _state.Units.Any(u => u.Id == "s1-8" && u.Q == 9 && u.R == 0) && _state.Units.Single(u => u.Id == "s1-5") is { Cargo: 5, Launches: 0 } && _state.Funds1 == 2 && FleetLogistics.Children(_state, "s1-5").Length == 2)
+                    { GD.Print("LOGISTICS_NETWORK_OK"); GetTree().Quit(); return; }
+                    if (_logisticsNetworkStep == 0 && cards.Phase == "orders" && _state.ActiveSide == 1) { _logisticsNetworkStep = 1; Submit(new("begin-reinforce", "s1-5", "launch", Card: "order-21")); }
+                    else if (_logisticsNetworkStep == 1 && _state.Reinforce?.Mode == "launch") { _logisticsNetworkStep = 2; Submit(new("launch", "s1-6", Q: 8, R: 2)); }
+                    else if (_logisticsNetworkStep == 2 && _state.Units.Any(u => u.Id == "s1-6") && _state.Reinforce != null) { _logisticsNetworkStep = 3; Submit(new("finish-reinforce")); }
+                    else if (_logisticsNetworkStep == 3 && _state.Reinforce == null && _state.ActiveSide == 1 && _state.Orders1 == 1) { _logisticsNetworkStep = 4; Submit(new("begin-reinforce", "s1-5", "build", Card: "order-22")); }
+                    else if (_logisticsNetworkStep == 4 && _state.Reinforce?.Mode == "build") { _logisticsNetworkStep = 5; Submit(new("build", Definition: "practice:taiidan-wing", ToBay: true, ReserveSpend: 1)); }
+                    else if (_logisticsNetworkStep == 5 && _state.Reinforce == null && _state.ActiveSide == 1 && _state.Orders1 == 2) { _logisticsNetworkStep = 6; Submit(new("begin-reinforce", "s1-8", "deploy", Card: "order-23")); }
+                    else if (_logisticsNetworkStep == 6 && _state.Reinforce?.Mode == "deploy") { _logisticsNetworkStep = 7; Submit(new("deploy", Q: 9, R: 0)); }
+                    return;
+                }
                 if (_args.Contains("--smoke-economy"))
                 {
                     if (_state.Deposits == null || _state.Deposits[0].Stars != -1 || _state.Deposits[1].Stars != -1 || _state.Deposits.Values.Any(d => (d.SurveyMask & 1) != 0)) throw new InvalidDataException("Unscouted resources or opposing knowledge leaked over ENet.");

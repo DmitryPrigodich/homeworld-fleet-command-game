@@ -95,7 +95,7 @@ public sealed class ContentCatalog
         foreach (var s in Ships.Values)
         {
             if (s.Models < 1 || s.Models > 100 || s.Move < 0 || s.Move > 50 || s.DicePerModel < 0 || s.DicePerModel > 50
-                || s.Success is < 2 or > 6 || s.Armor < 0 || s.Range < 0 || s.Harvest is < -1 or > 50 || s.Afterburners is < -1 or > 50 || s.Crew < 0 || s.Ram < 0 || s.Stars < 0 || s.Evasive < 0
+                || s.Success is < 2 or > 6 || s.Armor < 0 || s.Range < 0 || s.Bays is < 0 or > 100 || s.LaunchTubes is < 0 or > 100 || (s.Factory ?? []).Any(t => !FleetRuleTools.Classes.Contains(t)) || s.Harvest is < -1 or > 50 || s.Afterburners is < -1 or > 50 || s.Crew < 0 || s.Ram < 0 || s.Stars < 0 || s.Evasive < 0
                 || !float.IsFinite(s.VisualSize) || s.VisualSize is <= 0 or > 2)
                 throw new InvalidDataException($"Invalid ship statistics: {s.Id}");
             foreach (var a in s.Abilities ?? []) if (!Abilities.ContainsKey(a)) throw new InvalidDataException($"{s.Id}: missing ability {a}");
@@ -124,6 +124,8 @@ public sealed class ContentCatalog
                 throw new InvalidDataException($"Invalid map configuration: {map.Id}");
             if (map.AsteroidStars != null && (!Rules[map.Rules].Tabletop || Rules[map.Rules].Handler != "cards-basic-v1" || map.AsteroidStars.Length != map.Objects.Count(o => Objects.TryGetValue(o.Definition, out var obj) && FleetTerrain.Kind(obj) == "asteroid")
                 || map.AsteroidStars.Any(n => n is < 0 or > 1000))) throw new InvalidDataException($"Invalid asteroid star bag: {map.Id}");
+            if (map.ReserveFromRound < 1 || map.ReserveStars != null && (map.ReserveStars.Length != 2 || map.ReserveStars.Any(n => n is < 0 or > 1000000))
+                || map.SetupZones != null && (map.SetupZones.Length != 2 || map.SetupZones.Any(zone => zone == null || zone.Any(h => h.Q < 0 || h.R < 0 || h.Q >= map.Width || h.R >= map.Height)))) throw new InvalidDataException($"Invalid reinforcement setup: {map.Id}");
             bool Inside(int q, int r) => q >= 0 && q < map.Width && r >= 0 && r < map.Height;
             var occupied = new HashSet<Hex>();
             foreach (var objectPlacement in map.Objects)
@@ -135,7 +137,8 @@ public sealed class ContentCatalog
             foreach (var f in map.Fleets)
             {
                 if (!Fleets.TryGetValue(f, out var fleet)) throw new InvalidDataException($"Missing fleet: {f}");
-                foreach (var unit in fleet.Units)
+                FleetLogistics.ValidatePlacements(this, fleet, Rules[map.Rules].Tabletop);
+                foreach (var unit in fleet.Units.Where(u => !u.Reserve && u.EmbarkedOn < 0))
                     if (!Inside(unit.Q, unit.R) || !occupied.Add(new(unit.Q, unit.R))) throw new InvalidDataException($"Invalid/overlapping deployment: {map.Id}");
             }
         }
