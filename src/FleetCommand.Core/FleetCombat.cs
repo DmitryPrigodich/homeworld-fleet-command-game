@@ -58,7 +58,7 @@ public static class FleetCombat
         var ship = c.Ships[unit.Definition];
         var weapon = cmd.AttackKind == "ranged" ? FleetWeapons.Select(c, s, unit, target!, cmd.Weapon)!
             : new WeaponDefinition(cmd.AttackKind, cmd.AttackKind, cmd.AttackKind == "board" ? ship.Crew : ship.Ram, 1, Kind: "close");
-        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + (cmd.Power ? weapon.PowerDice : 0) + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.AttackDice);
+        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + (cmd.Power ? weapon.PowerDice : 0) + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.AttackDice + (cmd.AttackKind is "ram" or "board" ? l.CloseDice : 0));
         if (cmd.AttackKind == "ranged") dice -= FleetWeapons.Attack(c, s, unit, target, weapon.Id).Cover;
         if (cmd.AttackKind == "board") dice -= unit.CrewDamage;
         if (cmd.AttackKind == "ram" && FleetRuleTools.Strike(ship)) dice += SpecialOrders.Lightning(ship);
@@ -107,7 +107,7 @@ public static class FleetCombat
         if (combat.Kind == "defense" && s.Defense!.Threat == "fighter") return 0;
         if (combat.Kind == "collision") return defender.Armor + (defender.ProwArmor ? 1 : 0) + (FleetRuleTools.Has(target, "brace") ? 1 : 0);
         int distance = new Hex(unit.Q, unit.R).Distance(new(target.Q, target.R));
-        bool rear = FleetRuleTools.Class(defender) is "frigate" or "capital" && new Hex(unit.Q, unit.R).Distance(new Hex(target.Q, target.R).Neighbor(target.Facing + 3)) == distance - 1;
+        bool rear = defender.Footprint == 1 && FleetRuleTools.Class(defender) is "frigate" or "capital" && new Hex(unit.Q, unit.R).Distance(new Hex(target.Q, target.R).Neighbor(target.Facing + 3)) == distance - 1;
         bool front = new Hex(unit.Q, unit.R).Distance(new Hex(target.Q, target.R).Neighbor(target.Facing)) == distance - 1;
         return Math.Max(0, defender.Armor + (FleetRuleTools.Has(target, "brace") ? 1 : 0) + (defender.ProwArmor && front ? 1 : 0)
             - (rear ? 1 : 0) - target.FocusFire - weapon.Penetrating - (combat.Power ? weapon.PowerPenetrating : 0));
@@ -210,7 +210,7 @@ public static class FleetCombat
             : combat.Kind == "terrain" ? s.Hazard != null && combat.Ghost == FleetTerrain.Source(s) && combat.Target == s.Hazard.Job.Unit
             : combat.Ghost == null && (combat.Kind == "defense" ? s.Defense is { Fired: true } frame && frame.Attack.Unit == target.Id && frame.Attack.Target == unit.Id && FleetDefense.Weapons(c, unit).Any(w => w.Id == combat.Weapon)
                 : combat.Kind is "cap" or "dogfight" or "terrain-dogfight" ? FleetCap.ValidVolley(c, s, combat)
-                : combat.Kind == "ranged" ? FleetWeapons.Select(c, s, unit, target, combat.Weapon) != null : combat.Kind is "ram" or "board" && new Hex(unit.Q, unit.R).Distance(new(target.Q, target.R)) == 1));
+                : combat.Kind == "ranged" ? FleetWeapons.Select(c, s, unit, target, combat.Weapon) != null : combat.Kind is "ram" or "board" && FleetFootprint.Distance(c, unit, target) == 1));
         if (!FleetRuleTools.Enabled(c, s) || s.Finished || s.Cards?.Response == null && s.Hazard == null || !legal || combat.Rolls == null || s.Overrun != null || unit!.Side != combat.Side || target!.Side == combat.Side
             || combat.Rolls.Length is < 1 or > 10000 || combat.Rolls.Any(d => d is < 1 or > 6) || !FleetRuleTools.Debuffs.Contains(combat.Effect)
             || combat.AbilityRerolls < 0 || combat.AbilityRerolls > combat.Rolls.Length || combat.AbilityRerolls > 0 && (combat.RerollSide is < 0 or > 1 || EligibleDice(c, s).Length < combat.AbilityRerolls)

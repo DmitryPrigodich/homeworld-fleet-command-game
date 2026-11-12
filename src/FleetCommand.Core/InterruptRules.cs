@@ -1,7 +1,7 @@
 namespace FleetCommand.Core;
 
 // The active side keeps its turn while the other side answers this public pause.
-public sealed record PendingResponse(int Side, BattleCommand Command, bool Basic, Hex[] RemainingPath, int[]? PathFacings = null, Hex? Transit = null);
+public sealed record PendingResponse(int Side, BattleCommand Command, bool Basic, Hex[] RemainingPath, int[]? PathFacings = null, Hex? Transit = null, int TransitFacing = -1, MovementStep? MoveStart = null, int FrontSpent = 0, int RearSpent = 0);
 
 public static class InterruptRules
 {
@@ -80,7 +80,7 @@ public static class InterruptRules
             else path = SkirmishGeometry.MovementPath(pending == null ? c : SpecialOrders.Geometry(c, state, pending), state, unit, new(command.Q, command.R));
         }
         if (tabletop && command.Kind == "move") path = steps!.Select(p => p.Cell).ToArray();
-        var response = new PendingResponse(side, command, basic, path, steps?.Select(p => p.Facing).ToArray());
+        var response = new PendingResponse(side, command, basic, path, steps?.Select(p => p.Facing).ToArray(), MoveStart: c.Ships[unit.Definition].Footprint == 2 && command.Kind == "move" ? new(new(unit.Q, unit.R), unit.Facing) : null);
         next = next with { Cards = next.Cards! with { Response = response } };
         if (basic && tabletop)
         {
@@ -130,22 +130,32 @@ public static class InterruptRules
             if (pause.Command.Embark != "" && remaining.Count == 0)
                 return Complete(c, original, FleetLogistics.Embark(next, unit with { Facing = facing }, pause.Command.Embark), message + " Отряд вошёл в ангар; потрачен 1 Move на посадку.");
             // A pause cannot leave two units sharing a cell: pass through allies first.
-            bool occupied = next.Units.Any(u => u.Patrol == "" && u.Id != unit.Id && u.Q == cell.Q && u.R == cell.R);
+            var priorStep = new MovementStep(pause.Transit ?? new Hex(unit.Q, unit.R), pause.TransitFacing < 0 ? unit.Facing : pause.TransitFacing);
+            var currentStep = new MovementStep(cell, facing);
+            var oldCells = FleetFootprint.Cells(c.Ships[unit.Definition], priorStep.Cell, priorStep.Facing);
+            var newCells = FleetFootprint.Cells(c.Ships[unit.Definition], cell, facing);
+            var entered = newCells.Except(oldCells).ToArray();
+            if (pause.MoveStart != null)
+            {
+                var cost = FleetLargeMovement.Cost(c, next, unit, priorStep, currentStep);
+                pause = pause with { FrontSpent = pause.FrontSpent + cost.Front, RearSpent = pause.RearSpent + cost.Rear };
+            }
+            bool occupied = newCells.Any(h => next.Units.Any(u => u.Patrol == "" && u.Id != unit.Id && FleetFootprint.Contains(c, u, h)));
             if (occupied)
             {
-                pause = pause with { RemainingPath = remaining.ToArray(), PathFacings = facings?.ToArray(), Transit = cell };
+                pause = pause with { RemainingPath = remaining.ToArray(), PathFacings = facings?.ToArray(), Transit = cell, TransitFacing = facing };
                 next = next with { Cards = next.Cards! with { Response = pause } };
-                var transit = FleetTerrain.Entry(c, original, next, unit.Id, cell, message);
+                var transit = FleetTerrain.Entry(c, original, next, unit.Id, cell, message, entered);
                 if (transit != null) return transit;
                 continue;
             }
             var previous = pause.Transit ?? new Hex(unit.Q, unit.R);
             unit = unit with { Q = cell.Q, R = cell.R, Facing = facing, LastAction = "move", LastTarget = "", LastActionRound = next.Round };
-            pause = pause with { RemainingPath = remaining.ToArray(), PathFacings = facings?.ToArray(), Transit = null };
+            pause = pause with { RemainingPath = remaining.ToArray(), PathFacings = facings?.ToArray(), Transit = null, TransitFacing = -1 };
             next = next with { Units = next.Units.Select(u => u.Id == unit.Id ? unit : u).ToList(), Cards = next.Cards! with { Response = pause } };
-            if (previous != cell)
+            if (entered.Length > 0)
             {
-                var terrain = FleetTerrain.Entry(c, original, next, unit.Id, cell, message);
+                var terrain = FleetTerrain.Entry(c, original, next, unit.Id, cell, message, entered);
                 if (terrain != null) return terrain;
             }
             if (Offer(c, next, pause)) return Paused(original, next, message + $" {FleetPresentation.UnitName(c, next, unit)}: перемещение в клетку ({cell.Q + 1}, {cell.R + 1}).");
@@ -219,13 +229,24 @@ public static class InterruptRules
     {
         if (state.Cards?.Response is not { } pause) return;
         var map = c.Maps[state.Map]; var rules = c.Rules[map.Rules];
-        if (pause.Command.Embark != "" && (pause.Command.Kind != "move" || !state.Units.Any(p => p.Id == pause.Command.Embark && p.Q == pause.Command.Q && p.R == pause.Command.R && FleetLogistics.CanEmbark(c, state, state.Units.Single(u => u.Id == pause.Command.Unit), p)))) throw new InvalidDataException("Invalid embark route.");
+        if (pause.Command.Embark != "" && (pause.Command.Kind != "move" || !state.Units.Any(p => p.Id == pause.Command.Embark && FleetFootprint.Contains(c, p, new(pause.Command.Q, pause.Command.R)) && FleetLogistics.CanEmbark(c, state, state.Units.Single(u => u.Id == pause.Command.Unit), p)))) throw new InvalidDataException("Invalid embark route.");
         if (pause.Transit is { } transit && (pause.Command.Kind != "move" || state.Hazard == null || state.Hazard.Job.Resume != "movement"
-            || transit.Q < 0 || transit.R < 0 || transit.Q >= map.Width || transit.R >= map.Height || SkirmishGeometry.Blocked(c, map, transit, state)
-            || !state.Units.Any(u => u.Id != pause.Command.Unit && u.Patrol == "" && u.Q == transit.Q && u.R == transit.R && u.Side == pause.Side && !u.Hulk) || !rules.FriendlyPassThrough))
+            || !FleetFootprint.CanPlace(c, state, state.Units.Single(u => u.Id == pause.Command.Unit), transit, pause.TransitFacing < 0 ? state.Units.Single(u => u.Id == pause.Command.Unit).Facing : pause.TransitFacing, transit: true)
+            || !state.Units.Any(u => u.Id != pause.Command.Unit && u.Patrol == "" && FleetFootprint.Cells(c.Ships[state.Units.Single(a => a.Id == pause.Command.Unit).Definition], transit, pause.TransitFacing < 0 ? state.Units.Single(a => a.Id == pause.Command.Unit).Facing : pause.TransitFacing).Any(h => FleetFootprint.Contains(c, u, h)) && u.Side == pause.Side && !u.Hulk) || !rules.FriendlyPassThrough))
             throw new InvalidDataException("Invalid occupied transit cell.");
-        if (pause.RemainingPath.Any(h => h.Q >= map.Width || h.R >= map.Height || SkirmishGeometry.Blocked(c, map, h, state)
-            || state.Units.Any(u => u.Patrol == "" && u.Q == h.Q && u.R == h.R && (u.Hulk || u.Side != pause.Side || !rules.FriendlyPassThrough && u.Id != pause.Command.Embark)))
+        var actor = state.Units.Single(u => u.Id == pause.Command.Unit);
+        if (pause.MoveStart != null)
+        {
+            int limit = FleetLargeMovement.Limit(c, actor); var previous = new MovementStep(pause.Transit ?? new(actor.Q, actor.R), pause.TransitFacing < 0 ? actor.Facing : pause.TransitFacing);
+            int front = pause.FrontSpent, rear = pause.RearSpent;
+            if (c.Ships[actor.Definition].Footprint != 2 || front < 0 || rear < 0 || front > limit || rear > limit || pause.PathFacings == null) throw new InvalidDataException("Invalid two-hex movement budget.");
+            for (int i = 0; i < pause.RemainingPath.Length; i++)
+            {
+                var step = new MovementStep(pause.RemainingPath[i], pause.PathFacings[i]); var cost = FleetLargeMovement.Cost(c, state, actor, previous, step); front += cost.Front; rear += cost.Rear; previous = step;
+                if (front > limit || rear > limit) throw new InvalidDataException("A ship end exceeds its movement allowance.");
+            }
+        }
+        if (pause.RemainingPath.Where((h, i) => !FleetFootprint.CanPlace(c, state, actor, h, pause.PathFacings?[i] ?? actor.Facing, transit: true, docking: pause.Command.Embark)).Any()
             || pause.Command.Kind == "attack" && state.Combat?.Kind != "collision" && state.Overrun == null && !(FleetRuleTools.Enabled(c, state)
                 ? FleetCombat.Allowed(c, state, state.Units.Single(u => u.Id == pause.Command.Unit), state.Units.Find(u => u.Id == pause.Command.Target), pause.Command)
                 : SkirmishGeometry.Attack(c, state, state.Units.Single(u => u.Id == pause.Command.Unit), state.Units.Find(u => u.Id == pause.Command.Target)).Allowed))

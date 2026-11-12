@@ -23,7 +23,7 @@ public static class FleetEconomy
         if (!FleetRuleTools.Enabled(c, s) || s.Deposits == null || unit.Hulk || unit.Patrol != "" || !c.Ships[unit.Definition].Survey) return s;
         var map = c.Maps[s.Map]; var deposits = new Dictionary<int, AsteroidDeposit>(s.Deposits); bool changed = false;
         foreach (var (index, deposit) in s.Deposits)
-            if (!deposit.Harvested && new Hex(unit.Q, unit.R).Distance(new(map.Objects[index].Q, map.Objects[index].R)) == 1)
+            if (!deposit.Harvested && FleetFootprint.Distance(c, unit, new Hex(map.Objects[index].Q, map.Objects[index].R)) == 1)
             {
                 if ((deposit.SurveyMask & (1 << unit.Side)) == 0) changed = true;
                 deposits[index] = deposit with { SurveyMask = deposit.SurveyMask | (1 << unit.Side) };
@@ -37,7 +37,7 @@ public static class FleetEconomy
         var unit = s.Units.Find(u => u.Id == id && u.Side == side && !u.Hulk && u.Patrol == "");
         if (unit == null || c.Ships[unit.Definition].Harvest < 0) return [];
         var map = c.Maps[s.Map];
-        return s.Deposits.Where(p => !p.Value.Harvested && new Hex(unit.Q, unit.R).Distance(new(map.Objects[p.Key].Q, map.Objects[p.Key].R)) <= c.Ships[unit.Definition].Harvest).Select(p => p.Key).ToArray();
+        return s.Deposits.Where(p => !p.Value.Harvested && FleetFootprint.Distance(c, unit, new Hex(map.Objects[p.Key].Q, map.Objects[p.Key].R)) <= c.Ships[unit.Definition].Harvest).Select(p => p.Key).ToArray();
     }
     internal static CommandResult Harvest(ContentCatalog c, BattleState s, int side, BattleCommand cmd)
     {
@@ -54,7 +54,7 @@ public static class FleetEconomy
     {
         var actor = s.Units.Find(u => u.Id == cmd.Unit && u.Side == side && !u.Activated && !u.Hulk && u.Patrol == "");
         var other = s.Units.Find(u => u.Id == cmd.Target && u.Side == side && !u.Hulk && u.Patrol == ""); var cards = s.Cards!;
-        if (!FleetRuleTools.Enabled(c, s) || side != s.ActiveSide || actor == null || other == null || new Hex(actor.Q, actor.R).Distance(new(other.Q, other.R)) != 1
+        if (!FleetRuleTools.Enabled(c, s) || side != s.ActiveSide || actor == null || other == null || FleetFootprint.Distance(c, actor, other) != 1
             || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(cmd.Card) || (side == 0 ? s.Orders0 : s.Orders1) >= FleetRuleTools.PlayLimit(c, s, side)
             || cmd.Amount < 1 || cmd.Amount > (cmd.Receive ? other.Cargo : actor.Cargo) || cmd.Amount > 1000000 - (cmd.Receive ? actor.Cargo : other.Cargo)) return new(false, "Передача требует готовый отряд, соседний союзный корабль и доступные ресурсы.", s);
         var next = s with { Sequence = s.Sequence + 1, Units = s.Units.Select(u => u.Id == actor.Id ? FleetRuleTools.NewOrder(u) with { Activated = true } : u).ToList(),
@@ -82,7 +82,7 @@ public static class FleetEconomy
             if (order.Units is not { Length: 1 }) throw new InvalidDataException("Invalid resource transfer actor.");
             var cmd = order.Deferred; var actor = s.Units.Find(u => u.Id == order.Units[0]); var other = s.Units.Find(u => u.Id == cmd?.Target);
             if (cmd == null || cmd.Kind != "transfer-stars" || cmd.Unit != order.Units[0] || actor == null || other == null || actor.Side != order.Side || other.Side != order.Side
-                || actor.Patrol != "" || other.Patrol != "" || cmd.Amount < 1 || cmd.Amount > (cmd.Receive ? other.Cargo : actor.Cargo) || new Hex(actor.Q, actor.R).Distance(new(other.Q, other.R)) != 1)
+                || actor.Patrol != "" || other.Patrol != "" || cmd.Amount < 1 || cmd.Amount > (cmd.Receive ? other.Cargo : actor.Cargo) || FleetFootprint.Distance(c, actor, other) != 1)
                 throw new InvalidDataException("Invalid pending resource transfer.");
         }
         var map = c.Maps[s.Map];

@@ -6,7 +6,7 @@ namespace FleetCommand.Game;
 
 public sealed record AppSettings(string Theme = "core:hw1", string[]? EnabledMods = null, PlayerProfile? Player = null,
     // ShowLabels remains readable for older settings files; holding Alt now controls battlefield names.
-    string HwrmInstallation = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Homeworld", bool ShowLabels = true, string CardStyle = "text");
+    string HwrmInstallation = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Homeworld", bool ShowLabels = true, string CardStyle = "text", string Language = "ru");
 public sealed record SavedGame(BattleState State, GenerationOptions? Generation = null, CampaignProgress? Campaign = null,
     bool ComputerOpponent = true, CommanderAppearance[]? Commanders = null, PreparedBattle? Preparation = null);
 
@@ -67,6 +67,8 @@ public partial class Main : Node3D
                 if (coop) _campaign = FleetCommand.Core.Campaign.Start(_content, "core:patrol", ["host"]);
                 StartBattle(_args.Contains("--smoke-objectives") ? BasicCardBattle.ObjectivesMapId : _args.Contains("--smoke-logistics") ? BasicCardBattle.LogisticsMapId : _args.Contains("--smoke-economy") ? BasicCardBattle.EconomyMapId : _args.Contains("--smoke-terrain") ? TerrainCheckMap : _args.Contains("--smoke-tabletop") || _args.Contains("--smoke-defense") || _args.Contains("--smoke-cap") ? BasicCardBattle.TabletopMapId : _args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop);
                 if (_args.Contains("--smoke-forces")) StartPrepared(new([ForceBattle.PracticeForce("kushan"), ForceBattle.PracticeForce("taiidan")]), false);
+                if (_args.Contains("--smoke-scenario")) { StartBattle("core:first-contact", false); ConfigureFeatureBattle(false); }
+                if (_args.Contains("--smoke-large")) { StartBattle("practice:large", false); ConfigureFeatureBattle(true); }
                 if (_args.Contains("--smoke-defense")) ConfigureDefenseBattle();
                 if (_args.Contains("--smoke-cap")) ConfigureCapBattle();
                 if (_args.Contains("--smoke-terrain")) ConfigureTerrainBattle();
@@ -93,7 +95,7 @@ public partial class Main : Node3D
                 }
                 StartNetwork(true, "127.0.0.1", 25990, coop);
             }
-            if (_args.Contains("--smoke-client")) { if (_args.Contains("--smoke-tabletop")) _settings = _settings with { CardStyle = "amber" }; StartBattle("core:training", false, persist: false); StartNetwork(false, "127.0.0.1", 25990, _args.Contains("--smoke-coop")); }
+            if (_args.Contains("--smoke-client")) { if (_args.Contains("--smoke-scenario")) { _settings = _settings with { Language = "en" }; _locale.SetLanguage("en"); } if (_args.Contains("--smoke-tabletop")) _settings = _settings with { CardStyle = "amber" }; StartBattle("core:training", false, persist: false); StartNetwork(false, "127.0.0.1", 25990, _args.Contains("--smoke-coop")); }
             GD.Print($"FLEET_COMMAND_READY mods={_content.Mods.Count} ships={_content.Ships.Count}");
         }
         catch (Exception e) { ReportError(e, "Startup"); }
@@ -116,6 +118,7 @@ public partial class Main : Node3D
         RenderingServer.SetDefaultClearColor(C(_colors.Background));
         _stars.Palette = _colors; _stars.QueueRedraw();
         _ui.Theme = MakeTheme();
+        LoadLanguages();
     }
     private void SaveSettings() => System.IO.File.WriteAllText(System.IO.Path.Combine(_data, "settings.json"), JsonSerializer.Serialize(_settings, JsonData.Options));
     private Color C(string color) => new(color);
@@ -143,6 +146,7 @@ public partial class Main : Node3D
     };
     private void ClearScreen()
     {
+        _localizedControls.Clear();
         foreach (var child in _ui.GetChildren()) child.QueueFree();
         _world?.QueueFree(); _world = new Node3D(); AddChild(_world);
     }
@@ -191,6 +195,7 @@ public partial class Main : Node3D
     public override void _Process(double delta)
     {
         _frames++;
+        LocalizeInterface();
         if (_frames == 5 && _args.Contains("--check-controls")) _ = CheckControls();
         if (_frames == 5 && _args.Contains("--check-presentation")) _ = CheckPresentation();
         if (_frames == 5 && _args.Contains("--check-actions")) _ = CheckActionHighlights();
@@ -202,6 +207,8 @@ public partial class Main : Node3D
         if (_frames == 5 && _args.Contains("--check-defense")) _ = CheckDefense();
         if (_frames == 5 && _args.Contains("--check-cap")) _ = CheckCap();
         if (_frames == 5 && _args.Contains("--check-objectives")) _ = CheckObjectives();
+        if (_frames == 5 && _args.Contains("--check-scenarios")) _ = CheckScenarioFeatures();
+        if (_frames == 5 && _args.Contains("--check-localization")) _ = CheckLocalization();
         if (_frames == 5 && _args.Contains("--check-forces")) _ = CheckForces();
         if (_frames == 5 && _args.Contains("--check-logistics")) _ = CheckLogistics();
         if (_frames == 5 && _args.Contains("--check-economy")) _ = CheckEconomy();

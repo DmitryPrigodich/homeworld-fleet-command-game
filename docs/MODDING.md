@@ -130,4 +130,22 @@ Multiple different leader cards may attach to one unit and sum their bonuses. Fi
 
 Optional theme fields `tabBlue`, `tabYellow` and `tabGrey` control the editor's slot palette independently of player ownership colors. They default to `#36a9de`, `#d8ad37` and `#87929c`.
 
-The core `PreparedBattle` envelope stores two plans, field dimensions, objects, seed/background and optional two-sided `ForceLimit` records. A limit can cap `budget` and `reserveStars`, whitelist `ships`/`leaders`, or disable `allowReserve`. These restrictions are a core interface for future scenario packs; the editor currently exposes custom skirmishes. This envelope is stored with saves and sent by the host, then validated and registered before battle state loads. Cards, private deposits and RNG still follow normal private-view filtering. The network signature is `fleet-forces-v1` to reject older binaries.
+The core `PreparedBattle` envelope stores two plans, field dimensions, objects, seed/background and optional two-sided `ForceLimit` records. A limit can cap `budget` and `reserveStars`, whitelist `ships`/`leaders`, or disable `allowReserve`. These restrictions are a core interface for future scenario packs; the editor currently exposes custom skirmishes. This envelope is stored with saves and sent by the host, then validated and registered before battle state loads. Cards, private deposits and RNG still follow normal private-view filtering. The network signature is `fleet-scenarios-v1` to reject older binaries.
+
+## Two-hex ships and board masks
+
+Set a capital/station profile's `footprint` to `2` (default `1`) to occupy bow Q/R plus the hex opposite its facing. Such profiles must have one model and use tabletop rules. Both cells must fit on the board, avoid blocked/occupied cells, and fit the deployment zone when preparing forces or deploying reserves. The large-hull movement handler enforces a maximum of two points per end per Move action, or one with Crippled Engines. Give the definition `move: 2` for the normal rulebook profile. Explicit synthetic large ships are provided in the training mode; they do not claim missing flagship card statistics.
+
+A map may supply `cells: [{"q": 4, "r": 0}, ...]` to restrict the playable area within its width/height bounding box. Omission preserves a rectangular axial board. All fixed placements must lie inside the mask. The first scenario uses this field to preserve the printed offset-grid topology. `leader.closeDice` adds dice only to ordered ram/boarding attacks, unlike general `attackDice`; the readable Wing/Squadron Leader examples use this field.
+
+## Declarative scenario events
+
+A map may add a readable `briefing` and up to 64 `events`. Each event has a map-unique `id`, `trigger` (`end-order`, `round-start`, `round-end`, `battle-end`), `side`, `effect` and readable `name`. Optional `round` selects a round (0 means any); `once` defaults to true; `ifNoEvent` prevents firing when that other event ID has fired. Events process in declared order.
+
+Unit effects are `mark`, `deliver` and `escape`. Optional `class`, object index `object` plus `radius`, and explicit `zone` cells constrain the acting units at order completion. `mark` adds a `token` identifier to each qualifying unit when `once: false`; duplicates on the same unit are prevented. `requiresToken` gates delivery/escape. `deliver` consumes that token and records the event without removing the unit. `escape` explicitly removes qualifying units and their embarked children without destruction stars, retaining an escaped roster. `award` records a flag for an unconditional round/end-battle event. `reinforce` schedules the named `fleet` into reserves once; parent units must be reserve-eligible frigates/capitals, with strike craft optionally embarked by placement index.
+
+An objective with `kind: "event"` refers to the event ID in `target`, with threshold 1 and the desired medal count. `kind: "destroy-count"` counts enemy units recorded in the destruction ledger. These fields join existing objective types; they do not execute arbitrary scripts or constitute a general campaign-event language. The first scenario provides scan → delivery and failed-delivery-at-timeout examples in the base JSON. Additional published exceptions remain separate work.
+
+## Language packs
+
+EN/RU and additional languages are presentation data, loaded outside gameplay fingerprints. See [LOCALIZATION.md](LOCALIZATION.md) for the catalog format, precedence and fallback. Ship, scenario, event and objective names introduced by a mod should have corresponding language entries in that mod's `locales` directory. Changing languages does not reload game definitions or change saved log records.

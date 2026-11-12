@@ -80,13 +80,13 @@ public static class FleetCap
     }
     public static BattleUnit[] Hosts(ContentCatalog c, BattleState s, BattleUnit unit) => unit.Patrol != "" || FleetRuleTools.Class(c.Ships[unit.Definition]) != "fighter" ? []
         : s.Units.Where(u => u.Side == unit.Side && u.Id != unit.Id && u.Patrol == "" && Host(c.Ships[u.Definition])
-            && Patrol(s, u.Id) == null && new Hex(unit.Q, unit.R).Distance(new(u.Q, u.R)) == 1).ToArray();
+            && Patrol(s, u.Id) == null && FleetFootprint.Distance(c, unit, u) == 1).ToArray();
     public static Hex[] ExitCells(ContentCatalog c, BattleState s, BattleUnit unit)
     {
         var parent = s.Units.Find(u => u.Id == unit.Patrol); if (parent == null || parent.Activated || unit.Activated) return [];
         var map = c.Maps[s.Map];
-        return Enumerable.Range(0, 6).Select(d => new Hex(parent.Q, parent.R).Neighbor(d)).Where(h => h.Q >= 0 && h.R >= 0 && h.Q < map.Width && h.R < map.Height
-            && !SkirmishGeometry.Blocked(c, map, h, s) && !s.Units.Any(u => u.Patrol == "" && u.Q == h.Q && u.R == h.R)).ToArray();
+        return FleetFootprint.Adjacent(c, parent).Where(h => FleetFootprint.Inside(map, h)
+            && !SkirmishGeometry.Blocked(c, map, h, s) && !s.Units.Any(u => u.Patrol == "" && FleetFootprint.Contains(c, u, h))).ToArray();
     }
     internal static CommandResult? Expand(ContentCatalog c, BattleState s, int side, BattleCommand command)
     {

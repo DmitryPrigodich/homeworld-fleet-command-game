@@ -74,6 +74,70 @@
       "armor": 2,
       "range": 3,
       "visualSize": 0.55
+    },
+    {
+      "id": "core:kushan-contact-interceptor",
+      "name": "Перехватчики / Кушане",
+      "label": "Перехватчики",
+      "faction": "kushan",
+      "model": "",
+      "models": 6,
+      "move": 3,
+      "dicePerModel": 1,
+      "success": 5,
+      "armor": 0,
+      "range": 1,
+      "ram": 1,
+      "stars": 3,
+      "evasive": 1,
+      "afterburners": 2,
+      "weapons": [
+        {
+          "id": "cannon",
+          "name": "Снарядная пушка",
+          "dicePerModel": 1,
+          "range": 1,
+          "rapidFire": 1,
+          "rapidTargets": [
+            "fighter",
+            "corvette",
+            "platform"
+          ]
+        }
+      ],
+      "class": "fighter"
+    },
+    {
+      "id": "core:taiidan-contact-interceptor",
+      "name": "Перехватчики / Таиидане",
+      "label": "Перехватчики",
+      "faction": "taiidan",
+      "model": "",
+      "models": 6,
+      "move": 3,
+      "dicePerModel": 1,
+      "success": 5,
+      "armor": 0,
+      "range": 1,
+      "ram": 1,
+      "stars": 3,
+      "evasive": 1,
+      "afterburners": 2,
+      "weapons": [
+        {
+          "id": "cannon",
+          "name": "Снарядная пушка",
+          "dicePerModel": 1,
+          "range": 1,
+          "rapidFire": 1,
+          "rapidTargets": [
+            "fighter",
+            "corvette",
+            "platform"
+          ]
+        }
+      ],
+      "class": "fighter"
     }
   ],
   "fleets": [
@@ -121,6 +185,60 @@
           "facing": 3
         }
       ]
+    },
+    {
+      "id": "core:kushan-first-contact",
+      "name": "Первый контакт / Кушане",
+      "units": [
+        {
+          "ship": "core:kushan-contact-interceptor",
+          "q": 6,
+          "r": 3,
+          "facing": 0,
+          "leader": "core:kushan-contact-wing"
+        },
+        {
+          "ship": "core:kushan-contact-interceptor",
+          "q": 6,
+          "r": 4,
+          "facing": 0,
+          "leader": "core:kushan-contact-squadron"
+        },
+        {
+          "ship": "core:kushan-contact-interceptor",
+          "q": 5,
+          "r": 5,
+          "facing": 0,
+          "leader": ""
+        }
+      ]
+    },
+    {
+      "id": "core:taiidan-first-contact",
+      "name": "Первый контакт / Таиидане",
+      "units": [
+        {
+          "ship": "core:taiidan-contact-interceptor",
+          "q": 14,
+          "r": 2,
+          "facing": 3,
+          "leader": "core:taiidan-contact-wing"
+        },
+        {
+          "ship": "core:taiidan-contact-interceptor",
+          "q": 15,
+          "r": 3,
+          "facing": 3,
+          "leader": "core:taiidan-contact-squadron"
+        },
+        {
+          "ship": "core:taiidan-contact-interceptor",
+          "q": 14,
+          "r": 3,
+          "facing": 3,
+          "leader": ""
+        }
+      ]
     }
   ],
   "objects": [
@@ -136,6 +254,14 @@
       "name": "Planet",
       "blocksMovement": true,
       "color": "#405f85"
+    },
+    {
+      "id": "core:contact-asteroids",
+      "name": "Астероидное поле",
+      "kind": "asteroid",
+      "attackPenalty": 2,
+      "moveCost": 1,
+      "color": "#87929c"
     }
   ],
   "maps": [
@@ -167,6 +293,648 @@
         "core:taiidan-patrol"
       ],
       "rules": "core:prototype"
+    },
+    {
+      "id": "core:first-contact",
+      "name": "Сценарий 1: Первый контакт",
+      "width": 18,
+      "height": 9,
+      "background": "#07121f",
+      "objects": [
+        {
+          "definition": "core:planet",
+          "q": 4,
+          "r": 4
+        },
+        {
+          "definition": "core:contact-asteroids",
+          "q": 9,
+          "r": 0
+        },
+        {
+          "definition": "core:contact-asteroids",
+          "q": 9,
+          "r": 2
+        },
+        {
+          "definition": "core:contact-asteroids",
+          "q": 10,
+          "r": 3
+        },
+        {
+          "definition": "core:contact-asteroids",
+          "q": 8,
+          "r": 4
+        },
+        {
+          "definition": "core:contact-asteroids",
+          "q": 8,
+          "r": 6
+        },
+        {
+          "definition": "core:contact-asteroids",
+          "q": 6,
+          "r": 7
+        }
+      ],
+      "fleets": [
+        "core:kushan-first-contact",
+        "core:taiidan-first-contact"
+      ],
+      "rules": "core:first-contact",
+      "cells": [
+        {
+          "q": 4,
+          "r": 0
+        },
+        {
+          "q": 5,
+          "r": 0
+        },
+        {
+          "q": 6,
+          "r": 0
+        },
+        {
+          "q": 7,
+          "r": 0
+        },
+        {
+          "q": 8,
+          "r": 0
+        },
+        {
+          "q": 9,
+          "r": 0
+        },
+        {
+          "q": 10,
+          "r": 0
+        },
+        {
+          "q": 11,
+          "r": 0
+        },
+        {
+          "q": 12,
+          "r": 0
+        },
+        {
+          "q": 13,
+          "r": 0
+        },
+        {
+          "q": 14,
+          "r": 0
+        },
+        {
+          "q": 15,
+          "r": 0
+        },
+        {
+          "q": 16,
+          "r": 0
+        },
+        {
+          "q": 17,
+          "r": 0
+        },
+        {
+          "q": 4,
+          "r": 1
+        },
+        {
+          "q": 5,
+          "r": 1
+        },
+        {
+          "q": 6,
+          "r": 1
+        },
+        {
+          "q": 7,
+          "r": 1
+        },
+        {
+          "q": 8,
+          "r": 1
+        },
+        {
+          "q": 9,
+          "r": 1
+        },
+        {
+          "q": 10,
+          "r": 1
+        },
+        {
+          "q": 11,
+          "r": 1
+        },
+        {
+          "q": 12,
+          "r": 1
+        },
+        {
+          "q": 13,
+          "r": 1
+        },
+        {
+          "q": 14,
+          "r": 1
+        },
+        {
+          "q": 15,
+          "r": 1
+        },
+        {
+          "q": 16,
+          "r": 1
+        },
+        {
+          "q": 3,
+          "r": 2
+        },
+        {
+          "q": 4,
+          "r": 2
+        },
+        {
+          "q": 5,
+          "r": 2
+        },
+        {
+          "q": 6,
+          "r": 2
+        },
+        {
+          "q": 7,
+          "r": 2
+        },
+        {
+          "q": 8,
+          "r": 2
+        },
+        {
+          "q": 9,
+          "r": 2
+        },
+        {
+          "q": 10,
+          "r": 2
+        },
+        {
+          "q": 11,
+          "r": 2
+        },
+        {
+          "q": 12,
+          "r": 2
+        },
+        {
+          "q": 13,
+          "r": 2
+        },
+        {
+          "q": 14,
+          "r": 2
+        },
+        {
+          "q": 15,
+          "r": 2
+        },
+        {
+          "q": 16,
+          "r": 2
+        },
+        {
+          "q": 3,
+          "r": 3
+        },
+        {
+          "q": 4,
+          "r": 3
+        },
+        {
+          "q": 5,
+          "r": 3
+        },
+        {
+          "q": 6,
+          "r": 3
+        },
+        {
+          "q": 7,
+          "r": 3
+        },
+        {
+          "q": 8,
+          "r": 3
+        },
+        {
+          "q": 9,
+          "r": 3
+        },
+        {
+          "q": 10,
+          "r": 3
+        },
+        {
+          "q": 11,
+          "r": 3
+        },
+        {
+          "q": 12,
+          "r": 3
+        },
+        {
+          "q": 13,
+          "r": 3
+        },
+        {
+          "q": 14,
+          "r": 3
+        },
+        {
+          "q": 15,
+          "r": 3
+        },
+        {
+          "q": 2,
+          "r": 4
+        },
+        {
+          "q": 3,
+          "r": 4
+        },
+        {
+          "q": 4,
+          "r": 4
+        },
+        {
+          "q": 5,
+          "r": 4
+        },
+        {
+          "q": 6,
+          "r": 4
+        },
+        {
+          "q": 7,
+          "r": 4
+        },
+        {
+          "q": 8,
+          "r": 4
+        },
+        {
+          "q": 9,
+          "r": 4
+        },
+        {
+          "q": 10,
+          "r": 4
+        },
+        {
+          "q": 11,
+          "r": 4
+        },
+        {
+          "q": 12,
+          "r": 4
+        },
+        {
+          "q": 13,
+          "r": 4
+        },
+        {
+          "q": 14,
+          "r": 4
+        },
+        {
+          "q": 15,
+          "r": 4
+        },
+        {
+          "q": 2,
+          "r": 5
+        },
+        {
+          "q": 3,
+          "r": 5
+        },
+        {
+          "q": 4,
+          "r": 5
+        },
+        {
+          "q": 5,
+          "r": 5
+        },
+        {
+          "q": 6,
+          "r": 5
+        },
+        {
+          "q": 7,
+          "r": 5
+        },
+        {
+          "q": 8,
+          "r": 5
+        },
+        {
+          "q": 9,
+          "r": 5
+        },
+        {
+          "q": 10,
+          "r": 5
+        },
+        {
+          "q": 11,
+          "r": 5
+        },
+        {
+          "q": 12,
+          "r": 5
+        },
+        {
+          "q": 13,
+          "r": 5
+        },
+        {
+          "q": 14,
+          "r": 5
+        },
+        {
+          "q": 1,
+          "r": 6
+        },
+        {
+          "q": 2,
+          "r": 6
+        },
+        {
+          "q": 3,
+          "r": 6
+        },
+        {
+          "q": 4,
+          "r": 6
+        },
+        {
+          "q": 5,
+          "r": 6
+        },
+        {
+          "q": 6,
+          "r": 6
+        },
+        {
+          "q": 7,
+          "r": 6
+        },
+        {
+          "q": 8,
+          "r": 6
+        },
+        {
+          "q": 9,
+          "r": 6
+        },
+        {
+          "q": 10,
+          "r": 6
+        },
+        {
+          "q": 11,
+          "r": 6
+        },
+        {
+          "q": 12,
+          "r": 6
+        },
+        {
+          "q": 13,
+          "r": 6
+        },
+        {
+          "q": 14,
+          "r": 6
+        },
+        {
+          "q": 1,
+          "r": 7
+        },
+        {
+          "q": 2,
+          "r": 7
+        },
+        {
+          "q": 3,
+          "r": 7
+        },
+        {
+          "q": 4,
+          "r": 7
+        },
+        {
+          "q": 5,
+          "r": 7
+        },
+        {
+          "q": 6,
+          "r": 7
+        },
+        {
+          "q": 7,
+          "r": 7
+        },
+        {
+          "q": 8,
+          "r": 7
+        },
+        {
+          "q": 9,
+          "r": 7
+        },
+        {
+          "q": 10,
+          "r": 7
+        },
+        {
+          "q": 11,
+          "r": 7
+        },
+        {
+          "q": 12,
+          "r": 7
+        },
+        {
+          "q": 13,
+          "r": 7
+        },
+        {
+          "q": 0,
+          "r": 8
+        },
+        {
+          "q": 1,
+          "r": 8
+        },
+        {
+          "q": 2,
+          "r": 8
+        },
+        {
+          "q": 3,
+          "r": 8
+        },
+        {
+          "q": 4,
+          "r": 8
+        },
+        {
+          "q": 5,
+          "r": 8
+        },
+        {
+          "q": 6,
+          "r": 8
+        },
+        {
+          "q": 7,
+          "r": 8
+        },
+        {
+          "q": 8,
+          "r": 8
+        },
+        {
+          "q": 9,
+          "r": 8
+        },
+        {
+          "q": 10,
+          "r": 8
+        },
+        {
+          "q": 11,
+          "r": 8
+        },
+        {
+          "q": 12,
+          "r": 8
+        },
+        {
+          "q": 13,
+          "r": 8
+        }
+      ],
+      "briefing": "Кхарак. Таиидане собирают данные, завершив приказ в пределах 2 гексов от планеты, и возвращаются в красную зону. Кушане должны помешать. Лимит — 7 раундов. Карта, цели и показанные в книге перехватчики/лидеры перенесены из сценария 1; колода пока учебная.",
+      "events": [
+        {
+          "id": "scan",
+          "trigger": "end-order",
+          "side": 1,
+          "effect": "mark",
+          "name": "Собраны разведданные у Кхарака",
+          "object": 0,
+          "radius": 2,
+          "token": "data",
+          "once": false,
+          "class": "fighter"
+        },
+        {
+          "id": "delivered",
+          "trigger": "end-order",
+          "side": 1,
+          "effect": "deliver",
+          "name": "Разведданные доставлены в зону эвакуации",
+          "requiresToken": "data",
+          "zone": [
+            {
+              "q": 17,
+              "r": 0
+            },
+            {
+              "q": 16,
+              "r": 1
+            },
+            {
+              "q": 16,
+              "r": 2
+            },
+            {
+              "q": 15,
+              "r": 3
+            },
+            {
+              "q": 15,
+              "r": 4
+            },
+            {
+              "q": 14,
+              "r": 5
+            },
+            {
+              "q": 14,
+              "r": 6
+            },
+            {
+              "q": 13,
+              "r": 7
+            },
+            {
+              "q": 13,
+              "r": 8
+            }
+          ]
+        },
+        {
+          "id": "prevented",
+          "trigger": "battle-end",
+          "side": 0,
+          "effect": "award",
+          "name": "Разведданные не доставлены: Кхарак защищён",
+          "ifNoEvent": "delivered"
+        }
+      ],
+      "objectives": [
+        {
+          "id": "deny-data",
+          "name": "Не дать противнику вывезти данные",
+          "side": 0,
+          "kind": "event",
+          "medals": 2,
+          "target": "prevented"
+        },
+        {
+          "id": "kushan-kills",
+          "name": "Уничтожить 2 отряда таиидан",
+          "side": 0,
+          "kind": "destroy-count",
+          "medals": 1,
+          "threshold": 2
+        },
+        {
+          "id": "return-data",
+          "name": "Собрать и вывезти разведданные",
+          "side": 1,
+          "kind": "event",
+          "medals": 2,
+          "target": "delivered"
+        },
+        {
+          "id": "taiidan-kills",
+          "name": "Уничтожить 2 отряда кушан",
+          "side": 1,
+          "kind": "destroy-count",
+          "medals": 1,
+          "threshold": 2
+        }
+      ]
     }
   ],
   "rules": [
@@ -177,6 +945,13 @@
       "roundLimit": 12,
       "ordersPerSide": 3,
       "rearShots": false
+    },
+    {
+      "id": "core:first-contact",
+      "name": "Первый контакт",
+      "handler": "cards-basic-v1",
+      "roundLimit": 7,
+      "tabletop": true
     }
   ],
   "themes": [
@@ -213,6 +988,56 @@
           "onDefeat": "second"
         }
       ]
+    }
+  ],
+  "leaders": [
+    {
+      "id": "core:kushan-contact-wing",
+      "name": "Командир крыла",
+      "faction": "kushan",
+      "classes": [
+        "fighter"
+      ],
+      "hand": 2,
+      "play": 1,
+      "stars": 2,
+      "closeDice": 2
+    },
+    {
+      "id": "core:kushan-contact-squadron",
+      "name": "Командир эскадрильи",
+      "faction": "kushan",
+      "classes": [
+        "fighter"
+      ],
+      "hand": 1,
+      "play": 1,
+      "stars": 1,
+      "closeDice": 1
+    },
+    {
+      "id": "core:taiidan-contact-wing",
+      "name": "Командир крыла",
+      "faction": "taiidan",
+      "classes": [
+        "fighter"
+      ],
+      "hand": 2,
+      "play": 1,
+      "stars": 2,
+      "closeDice": 2
+    },
+    {
+      "id": "core:taiidan-contact-squadron",
+      "name": "Командир эскадрильи",
+      "faction": "taiidan",
+      "classes": [
+        "fighter"
+      ],
+      "hand": 1,
+      "play": 1,
+      "stars": 1,
+      "closeDice": 1
     }
   ]
 }

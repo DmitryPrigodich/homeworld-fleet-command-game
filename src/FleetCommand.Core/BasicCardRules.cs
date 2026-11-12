@@ -67,9 +67,11 @@ public static class BasicCardBattle
             c.Leaders["practice:" + faction + "-officer"] = new("practice:" + faction + "-officer", "Учебный офицер", faction, ["capital", "frigate"], Stars: 1, CoolUnderPressure: 1, AttackDice: 1);
         }
 
-
-
-
+        c.Ships["practice:large-ship"] = c.Ships["practice:kushan-carrier"] with { Id = "practice:large-ship", Name = "Учебный двухгексный корабль", Label = "Двухгексный корабль", Footprint = 2, Move = 2, Bays = 0, LaunchTubes = 0, Tabs = null, Factory = null };
+        c.Ships["practice:large-taiidan"] = c.Ships["practice:large-ship"] with { Id = "practice:large-taiidan", Faction = "taiidan" };
+        c.Fleets["practice:large-enemy"] = new("practice:large-enemy", "Учебный большой корабль", [new("practice:large-taiidan", 7, 2, 3), new("practice:taiidan-wing", 8, 4, 3)]);
+        c.Fleets["practice:large-fleet"] = new("practice:large-fleet", "Учебный большой корабль", [new("practice:large-ship", 2, 2), new("practice:kushan-wing", 1, 4)]);
+        c.Maps["practice:large"] = c.Maps[TabletopMapId] with { Id = "practice:large", Name = "Двухгексные корабли / учебный бой", Fleets = ["practice:large-fleet", "practice:large-enemy"], Objects = [] };
     }
 }
 

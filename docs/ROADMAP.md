@@ -4,6 +4,7 @@
 
 - [x] Independent core, JSON content and checks.
 - [x] HW1-menu-inspired configurable palette, without original art/fonts.
+- [x] EN/RU display language, persisted choice, local/mod JSON language packs and fallback.
 - [x] High-level menu structure, cube battlefield and local controls.
 - [x] Dedicated interactive tutorial and right-drag orbit camera with zoom/reset.
 - [x] Battlefield names, object inspection, tactical class symbols and player identity settings.
@@ -28,6 +29,7 @@
 - [x] Extend saved response windows to terrain, CAP and defensive fire.
 - [ ] Remaining interrupt types once exact card text is available.
 - [x] Ship classes, proper turning/arcs, boarding, ramming/collision, crew/leader transfers, hulks and defensive fire.
+- [x] Two-hex capital hulls: bow/stern travel budgets, pivots, footprint geometry/rendering, hazards and rear-shot immunity.
 - [x] CAP entry/exit, off-board targeting, movement with host, simultaneous interception and return after host destruction.
 - [x] Terrain activation/entry attacks, owned/neutral mines, reductions, CAP/defense and resumed paths.
 - [x] Hidden asteroid bags, private Survey, free-move Harvest, cargo/loss and bidirectional resource transfers.
@@ -35,7 +37,9 @@
 - [x] Free-form fleet editor: budgets, leaders, colored tabs, assigned free units, reserve/bay placement, personal rosters and saved/networked preparation.
 - [ ] Exact published tab/card profiles, reserve exceptions and official scenario setup.
 - [x] Data-defined capture/recapture, destruction and harvest medals, immediate/round-limit results and actual campaign medal history.
-- [ ] Escort/artifact/event objectives, published scenario exceptions, heroes/upgrades and campaign purchases.
+- [x] Data-defined end-order/round/end-battle events, carried markers, delivery, optional escape and scheduled reserve reinforcements.
+- [x] First Contact: printed map/profile setup and seven-round scan/delivery/destruction/defense objectives, with training command deck clearly identified.
+- [ ] Remaining base scenarios, escort/artifact interactions, published scenario exceptions, heroes/upgrades and campaign purchases.
 - [ ] Actual book campaigns as separate data packs after card coverage is complete.
 
 ## Content and multiplayer

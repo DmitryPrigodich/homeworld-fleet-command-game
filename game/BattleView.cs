@@ -53,6 +53,7 @@ public partial class Main
         var lines = new ImmediateMesh(); lines.SurfaceBegin(Mesh.PrimitiveType.Lines);
         for (int q = 0; q < map.Width; q++) for (int r = 0; r < map.Height; r++)
         {
+            if (!FleetFootprint.Inside(map, new(q, r))) continue;
             var point = World(new(q, r));
             for (int i = 0; i < 6; i++)
             {
@@ -63,6 +64,7 @@ public partial class Main
         }
         lines.SurfaceEnd();
         _world.AddChild(new MeshInstance3D { Mesh = lines, MaterialOverride = new StandardMaterial3D { AlbedoColor = C(_colors.Grid), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded } });
+        DrawScenarioZones();
         DrawActionHighlights();
         foreach (var placement in FleetTerrain.Objects(_content, _state))
         {
@@ -80,6 +82,16 @@ public partial class Main
             var def = _content.Ships[unit.Definition]; var point = World(new(unit.Q, unit.R));
             if (unit.Patrol != "") { UnitAnnotation(unit, def, 3.0f); continue; }
             float size = def.VisualSize;
+            if (def.Footprint == 2)
+            {
+                var stern = World(new Hex(unit.Q, unit.R).Neighbor(unit.Facing + 3)); var centre = (point + stern) * 0.5f; var forward = point - stern;
+                foreach (var cell in FleetFootprint.Cells(_content, unit)) AddFootprint(World(cell), new(1.15f, 1.15f), 0, C(Commander(unit.Side).Color));
+                _world.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new(0.72f, 0.65f, 2.5f) }, Position = centre + Vector3.Up * 0.65f,
+                    Rotation = new(0, Mathf.Atan2(forward.X, forward.Z), 0), MaterialOverride = new StandardMaterial3D { AlbedoColor = unit.Activated ? C(unit.Side == 0 ? _colors.Accent : _colors.Enemy).Darkened(0.45f) : C(unit.Side == 0 ? _colors.Accent : _colors.Enemy) } });
+                UnitAnnotation(unit, def, 1.5f);
+                if (unit.Id == _selected) HighlightHexes(FleetFootprint.Cells(_content, unit), C(_colors.Highlight), "SelectedFootprint");
+                continue;
+            }
             var color = C(string.IsNullOrEmpty(def.Color) ? unit.Side == 0 ? _colors.Accent : _colors.Enemy : def.Color);
             if (unit.Activated) color = color.Darkened(0.45f);
             for (int i = 0; i < Math.Min(unit.Models, 6); i++)
@@ -135,6 +147,8 @@ public partial class Main
         {
             var def = _content.Ships[selected.Definition];
             Text(right, $"Ход {def.Move} / Дальность {def.Range}\nБроня {def.Armor} / Кубики {def.DicePerModel} × {selected.Models}\nFocus Fire: {selected.FocusFire}", 15);
+            if (def.Footprint == 2) Text(right, "Корпус занимает 2 гекса. Клик задаёт нос; оба конца могут пройти не более 2 гексов. Курс выбирается ниже.", 13, _colors.Muted);
+            if (_state.Scenario?.Tokens.Any(t => t.Unit == selected.Id) == true) Text(right, "НА БОРТУ: РАЗВЕДДАННЫЕ", 14, _colors.Highlight);
             foreach (var leader in FleetRuleTools.AssignedLeaders(_content, selected)) Text(right, "Лидер: " + leader.Name, 14, _colors.Highlight);
         }
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
@@ -168,11 +182,12 @@ public partial class Main
         Hex? tile = null; float distance = float.MaxValue;
         for (int q = 0; q < map.Width; q++) for (int r = 0; r < map.Height; r++)
         {
+            if (!FleetFootprint.Inside(map, new(q, r))) continue;
             float d = World(new(q, r)).DistanceTo(hit.Value); if (d < distance) { distance = d; tile = new(q, r); }
         }
         if (tile == null || distance > 1.05f) return;
         if (_state.Reinforce != null && !(_state.Hazard != null || _state.Combat != null || _state.Defense != null || _state.Repairs is { Length: > 0 })) { PlaceReinforcement(tile.Value); return; }
-        var target = _state.Units.Find(u => u.Patrol == "" && u.Q == tile.Value.Q && u.R == tile.Value.R);
+        var target = _state.Units.Find(u => u.Patrol == "" && FleetFootprint.Contains(_content, u, tile.Value));
         var obj = FleetTerrain.Objects(_content, _state).FirstOrDefault(o => o.Q == tile.Value.Q && o.R == tile.Value.R);
         if (obj != null && TryHarvestObject(obj)) return;
         if (obj != null && target == null && (_selected == "" || _content.Objects[obj.Definition].BlocksMovement)) { InspectObject(obj); return; }
@@ -283,6 +298,7 @@ public partial class Main
                 string action = FleetRuleTools.Has(unit, "weapons") || _engine.GetActions(_state, 1, unit.Id).AttackTargets.Length > 0 ? "attack" : "move";
                 ApplyCommand(1, new("begin-order", unit.Id, action, Card: _state.Cards.Hand1[0], Repair: "ask")); return;
             }
+            if (_state.Map == "core:first-contact" && TryScenarioBotMove(unit)) return;
             foreach (var target in enemies.OrderBy(u => u.Models))
             {
                 var cmd = BotAttack(unit, target.Id); if (cmd == null) continue;
@@ -290,7 +306,7 @@ public partial class Main
             }
             var map = _content.Maps[_state.Map];
             var cells = Enumerable.Range(0, map.Width).SelectMany(q => Enumerable.Range(0, map.Height).Select(r => new Hex(q, r)))
-                .OrderBy(h => enemies.Min(e => h.Distance(new(e.Q, e.R)))).ThenBy(h => h.Distance(new(unit.Q, unit.R)));
+                .OrderBy(h => enemies.Length == 0 ? 0 : enemies.Min(e => h.Distance(new(e.Q, e.R)))).ThenBy(h => h.Distance(new(unit.Q, unit.R)));
             foreach (var h in cells)
             {
                 var cmd = new BattleCommand("move", unit.Id, Q: h.Q, R: h.R, Facing: 3, Card: _state.Cards?.Hand1.FirstOrDefault() ?? "");

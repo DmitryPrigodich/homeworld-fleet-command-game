@@ -29,6 +29,7 @@ public static class ForceBattle
                     entry.Facing < 0 ? side == 0 ? 0 : 3 : entry.Facing, Leader: leaders.FirstOrDefault() ?? "", Reserve: entry.Placement == "reserve",
                     EmbarkedOn: entry.Placement == "bay" ? Array.FindIndex(report.Units, u => u.Entry.Id == entry.Parent) : -1, AdditionalLeaders: leaders.Length > 1 ? leaders.Skip(1).ToArray() : null);
             }).ToArray();
+            if (placements.Where(p => !p.Reserve && p.EmbarkedOn < 0).Any(p => FleetFootprint.Cells(content.Ships[p.Ship], new(p.Q, p.R), p.Facing).Any(h => h.Q < 0 || h.Q >= setup.Width || h.R < 0 || h.R >= setup.Height || (side == 0 ? h.Q >= 2 : h.Q < setup.Width - 2)))) throw new InvalidDataException("Весь корабль должен помещаться в зоне развёртывания.");
             runtime.Fleets[fleetIds[side]] = new(fleetIds[side], force.Name, placements);
         }
         var random = new Random(setup.Seed);

@@ -7,7 +7,7 @@ public static class FleetTransfers
         var unit = s.Units.Find(u => u.Id == cmd.Unit && u.Side == side && !u.Activated && !u.Hulk);
         var target = s.Units.Find(u => u.Id == cmd.Target);
         var cards = s.Cards!;
-        if (!FleetRuleTools.Enabled(c, s) || unit == null || target == null || unit.Patrol != "" || target.Patrol != "" || target.Side != side && (FleetCap.Patrol(s, target.Id) != null || FleetLogistics.Children(s, target.Id).Length > 0) || side != s.ActiveSide || new Hex(unit.Q, unit.R).Distance(new(target.Q, target.R)) != 1
+        if (!FleetRuleTools.Enabled(c, s) || unit == null || target == null || unit.Patrol != "" || target.Patrol != "" || target.Side != side && (FleetCap.Patrol(s, target.Id) != null || FleetLogistics.Children(s, target.Id).Length > 0) || side != s.ActiveSide || FleetFootprint.Distance(c, unit, target) != 1
             || target.Side != side && !target.Hulk || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(cmd.Card)
             || (side == 0 ? s.Orders0 : s.Orders1) >= FleetRuleTools.PlayLimit(c, s, side)) return Reject("Передача экипажа требует готовый отряд и соседнюю цель.");
         if (cmd.Amount < 0 || cmd.Amount > target.CrewDamage || cmd.Amount == 0 && !cmd.TransferLeader || cmd.Amount > 0 && c.Ships[unit.Definition].Crew <= 0

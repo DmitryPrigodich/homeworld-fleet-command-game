@@ -24,6 +24,7 @@ public partial class Main
         var scroll = new ScrollContainer { CustomMinimumSize = new(0, 600), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled }; outer.AddChild(scroll);
         var box = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; box.AddThemeConstantOverride("separation", 10); scroll.AddChild(box);
         var cooperative = new CheckBox { Text = "Кооператив: общий синий флот против AI", ButtonPressed = true }; box.AddChild(cooperative);
+        var firstContact = new CheckBox { Text = "Сценарий 1: Первый контакт" }; box.AddChild(firstContact);
         var cardMode = new CheckBox { Text = "Учебный бой с картами" }; box.AddChild(cardMode);
         var objectives = new CheckBox { Text = "Цели и медали (учебная карта)" }; box.AddChild(objectives);
         var logistics = new CheckBox { Text = "Ангары и подкрепления (учебная карта)" }; box.AddChild(logistics);
@@ -33,7 +34,7 @@ public partial class Main
         Text(box, "Прототип: прямое подключение ENet, UDP-порт 24560. Комнаты по приглашению и relay — следующий этап.", 15, _colors.Muted);
         Button(box, "ПОДГОТОВИТЬ ФЛОТЫ ДЛЯ СЕТИ", () => ForceMenu(true));
         Button(box, "ПРОДОЛЖИТЬ СКИРМИШ ХОСТОМ", () => { LoadGame(false); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); }, !System.IO.File.Exists(SavePath(false)));
-        Button(box, "СОЗДАТЬ СКИРМИШ", () => { StartBattle(objectives.ButtonPressed ? BasicCardBattle.ObjectivesMapId : logistics.ButtonPressed ? BasicCardBattle.LogisticsMapId : economy.ButtonPressed ? BasicCardBattle.EconomyMapId : tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
+        Button(box, "СОЗДАТЬ СКИРМИШ", () => { StartBattle(firstContact.ButtonPressed ? "core:first-contact" : objectives.ButtonPressed ? BasicCardBattle.ObjectivesMapId : logistics.ButtonPressed ? BasicCardBattle.LogisticsMapId : economy.ButtonPressed ? BasicCardBattle.EconomyMapId : tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
         var campaignChoices = _content.Campaigns.Values.ToArray(); var campaignPicker = new OptionButton(); foreach (var definition in campaignChoices) campaignPicker.AddItem("Кампания: " + definition.Name); box.AddChild(campaignPicker);
         Button(box, "СОЗДАТЬ КООП-КАМПАНИЮ", () =>
         {
@@ -56,7 +57,7 @@ public partial class Main
         if (host) InitializeCommanders();
         if (!_networkSignalsBound)
         {
-            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-forces-v1:" + _content.Fingerprint,
+            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-scenarios-v1:" + _content.Fingerprint,
                 JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
             Multiplayer.ConnectionFailed += () => { _status = "Не удалось подключиться."; StopNetwork(); DrawBattle(); };
             Multiplayer.ServerDisconnected += () => { _status = "Хост отключился. Продолжение — из сохранения у хоста."; StopNetwork(); DrawBattle(); };
@@ -77,7 +78,7 @@ public partial class Main
     {
         if (!_networkActive || !_isHost) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (fingerprint != "fleet-forces-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        if (fingerprint != "fleet-scenarios-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
         PlayerProfile profile;
         try { profile = FleetPresentation.Normalize(JsonSerializer.Deserialize<PlayerProfile>(profileJson, JsonData.Options)); }
         catch (JsonException) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
@@ -91,7 +92,7 @@ public partial class Main
         }
         if (_campaign != null) _campaign = _campaign with { Participants = (_campaign.Participants ?? []).Append("peer-" + sender).Distinct().ToArray() };
         DrawBattle(); Broadcast(); SaveGame();
-        if (_args.Contains("--smoke-terrain") || _args.Contains("--smoke-economy") || _args.Contains("--smoke-logistics") || _args.Contains("--smoke-objectives")) return;
+        if (_args.Contains("--smoke-scenario") || _args.Contains("--smoke-large") || _args.Contains("--smoke-terrain") || _args.Contains("--smoke-economy") || _args.Contains("--smoke-logistics") || _args.Contains("--smoke-objectives")) return;
         if (_args.Contains("--smoke-cap"))
         {
             ApplyCommand(0, new("attack", "s0-0", "s1-5", Card: "order-01"));
@@ -133,7 +134,7 @@ public partial class Main
         try
         {
             var command = JsonSerializer.Deserialize<BattleCommand>(json, JsonData.Options);
-            if (command != null && !ApplyCommand(side, command)) RpcId(Multiplayer.GetRemoteSenderId(), nameof(ReceiveCommandFeedback), _status);
+            if (command != null && !ApplyCommand(side, command)) { RpcId(Multiplayer.GetRemoteSenderId(), nameof(ReceiveCommandFeedback), _status); return; }
             if (_args.Contains("--smoke-objectives"))
             {
                 if (command?.Kind == "attack")
@@ -271,6 +272,7 @@ public partial class Main
                 { GD.Print("INTERRUPT_NETWORK_OK"); GetTree().CreateTimer(0.5).Timeout += () => GetTree().Quit(); }
                 return;
             }
+            if (_args.Contains("--smoke-scenario") || _args.Contains("--smoke-large")) { FeatureNetworkHost(command); return; }
             if (_args.Contains("--smoke-cards"))
             {
                 if (_args.Contains("--smoke-special") && _state.Cards?.Pending is { Step: 1 })
@@ -335,6 +337,7 @@ public partial class Main
             {
                 if (_state.Cards is not { IsView: true } cards || cards.Deck.Length != 0 || cards.Hand0.Length != 0 || _state.RandomState != 1)
                     throw new InvalidDataException("Private card state leaked over ENet.");
+                if (_args.Contains("--smoke-scenario") || _args.Contains("--smoke-large")) { FeatureNetworkClient(); return; }
                 if (_args.Contains("--smoke-objectives"))
                 {
                     if (_objectiveNetworkStep == 2 && _state.Finished && _state.Winner == 1 && _state.Medals1 == 3 && _state.EndReason == "medals" && _campaign?.OpponentMedals == 3 && _campaign.Results is { Length: 1 })

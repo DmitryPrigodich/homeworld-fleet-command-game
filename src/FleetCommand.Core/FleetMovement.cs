@@ -29,11 +29,10 @@ public static class FleetMovement
             }
             foreach (int direction in directions)
             {
-                if (direction != current.Facing) Add(new(current.Cell, direction), 1);
+                if (direction != current.Facing && FleetFootprint.CanPlace(c, s, unit, current.Cell, direction, transit: true)) Add(new(current.Cell, direction), 1);
                 var cell = current.Cell.Neighbor(direction);
-                bool docking = embark != "" && s.Units.Any(p => p.Id == embark && p.Q == cell.Q && p.R == cell.R);
-                if (cell.Q < 0 || cell.R < 0 || cell.Q >= map.Width || cell.R >= map.Height || !docking && SkirmishGeometry.Blocked(c, map, cell, s)
-                    || s.Units.Any(u => u.Patrol == "" && u.Id != unit.Id && u.Q == cell.Q && u.R == cell.R && (u.Hulk || u.Side != unit.Side || !rules.FriendlyPassThrough && !docking))) continue;
+                bool docking = embark != "" && s.Units.Any(p => p.Id == embark && FleetFootprint.Contains(c, p, cell));
+                if (!FleetFootprint.CanPlace(c, s, unit, cell, direction, transit: true, docking: docking ? embark : "")) continue;
                 int cost = FleetTerrain.Objects(c, s).Where(o => o.Q == cell.Q && o.R == cell.R).Select(o => c.Objects[o.Definition].Kind == "asteroid" ? 1 : c.Objects[o.Definition].MoveCost).DefaultIfEmpty(1).Max();
                 if (docking) cost = 1;
                 if (!docking && Gravity(current.Cell) && !Gravity(cell)) cost = Math.Max(2, cost);
@@ -42,11 +41,12 @@ public static class FleetMovement
         }
         return (costs, previous);
     }
-    public static Hex[] Destinations(ContentCatalog c, BattleState s, BattleUnit u) => Search(c, s, u).Costs.Keys.Select(p => p.Cell).Distinct()
-        .Where(h => h != new Hex(u.Q, u.R) && !s.Units.Any(other => other.Patrol == "" && other.Q == h.Q && other.R == h.R)).OrderBy(h => h.Q).ThenBy(h => h.R).ToArray();
+    public static Hex[] Destinations(ContentCatalog c, BattleState s, BattleUnit u) => c.Ships[u.Definition].Footprint == 2 ? FleetLargeMovement.Destinations(c, s, u) : Search(c, s, u).Costs.Keys.Select(p => p.Cell).Distinct()
+        .Where(h => h != new Hex(u.Q, u.R) && !s.Units.Any(other => other.Patrol == "" && other.Id != u.Id && FleetFootprint.Contains(c, other, h))).OrderBy(h => h.Q).ThenBy(h => h.R).ToArray();
     public static MovementStep[]? Path(ContentCatalog c, BattleState s, BattleUnit u, Hex goal, int facing = -1, string embark = "")
     {
-        if (s.Units.Any(other => other.Patrol == "" && other.Id != u.Id && other.Id != embark && other.Q == goal.Q && other.R == goal.R)) return null;
+        if (c.Ships[u.Definition].Footprint == 2) return FleetLargeMovement.Path(c, s, u, goal, facing);
+        if (s.Units.Any(other => other.Patrol == "" && other.Id != u.Id && other.Id != embark && FleetFootprint.Contains(c, other, goal))) return null;
         var (costs, previous) = Search(c, s, u, embark); var start = new Position(new(u.Q, u.R), u.Facing);
         var destinations = costs.Keys.Where(p => p.Cell == goal && (facing < 0 || p.Facing == facing) && p != start)
             .OrderBy(p => costs[p]).ThenBy(p => p.Facing).ToArray();
@@ -57,8 +57,9 @@ public static class FleetMovement
     }
     internal static MovementStep[]? StraightPath(ContentCatalog c, BattleState s, BattleUnit u, Hex goal, string embark = "")
     {
+        if (c.Ships[u.Definition].Footprint == 2) return FleetLargeMovement.Path(c, s, u, goal, straight: true);
         var map = c.Maps[s.Map];
-        if (goal.Q < 0 || goal.R < 0 || goal.Q >= map.Width || goal.R >= map.Height) return null;
+        if (!FleetFootprint.Inside(map, goal)) return null;
         int direction = SpecialOrders.StraightDirection(new(u.Q, u.R), goal); if (direction < 0) return null;
         var result = new List<MovementStep>(); var position = new Hex(u.Q, u.R); int facing = u.Facing, cost = 0;
         bool Gravity(Hex h) => map.Objects.Any(o => (c.Objects[o.Definition].Kind == "planet" || o.Definition == "core:planet") && h.Distance(new(o.Q, o.R)) == 1);
@@ -72,9 +73,8 @@ public static class FleetMovement
         while (position != goal)
         {
             var next = position.Neighbor(direction);
-            bool docking = embark != "" && s.Units.Any(p => p.Id == embark && p.Q == next.Q && p.R == next.R);
-            if (!docking && SkirmishGeometry.Blocked(c, map, next, s) || s.Units.Any(other => other.Patrol == "" && other.Id != u.Id && other.Q == next.Q && other.R == next.R
-                && (other.Hulk || other.Side != u.Side || !c.Rules[map.Rules].FriendlyPassThrough && !docking))) return null;
+            bool docking = embark != "" && s.Units.Any(p => p.Id == embark && FleetFootprint.Contains(c, p, next));
+            if (!FleetFootprint.CanPlace(c, s, u, next, direction, transit: true, docking: docking ? embark : "")) return null;
             int stepCost = FleetTerrain.Objects(c, s).Where(o => o.Q == next.Q && o.R == next.R).Select(o => c.Objects[o.Definition].Kind == "asteroid" ? 1 : c.Objects[o.Definition].MoveCost).DefaultIfEmpty(1).Max();
             if (docking) stepCost = 1;
             if (!docking && Gravity(position) && !Gravity(next)) stepCost = Math.Max(2, stepCost);

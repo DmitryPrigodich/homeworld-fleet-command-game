@@ -6,9 +6,9 @@ public static class FleetLogistics
     public static BattleUnit[] Children(BattleState s, string parent) => (s.Reserves ?? []).Where(u => u.Embarked == parent).ToArray();
     public static BattleState LoseChildren(BattleState s, string parent) => s with { Reserves = s.Reserves?.Where(u => u.Embarked != parent).ToList() };
     public static bool HasForce(BattleState s, int side) => s.Units.Any(u => u.Side == side) || s.Reserves?.Any(u => u.Side == side) == true;
-    public static bool Empty(ContentCatalog c, BattleState s, Hex h) => h.Q >= 0 && h.R >= 0 && h.Q < c.Maps[s.Map].Width && h.R < c.Maps[s.Map].Height
-        && !SkirmishGeometry.Blocked(c, c.Maps[s.Map], h, s) && !s.Units.Any(u => u.Patrol == "" && u.Q == h.Q && u.R == h.R);
-    public static Hex[] Adjacent(ContentCatalog c, BattleState s, BattleUnit parent) => Enumerable.Range(0, 6).Select(d => new Hex(parent.Q, parent.R).Neighbor(d)).Where(h => Empty(c, s, h)).ToArray();
+    public static bool Empty(ContentCatalog c, BattleState s, Hex h) => FleetFootprint.Inside(c.Maps[s.Map], h)
+        && !SkirmishGeometry.Blocked(c, c.Maps[s.Map], h, s) && !s.Units.Any(u => u.Patrol == "" && FleetFootprint.Contains(c, u, h));
+    public static Hex[] Adjacent(ContentCatalog c, BattleState s, BattleUnit parent) => FleetFootprint.Adjacent(c, parent).Where(h => Empty(c, s, h)).ToArray();
     public static Hex[] DeployCells(ContentCatalog c, BattleState s, int side)
     {
         var map = c.Maps[s.Map]; if (s.Round < map.ReserveFromRound) return [];
@@ -91,6 +91,8 @@ public static class FleetLogistics
             if (cmd.ToBay) return Finish(c, s, next with { Reserves = (next.Reserves ?? []).Append(arriving with { Embarked = parent.Id }).ToList() }, $"Построен отряд: {FleetPresentation.ShipName(ship)}. Размещён в ангаре, считается активированным.");
         }
         else return Reject("Выберите действие текущего приказа Reinforce.");
+        if (!FleetFootprint.CanPlace(c, next, arriving, destination, cmd.Facing)) return Reject("Для корабля нужно место под весь корпус.");
+        if (frame.Mode == "deploy" && FleetFootprint.Cells(c.Ships[arriving.Definition], destination, cmd.Facing).Any(h => !DeployCells(c, s, side).Contains(h))) return Reject("Весь корабль должен помещаться в зоне развёртывания.");
         arriving = FleetRuleTools.NewOrder(arriving) with { Q = cmd.Q, R = cmd.R, Facing = cmd.Facing, Embarked = "", Activated = true };
         next = next with { Units = next.Units.Append(arriving).Select(u => parent != null && u.Id == parent.Id ? u with { Launches = u.Launches + 1 } : u).ToList() };
         next = FleetRuleTools.DamageControl(c, next, arriving.Id, cmd.Repair, out var repair);

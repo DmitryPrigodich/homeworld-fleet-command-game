@@ -41,6 +41,8 @@ public partial class Main
         var scroll = new ScrollContainer { CustomMinimumSize = new(0, 618), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled }; outer.AddChild(scroll);
         var box = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; box.AddThemeConstantOverride("separation", 8); scroll.AddChild(box);
         Button(box, "КАМПАНИИ", CampaignMenu);
+        Button(box, "СЦЕНАРИИ ИЗ КНИГИ", ScenarioMenu);
+        Button(box, "ДВУХГЕКСНЫЕ КОРАБЛИ", () => { StartBattle("practice:large", true); QueueBot(); });
         Button(box, "ПОДГОТОВКА ФЛОТОВ", () => ForceMenu());
         Button(box, "УЧЕБНЫЙ БОЙ С КАРТАМИ", StartCardBattle);
         Button(box, "ПРАВИЛА / РЕЖИМ РАЗРАБОТКИ", () => { StartBattle(BasicCardBattle.TabletopMapId, true); QueueBot(); });
@@ -99,6 +101,7 @@ public partial class Main
     private void OptionsMenu()
     {
         ClearScreen(); Heading("Опции"); var box = Panel(70, 190, 550, 520);
+        Button(box, "ЯЗЫК / LANGUAGE", LanguageMenu);
         Button(box, "ИГРОК: ИМЯ, ЦВЕТ, ЭМБЛЕМА", PlayerMenu);
         Button(box, "ОФОРМЛЕНИЕ КАРТОЧЕК", CardStylesMenu);
         Text(box, "Текущий игрок: " + FleetPresentation.Normalize(_settings.Player).Name, 16, _colors.Muted);

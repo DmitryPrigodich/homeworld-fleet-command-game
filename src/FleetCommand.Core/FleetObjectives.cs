@@ -8,6 +8,8 @@ public static class FleetObjectives
     {
         "destroy-stars" => objective.Classes is { Length: > 0 } ? (s.Losses ?? []).Values.Where(l => l.Credit == objective.Side && objective.Classes.Contains(FleetRuleTools.Class(c.Ships[l.Definition]))).Sum(l => l.Stars)
             : objective.Side == 0 ? s.Stars0 : s.Stars1,
+        "destroy-count" => (s.Losses ?? []).Values.Count(l => l.Credit == objective.Side),
+        "event" => s.Scenario?.Fired.Contains(objective.Target) == true ? 1 : 0,
         "harvest-stars" => objective.Side == 0 ? s.Harvested0 : s.Harvested1,
         "capture" => s.Captures?.GetValueOrDefault(objective.Target, -1) == objective.Side ? 1 : 0,
         "destroy-unit" => s.Losses?.TryGetValue(objective.Target, out var loss) == true && loss.Credit == objective.Side ? 1 : 0,
@@ -67,7 +69,8 @@ public static class FleetObjectives
         for (int side = 0; side < map.Fleets.Length; side++) foreach (var _ in (c.Fleets.TryGetValue(map.Fleets[side], out var fleet) ? fleet : throw new InvalidDataException("Missing objective fleet.")).Units) ids.Add($"s{side}-{counter++}");
         foreach (var goal in map.Objectives)
             if (string.IsNullOrWhiteSpace(goal.Id) || goal.Id.Length > 80 || string.IsNullOrWhiteSpace(goal.Name) || goal.Name.Length > 100 || goal.Side is < 0 or > 1 || goal.Medals is < 1 or > 3 || goal.Threshold is < 1 or > 1000000
-                || goal.Kind is not ("destroy-stars" or "harvest-stars" or "capture" or "destroy-unit") || goal.Kind is "capture" or "destroy-unit" && (!ids.Contains(goal.Target) || goal.Threshold != 1)
+                || goal.Kind is not ("destroy-stars" or "harvest-stars" or "capture" or "destroy-unit" or "destroy-count" or "event") || goal.Kind is "capture" or "destroy-unit" && (!ids.Contains(goal.Target) || goal.Threshold != 1)
+                || goal.Kind == "event" && (goal.Threshold != 1 || !(map.Events ?? []).Any(e => e.Id == goal.Target))
                 || goal.Reversible && goal.Kind != "capture" || (goal.Classes ?? []).Any(cls => !FleetRuleTools.Classes.Contains(cls)) || goal.Classes is { Length: > 0 } && goal.Kind != "destroy-stars") throw new InvalidDataException("Invalid objective: " + goal.Id);
     }
     internal static void Validate(ContentCatalog c, BattleState s)

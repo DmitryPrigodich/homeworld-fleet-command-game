@@ -30,6 +30,8 @@ public partial class Main
             Require(_state!.Units.Any(u => u.Id == "s1-6" && u.Activated) && _state.Units.Single(u => u.Id == "s1-5") is { Activated: false, Launches: 1 }, "Launch activates only the arriving squadron");
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "logistics-launch.png"));
             Press("ЗАВЕРШИТЬ ПРИКАЗ"); ApplyCommand(0, new("pass")); SelectUnit("s1-5"); await Frames(); Press("ПРОИЗВОДСТВО"); await Frames();
+            var production = Nodes(_ui).OfType<OptionButton>().Single(o => Enumerable.Range(0, o.ItemCount).Any(i => o.GetItemText(i) == "Учебное звено · 2 ★"));
+            int wing = Enumerable.Range(0, production.ItemCount).Single(i => production.GetItemText(i) == "Учебное звено · 2 ★"); production.Select(wing); production.EmitSignal(OptionButton.SignalName.ItemSelected, (long)wing); await Frames();
             Nodes(_ui).OfType<SpinBox>().Single(s => s.Prefix == "Из резерва: ").Value = 1;
             Nodes(_ui).OfType<CheckBox>().Single(b => b.Text == "Построить в ангар").ButtonPressed = true; await Frames(); Press("ПОСТРОИТЬ В АНГАР"); await Frames();
             Require(_state!.Reserves!.Any(u => u.Id == "s1-10" && u.Activated && u.Embarked == "s1-5") && _state.Funds1 == 2 && _state.Units.Single(u => u.Id == "s1-5").Cargo == 5, "Factory pays exact cargo/reserve cost and stores the built unit in a bay");

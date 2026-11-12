@@ -173,6 +173,11 @@ public partial class Main
         }
         if (_forceObjects > (_forceWidth - 4) * _forceHeight) mapErrors.Add("Слишком много объектов для центральной части поля.");
         foreach (string error in mapErrors) Text(_forceReport, error, 14, _colors.Enemy);
+        if (reports.All(r => r.Valid) && mapErrors.Count == 0)
+        {
+            try { ForceBattle.Register(_content.CopyForRuntime(), EditorPreparation()); }
+            catch (InvalidDataException e) { mapErrors.Add(e.Message); Text(_forceReport, e.Message, 14, _colors.Enemy); }
+        }
         bool valid = reports.All(r => r.Valid) && mapErrors.Count == 0;
         Text(_forceReport, valid ? "Оба флота готовы к бою." : "Исправь ошибки перед запуском.", 16, valid ? _colors.Highlight : _colors.Enemy);
         if (_forceLaunch != null && GodotObject.IsInstanceValid(_forceLaunch)) _forceLaunch.Disabled = !valid;

@@ -95,6 +95,7 @@ public sealed class ContentCatalog
         foreach (var s in Ships.Values)
         {
             if (s.Models < 1 || s.Models > 100 || s.Move < 0 || s.Move > 50 || s.DicePerModel < 0 || s.DicePerModel > 50
+                || s.Footprint is < 1 or > 2 || s.Footprint == 2 && (s.Models != 1 || FleetRuleTools.Strike(s))
                 || s.Success is < 2 or > 6 || s.Armor < 0 || s.Range < 0 || s.Bays is < 0 or > 100 || s.LaunchTubes is < 0 or > 100 || (s.Factory ?? []).Any(t => !FleetRuleTools.Classes.Contains(t)) || s.Harvest is < -1 or > 50 || s.Afterburners is < -1 or > 50 || s.Crew < 0 || s.Ram < 0 || s.Stars < 0 || s.Evasive < 0
                 || !float.IsFinite(s.VisualSize) || s.VisualSize is <= 0 or > 2)
                 throw new InvalidDataException($"Invalid ship statistics: {s.Id}");
@@ -109,7 +110,7 @@ public sealed class ContentCatalog
                 throw new InvalidDataException($"Invalid weapons: {s.Id}");
         }
         foreach (var leader in Leaders.Values)
-            if (leader.Hand < 0 || leader.Play < 0 || leader.Stars < 0 || leader.CoolUnderPressure < 0 || leader.AttackDice < 0 || leader.Classes == null
+            if (leader.Hand < 0 || leader.Play < 0 || leader.Stars < 0 || leader.CoolUnderPressure < 0 || leader.AttackDice < 0 || leader.CloseDice < 0 || leader.Classes == null
                 || leader.Classes.Any(t => !FleetRuleTools.Classes.Contains(t))) throw new InvalidDataException($"Invalid leader: {leader.Id}");
         ForceBuilder.ValidateDefinitions(this);
         foreach (var f in Fleets.Values)
@@ -127,8 +128,10 @@ public sealed class ContentCatalog
                 || map.AsteroidStars.Any(n => n is < 0 or > 1000))) throw new InvalidDataException($"Invalid asteroid star bag: {map.Id}");
             if (map.ReserveFromRound < 1 || map.ReserveStars != null && (map.ReserveStars.Length != 2 || map.ReserveStars.Any(n => n is < 0 or > 1000000))
                 || map.SetupZones != null && (map.SetupZones.Length != 2 || map.SetupZones.Any(zone => zone == null || zone.Any(h => h.Q < 0 || h.R < 0 || h.Q >= map.Width || h.R >= map.Height)))) throw new InvalidDataException($"Invalid reinforcement setup: {map.Id}");
+            ScenarioEvents.ValidateDefinitions(this, map);
             FleetObjectives.ValidateDefinitions(this, map);
-            bool Inside(int q, int r) => q >= 0 && q < map.Width && r >= 0 && r < map.Height;
+            if (map.Cells != null && (map.Cells.Length == 0 || map.Cells.Distinct().Count() != map.Cells.Length || map.Cells.Any(h => h.Q < 0 || h.R < 0 || h.Q >= map.Width || h.R >= map.Height))) throw new InvalidDataException("Invalid playable map cells.");
+            bool Inside(int q, int r) => FleetFootprint.Inside(map, new(q, r));
             var occupied = new HashSet<Hex>();
             foreach (var objectPlacement in map.Objects)
             {
@@ -141,7 +144,7 @@ public sealed class ContentCatalog
                 if (!Fleets.TryGetValue(f, out var fleet)) throw new InvalidDataException($"Missing fleet: {f}");
                 FleetLogistics.ValidatePlacements(this, fleet, Rules[map.Rules].Tabletop);
                 foreach (var unit in fleet.Units.Where(u => !u.Reserve && u.EmbarkedOn < 0))
-                    if (!Inside(unit.Q, unit.R) || !occupied.Add(new(unit.Q, unit.R))) throw new InvalidDataException($"Invalid/overlapping deployment: {map.Id}");
+                    if (Ships[unit.Ship].Footprint == 2 && !Rules[map.Rules].Tabletop || FleetFootprint.Cells(Ships[unit.Ship], new(unit.Q, unit.R), unit.Facing).Any(h => !Inside(h.Q, h.R) || !occupied.Add(h))) throw new InvalidDataException($"Invalid/overlapping deployment: {map.Id}");
             }
         }
         foreach (var campaign in Campaigns.Values)

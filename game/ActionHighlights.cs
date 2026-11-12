@@ -14,6 +14,8 @@ public partial class Main
         _unitActions = _state == null || _selected == "" ? UnitActions.Empty : _engine.GetActions(_state, LocalCommandSide, _selected);
         if (FleetBattle && _state!.Units.Find(u => u.Id == _selected) is { } selected)
         {
+            if (_content.Ships[selected.Definition].Footprint == 2 && _facingChoice >= 0)
+                _unitActions = _unitActions with { MoveCells = _unitActions.MoveCells.Where(h => FleetMovement.Path(_content, _state, selected, h, _facingChoice) != null).ToArray() };
             string weapon = FleetWeapons.Weapons(_content, _content.Ships[selected.Definition]).Any(w => w.Id == _weaponChoice) ? _weaponChoice : "";
             _unitActions = _unitActions with { AttackTargets = _unitActions.AttackTargets.Where(id => FleetCombat.Allowed(_content, _state, selected, _state.Units.Find(u => u.Id == id), new("attack", Weapon: weapon, AttackKind: _attackKindChoice))).ToArray() };
         }
@@ -21,7 +23,7 @@ public partial class Main
             _unitActions = new(_unitActions.MoveCells.Where(h => _tutorial.Allows(new("move", _selected, Q: h.Q, R: h.R))).ToArray(),
                 _unitActions.AttackTargets.Where(id => _tutorial.Allows(new("attack", _selected, id))).ToArray());
         HighlightHexes(_unitActions.MoveCells, C("#3bdb7b"), "MoveHighlights");
-        var targets = _state?.Units.Where(u => _unitActions.AttackTargets.Contains(u.Id)).Select(u => new Hex(u.Q, u.R)) ?? [];
+        var targets = _state?.Units.Where(u => _unitActions.AttackTargets.Contains(u.Id)).SelectMany(u => FleetFootprint.Cells(_content, u)) ?? [];
         HighlightHexes(targets, C("#f36d68"), "AttackHighlights");
     }
 

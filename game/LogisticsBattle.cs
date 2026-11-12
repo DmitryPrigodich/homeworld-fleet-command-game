@@ -20,7 +20,11 @@ public partial class Main
     private Hex[] ReinforceCells()
     {
         var frame = _state!.Reinforce!; var parent = _state.Units.Find(u => u.Id == frame.Source);
-        return frame.Mode == "deploy" ? FleetLogistics.DeployCells(_content, _state, frame.Side) : parent == null ? [] : FleetLogistics.Adjacent(_content, _state, parent);
+        var cells = frame.Mode == "deploy" ? FleetLogistics.DeployCells(_content, _state, frame.Side) : parent == null ? [] : FleetLogistics.Adjacent(_content, _state, parent);
+        var arriving = frame.Mode == "deploy" ? _state.Reserves?.Find(u => u.Id == frame.Source) : null;
+        if (arriving == null) return cells;
+        int facing = Math.Max(0, _facingChoice);
+        return cells.Where(h => FleetFootprint.CanPlace(_content, _state, arriving, h, facing) && FleetFootprint.Cells(_content.Ships[arriving.Definition], h, facing).All(cells.Contains)).ToArray();
     }
     private void PlaceReinforcement(Hex cell)
     {

@@ -11,7 +11,7 @@ public sealed record BattleState(string Map, string ContentFingerprint, List<Bat
     uint RandomState = 12345, int? Winner = null, bool Finished = false, List<BattleLogEntry>? Log = null, CardRound? Cards = null,
     bool FactionUsed0 = false, bool FactionUsed1 = false, PendingCombat? Combat = null, int ValorOwner = -1, int ValorUsedMask = 0, PendingRepair[]? Repairs = null,
     PendingOverrun? Overrun = null, int Stars0 = 0, int Stars1 = 0, PendingDefense? Defense = null, PendingCapEntry? CapEntry = null,
-    Dictionary<int, int>? Mines = null, HazardJob[]? Hazards = null, PendingHazard? Hazard = null, Dictionary<int, AsteroidDeposit>? Deposits = null, int Harvested0 = 0, int Harvested1 = 0, List<BattleUnit>? Reserves = null, PendingReinforce? Reinforce = null, int Funds0 = 0, int Funds1 = 0, int NextUnit = 0, string[]? Claims = null, int Medals0 = 0, int Medals1 = 0, Dictionary<string, int>? Captures = null, Dictionary<string, UnitLoss>? Losses = null, string EndReason = "");
+    Dictionary<int, int>? Mines = null, HazardJob[]? Hazards = null, PendingHazard? Hazard = null, Dictionary<int, AsteroidDeposit>? Deposits = null, int Harvested0 = 0, int Harvested1 = 0, List<BattleUnit>? Reserves = null, PendingReinforce? Reinforce = null, int Funds0 = 0, int Funds1 = 0, int NextUnit = 0, string[]? Claims = null, int Medals0 = 0, int Medals1 = 0, Dictionary<string, int>? Captures = null, Dictionary<string, UnitLoss>? Losses = null, string EndReason = "", ScenarioState? Scenario = null);
 public sealed record UnitDeployment(string Unit, int Q, int R);
 public sealed record BattleCommand(string Kind, string Unit = "", string Target = "", int Q = 0, int R = 0, int Facing = 0, string Card = "", string OtherUnit = "",
     string[]? Cards = null, string Weapon = "", bool Power = false, string Repair = "", bool AutoFacing = true, string OtherRepair = "", string AttackKind = "ranged", string Effect = "weapons", int Amount = 0, bool TransferLeader = false, int[]? Dice = null, UnitDeployment[]? Deployments = null, int Object = -1, bool Receive = false, string Definition = "", bool ToBay = false, int ReserveSpend = 0, string Embark = "");
@@ -49,7 +49,7 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
             Log: [new(0, 1, -1, "Бой начался."), new(1, 1, 0, "Первый приказ.")]);
         state = FleetEconomy.Initialize(content, state);
         state = content.Rules[map.Rules].Handler == "cards-basic-v1" ? BasicCardRules.Initialize(state, content) : state;
-        return FleetObjectives.Refresh(content, state);
+        return FleetObjectives.Refresh(content, ScenarioEvents.Process(content, state, "round-start"));
     }
 
     public CommandResult Apply(BattleState state, int side, BattleCommand command)
@@ -57,9 +57,9 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
         if (state.ContentFingerprint != content.Fingerprint) return new(false, "Набор игровых данных не совпадает.", state);
         var result = _modules[content.Rules[content.Maps[state.Map].Rules].Handler].Apply(content, state, side, command);
         if (!result.Accepted) return result;
-        var settled = FleetObjectives.Check(content, FleetCap.Sync(state, result.State));
+        var settled = FleetObjectives.Check(content, ScenarioEvents.Prune(FleetCap.Sync(state, result.State)));
         if (settled.Finished && FleetObjectives.Enabled(content, settled)) settled = FleetObjectives.Close(settled);
-        result = result with { State = settled, Message = result.Message + FleetObjectives.Changes(state, settled) };
+        result = result with { State = settled, Message = result.Message + FleetObjectives.Changes(state, settled) + ScenarioEvents.Changes(content, state, settled) };
         return result with { State = result.State with { Log = BattleLog.AfterCommand(state, result.State, side, result.Message) } };
     }
     public UnitActions GetActions(BattleState state, int side, string unitId)
@@ -83,18 +83,19 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
                 || u.Side is < 0 or > 1 || u.Facing is < 0 or > 5 || u.Cargo is < 0 or > 1000000 || u.FocusFire < 0 || u.CrewDamage < 0 || u.Leader == null || !FleetRuleTools.ValidEffects(u.Effects) || !FleetRuleTools.ValidLeader(content, u)
                 || u.LastAction is not ("" or "move" or "ranged" or "ram" or "board") || u.LastTarget == null || u.LastActionRound < 0 || u.LastActionRound > s.Round
                 || FleetRuleTools.Enabled(content, s) && u.Hulk != FleetClose.CheckHulk(content, u).Hulk
-                || u.Q < 0 || u.Q >= map.Width || u.R < 0 || u.R >= map.Height
-                || u.Embarked != "" || u.Launches < 0 || u.Patrol == null || u.Patrol == "" && !cells.Add(new(u.Q, u.R))) throw new InvalidDataException("Invalid unit in save.");
+                || !FleetFootprint.Cells(content, u).All(h => FleetFootprint.Inside(map, h))
+                || u.Embarked != "" || u.Launches < 0 || u.Patrol == null || u.Patrol == "" && FleetFootprint.Cells(content, u).Any(h => !cells.Add(h))) throw new InvalidDataException("Invalid unit in save.");
         if (s.Log != null && (s.Log.Count > BattleLog.Capacity || s.Log.Any(e => e.Number < 0 || e.Round < 1 || e.Round > s.Round
                 || e.Side is < -1 or > 1 || string.IsNullOrWhiteSpace(e.Text) || e.Text.Length > 4096)
             || !s.Log.Select(e => e.Number).SequenceEqual(s.Log.Select(e => e.Number).Distinct().Order())))
             throw new InvalidDataException("Invalid battle log in save.");
+        ScenarioEvents.Validate(content, s);
         FleetObjectives.Validate(content, s);
         FleetLogistics.Validate(content, s);
         FleetEconomy.Validate(content, s);
         FleetTerrain.Validate(content, s);
         FleetCap.Validate(content, s);
-        if (content.Rules[map.Rules].Handler == "cards-basic-v1") { BasicCardRules.Validate(s); InterruptRules.ValidateGeometry(content, s); FleetDefense.Validate(content, s); FleetCombat.Validate(content, s); FleetRepairs.Validate(s); FleetClose.Validate(s); }
+        if (content.Rules[map.Rules].Handler == "cards-basic-v1") { BasicCardRules.Validate(s); InterruptRules.ValidateGeometry(content, s); FleetDefense.Validate(content, s); FleetCombat.Validate(content, s); FleetRepairs.Validate(s); FleetClose.Validate(content, s); }
         return s;
     }
 }
@@ -183,6 +184,7 @@ public sealed class SkirmishRules : IRuleModule
     internal static CommandResult FinishOrder(ContentCatalog c, BattleState original, BattleState state, int side, string message)
     {
         var rules = c.Rules[c.Maps[state.Map].Rules];
+        state = ScenarioEvents.FinishOrder(c, original, state, side);
         state = FleetObjectives.Check(c, state);
         if (state.Finished) return new(true, message, state with { Sequence = original.Sequence + 1 });
         int Remaining(int s) => FleetRuleTools.PlayLimit(c, state, s) - (s == 0 ? state.Orders0 : state.Orders1);
@@ -191,9 +193,11 @@ public sealed class SkirmishRules : IRuleModule
             state = FleetClose.Outcome(state, c);
         else if (!CanAct(0) && !CanAct(1))
         {
+            state = ScenarioEvents.Process(c, state, "round-end");
             state = state with { Round = state.Round + 1, Orders0 = 0, Orders1 = 0, ActiveSide = state.Round % 2,
                 Units = state.Units.Select(u => u with { Activated = false, CapUsed = false, Launches = 0 }).ToList(),
                 Reserves = state.Reserves?.Select(u => u with { Activated = false, Launches = 0 }).ToList() };
+            state = ScenarioEvents.Process(c, state, state.Round > rules.RoundLimit ? "battle-end" : "round-start");
             if (state.Round > rules.RoundLimit) state = FleetObjectives.Enabled(c, state) ? FleetObjectives.AtLimit(c, state) : state with { Finished = true };
         }
         else state = state with { ActiveSide = CanAct(1 - side) && (rules.AlternatingOrders || !CanAct(side)) ? 1 - side : side };

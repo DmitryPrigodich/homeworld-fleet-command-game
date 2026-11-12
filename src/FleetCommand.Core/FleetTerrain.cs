@@ -31,15 +31,15 @@ public static class FleetTerrain
         mines[index] = MineCount(s, index) == 5 ? 3 : 0;
         return s with { Mines = mines };
     }
-    private static HazardJob[] Jobs(ContentCatalog c, BattleState s, IEnumerable<string> units, string resume, Hex? cell = null)
+    private static HazardJob[] Jobs(ContentCatalog c, BattleState s, IEnumerable<string> units, string resume, Hex[]? entered = null)
     {
         if (!FleetRuleTools.Enabled(c, s)) return [];
         var map = c.Maps[s.Map];
         return units.Distinct().SelectMany(id =>
         {
             var unit = s.Units.Find(u => u.Id == id && u.Patrol == ""); if (unit == null) return Array.Empty<HazardJob>();
-            var at = cell ?? new Hex(unit.Q, unit.R);
-            return map.Objects.Select((obj, index) => (obj, index)).Where(p => p.obj.Q == at.Q && p.obj.R == at.R && Attack(c.Objects[p.obj.Definition]) is { Dice: > 0 }
+            var at = entered ?? FleetFootprint.Cells(c, unit);
+            return map.Objects.Select((obj, index) => (obj, index)).Where(p => at.Contains(new(p.obj.Q, p.obj.R)) && Attack(c.Objects[p.obj.Definition]) is { Dice: > 0 }
                 && (Kind(c.Objects[p.obj.Definition]) != "mine" || p.obj.Owner != unit.Side && MineCount(s, p.index) > 0)).Select(p => new HazardJob(id, p.index, resume)).ToArray();
         }).ToArray();
     }
@@ -50,9 +50,9 @@ public static class FleetTerrain
         if (jobs.Length == 0) return next.Repairs is not { Length: > 0 } && next.Cards?.Pending?.Deferred != null ? FleetTransfers.Complete(c, before, next, message) : new(true, message, next);
         return StartQueued(c, before, next with { Hazards = jobs }, message);
     }
-    internal static CommandResult? Entry(ContentCatalog c, BattleState before, BattleState next, string unit, Hex cell, string message)
+    internal static CommandResult? Entry(ContentCatalog c, BattleState before, BattleState next, string unit, Hex cell, string message, Hex[]? entered = null)
     {
-        var jobs = Jobs(c, next, [unit], "movement", cell);
+        var jobs = Jobs(c, next, [unit], "movement", entered ?? [cell]);
         return jobs.Length == 0 ? null : StartQueued(c, before, next with { Hazards = jobs }, message);
     }
     internal static CommandResult StartQueued(ContentCatalog c, BattleState before, BattleState next, string message)
@@ -129,8 +129,10 @@ public static class FleetTerrain
         if (s.Hazard is not { } h) { if (s.Repairs is not { Length: > 0 }) throw new InvalidDataException("Unstarted terrain queue."); return; }
         if (h.Job == null || h.Job != jobs[0]) throw new InvalidDataException("Invalid active terrain job.");
         var unit = s.Units.Find(u => u.Id == h.Job.Unit); var obj = map.Objects[h.Job.Object];
-        var position = h.Job.Resume == "movement" && s.Cards?.Response?.Transit is { } transit ? transit : unit == null ? new Hex(-1, -1) : new Hex(unit.Q, unit.R);
-        if (unit == null || h.Source == null || position != new Hex(obj.Q, obj.R) || h.Kind == "mine" && obj.Owner == unit.Side || h.Kind != Kind(c.Objects[obj.Definition]) || h.Source.Definition != ProfileId(obj.Definition)
+        var pose = h.Job.Resume == "movement" && s.Cards?.Response?.Transit is { } transit ? transit : unit == null ? new Hex(-1, -1) : new Hex(unit.Q, unit.R);
+        int facing = s.Cards?.Response is { Transit: not null, TransitFacing: >= 0 } pause ? pause.TransitFacing : unit?.Facing ?? 0;
+        var positions = unit == null ? [] : FleetFootprint.Cells(c.Ships[unit.Definition], pose, facing);
+        if (unit == null || h.Source == null || !positions.Contains(new(obj.Q, obj.R)) || h.Kind == "mine" && obj.Owner == unit.Side || h.Kind != Kind(c.Objects[obj.Definition]) || h.Source.Definition != ProfileId(obj.Definition)
             || h.Source.Id != "terrain:" + h.Job.Object || s.Units.Any(u => u.Id == h.Source.Id) || h.Source.Side != (obj.Owner >= 0 ? obj.Owner : 1 - unit.Side)
             || h.Source.Q != unit.Q || h.Source.R != unit.R || h.Source.Models != (h.Kind == "mine" ? 5 : 1) && !(h.Kind == "mine" && h.Source.Models == 3)
             || s.Repairs is { Length: > 0 } || s.Defense == null && s.Combat == null) throw new InvalidDataException("Invalid active terrain attack.");

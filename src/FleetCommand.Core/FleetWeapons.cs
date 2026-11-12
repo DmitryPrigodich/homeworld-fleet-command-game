@@ -20,11 +20,15 @@ public static class FleetWeapons
         if (target == null || target.Side == unit.Side) return (false, 0, "Выберите противника.");
         if (FleetRuleTools.Has(unit, "weapons")) return (false, 0, "Оружие выведено из строя.");
         var choices = Weapons(c, c.Ships[unit.Definition]).Where(w => (weapon == "" || w.Id == weapon)
-            && ((w.Targets?.Length ?? 0) == 0 || w.Targets!.Contains(FleetRuleTools.Class(c.Ships[target.Definition]))) && Arc(unit, target, w.Arc));
+            && ((w.Targets?.Length ?? 0) == 0 || w.Targets!.Contains(FleetRuleTools.Class(c.Ships[target.Definition]))));
         foreach (var w in choices)
         {
-            var geometry = SkirmishGeometry.CoverGeometry(c, s, unit, target, w.Range, w.Barrage > 0);
-            if (geometry.Allowed) return geometry;
+            foreach (var pair in FleetFootprint.Nearest(c, unit, target))
+            {
+                if (!Arc(unit with { Q = pair.From.Q, R = pair.From.R }, target with { Q = pair.To.Q, R = pair.To.R }, w.Arc)) continue;
+                var geometry = SkirmishGeometry.CoverBetween(c, s, unit, target, pair.From, pair.To, w.Range, w.Barrage > 0);
+                if (geometry.Allowed) return geometry;
+            }
         }
         return (false, 0, "Нет подходящего оружия: дальность, сектор, тип цели или линия огня.");
     }

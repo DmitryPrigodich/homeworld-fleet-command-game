@@ -30,7 +30,7 @@ internal static class SkirmishGeometry
         var ship = content.Ships[unit.Definition];
         int allowance = ship.Move + (ship.Abilities ?? []).Select(id => content.Abilities[id]).Where(a => a.Handler == "move-bonus").Sum(a => a.Value);
         var occupied = state.Units.Where(u => u.Patrol == "").ToDictionary(u => new Hex(u.Q, u.R));
-        bool Inside(Hex h) => h.Q >= 0 && h.Q < map.Width && h.R >= 0 && h.R < map.Height;
+        bool Inside(Hex h) => FleetFootprint.Inside(map, h);
         var start = new Hex(unit.Q, unit.R);
         var best = new Dictionary<Hex, int> { [start] = 0 };
         previous = [];
@@ -60,13 +60,18 @@ internal static class SkirmishGeometry
     }
     internal static (bool Allowed, int Cover, string Error) CoverGeometry(ContentCatalog content, BattleState state, BattleUnit unit, BattleUnit? target, int? range = null, bool ignoreNebula = false)
     {
+        var pairs = target == null ? [] : FleetFootprint.Nearest(content, unit, target);
+        var results = pairs.Select(p => CoverBetween(content, state, unit, target!, p.From, p.To, range, ignoreNebula)).ToArray();
+        return results.Where(r => r.Allowed).OrderBy(r => r.Cover).FirstOrDefault(results.FirstOrDefault((false, 0, "Выберите противника.")));
+    }
+    internal static (bool Allowed, int Cover, string Error) CoverBetween(ContentCatalog content, BattleState state, BattleUnit unit, BattleUnit target, Hex start, Hex end, int? range, bool ignoreNebula)
+    {
         var ship = content.Ships[unit.Definition];
         if (ship.DicePerModel == 0 && range == null) return (false, 0, "У этого подразделения нет оружия для стрельбы.");
-        if (target == null || target.Side == unit.Side || new Hex(unit.Q, unit.R).Distance(new(target.Q, target.R)) > (range ?? ship.Range))
+        if (target.Side == unit.Side || start.Distance(end) > (range ?? ship.Range))
             return (false, 0, "Выбери противника в пределах дальности стрельбы.");
         var map = content.Maps[state.Map];
-        var end = new Hex(target.Q, target.R);
-        bool Inside(Hex h) => h.Q >= 0 && h.Q < map.Width && h.R >= 0 && h.R < map.Height;
+        bool Inside(Hex h) => FleetFootprint.Inside(map, h);
         var memo = new Dictionary<Hex, int>();
         // The prototype takes the greatest cover penalty over all shortest paths.
         int Cover(Hex h)
@@ -79,13 +84,13 @@ internal static class SkirmishGeometry
                 var next = h.Neighbor(direction);
                 if (!Inside(next) || next.Distance(end) != h.Distance(end) - 1) continue;
                 if (Blocked(content, map, next, state)) return memo[h] = 100000;
-                int penalty = next == end ? 0 : state.Units.Any(u => u.Patrol == "" && u.Q == next.Q && u.R == next.R) ? 1 : 0;
+                int penalty = next == end ? 0 : state.Units.Any(u => u.Patrol == "" && u.Id != unit.Id && u.Id != target.Id && FleetFootprint.Contains(content, u, next)) ? 1 : 0;
                 penalty += FleetTerrain.Objects(content, state).Where(o => o.Q == next.Q && o.R == next.R && (!ignoreNebula || content.Objects[o.Definition].Kind != "nebula")).Sum(o => content.Objects[o.Definition].AttackPenalty);
                 worst = Math.Max(worst, penalty + Cover(next));
             }
             return memo[h] = worst;
         }
-        int cover = Cover(new(unit.Q, unit.R));
+        int cover = Cover(start);
         return cover >= 100000 ? (false, 0, "Объект перекрывает линию огня.") : (true, cover, "");
     }
 }
