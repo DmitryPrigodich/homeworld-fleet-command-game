@@ -35,9 +35,9 @@ public static class FleetClose
     public static CommandResult Apply(ContentCatalog c, BattleState s, int side, BattleCommand cmd)
     {
         var overrun = s.Overrun!;
-        if (side != overrun.Side || cmd.Kind is not ("overrun" or "decline-overrun")) return new(false, "Решите, занимать ли освобождённый гекс.", s);
+        if (side != overrun.Side || cmd.Kind is not ("overrun" or "decline-overrun")) return new(false, "Choose whether to occupy the vacated hex.", s);
         var next = s with { Overrun = null, Units = s.Units.Select(u => u.Id == overrun.Unit && cmd.Kind == "overrun" ? u with { Q = overrun.Destination.Q, R = overrun.Destination.R } : u).ToList() };
-        return InterruptRules.CombatResolved(c, s, next, cmd.Kind == "overrun" ? "Отряд занял гекс после ближней атаки." : "Продвижение после атаки пропущено.", overrun.Interrupt);
+        return InterruptRules.CombatResolved(c, s, next, cmd.Kind == "overrun" ? "The unit occupied the hex after its close attack." : "Post-attack advance declined.", overrun.Interrupt);
     }
     internal static void Validate(ContentCatalog c, BattleState s)
     {

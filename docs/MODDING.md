@@ -148,4 +148,4 @@ An objective with `kind: "event"` refers to the event ID in `target`, with thres
 
 ## Language packs
 
-EN/RU and additional languages are presentation data, loaded outside gameplay fingerprints. See [LOCALIZATION.md](LOCALIZATION.md) for the catalog format, precedence and fallback. Ship, scenario, event and objective names introduced by a mod should have corresponding language entries in that mod's `locales` directory. Changing languages does not reload game definitions or change saved log records.
+EN/RU and additional languages are presentation data, loaded outside gameplay fingerprints. Author names and visible source text in English, and use those canonical English strings as keys in every language file. English itself has an editable catalog; missing translations fall back to it. See [LOCALIZATION.md](LOCALIZATION.md) for the catalog format, precedence and fallback. Ship, scenario, event and objective names introduced by a mod should have corresponding language entries in that mod's `locales` directory. Changing languages does not reload game definitions or change saved log records.

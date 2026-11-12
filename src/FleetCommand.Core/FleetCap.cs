@@ -12,7 +12,7 @@ public static class FleetCap
         var frame = s.Defense!; var unit = Patrol(s, frame.Attack.Target);
         var hand = side == 0 ? s.Cards!.Hand0 : s.Cards!.Hand1;
         var weapon = unit == null ? null : Weapons(c, unit).FirstOrDefault(w => command.Weapon == "" || w.Id == command.Weapon);
-        if (frame.CapActive || frame.CapComplete || !Available(s, frame.Attack.Target) || unit == null || weapon == null || !hand.Contains(command.Card)) return new(false, "Для CAP нужен неиспользованный патруль, оружие и карта из своей руки.", s);
+        if (frame.CapActive || frame.CapComplete || !Available(s, frame.Attack.Target) || unit == null || weapon == null || !hand.Contains(command.Card)) return new(false, "CAP requires an unused patrol, a weapon and a card from your hand.", s);
         var next = s with { Units = s.Units.Select(u => u.Id == unit.Id ? u with { CapUsed = true, Activated = true } : u).ToList(),
             Cards = s.Cards! with { Hand0 = s.Cards.Hand0.Where(id => id != command.Card).ToArray(), Hand1 = s.Cards.Hand1.Where(id => id != command.Card).ToArray(), Discard = s.Cards.Discard.Append(command.Card).ToArray() },
             Defense = frame with { Patroller = unit.Id, CapActive = true } };
@@ -36,9 +36,9 @@ public static class FleetCap
         if (FleetTerrain.Exchange(frame.Threat))
         {
             var stored = combat with { Ghost = FleetCombat.Actor(s, combat) };
-            return new(true, "Бросок воздушного боя подтверждён; потери будут применены одновременно.", s with { Combat = null, Defense = combat.Kind == "cap" ? frame with { CapVolley = stored } : frame with { IncomingVolley = stored } });
+            return new(true, "Dogfight roll confirmed; casualties will be applied simultaneously.", s with { Combat = null, Defense = combat.Kind == "cap" ? frame with { CapVolley = stored } : frame with { IncomingVolley = stored } });
         }
-        if (FleetDefense.Projectile(frame.Threat)) return new(true, $"CAP: входящая атака -{successes} кубиков.", s with { Combat = null, Defense = frame with { Reduction = frame.Reduction + successes } });
+        if (FleetDefense.Projectile(frame.Threat)) return new(true, $"CAP: incoming attack -{successes} dice.", s with { Combat = null, Defense = frame with { Reduction = frame.Reduction + successes } });
         return FleetCombat.ReactionDamage(c, s, combat);
     }
     internal static CommandResult AfterVolley(ContentCatalog c, BattleState before, CommandResult result)
@@ -68,7 +68,7 @@ public static class FleetCap
         next = next with { Defense = frame };
         var attacker = FleetTerrain.Find(next, frame.Attack.Unit);
         if (attacker is { Hulk: false, Models: > 0 } && FleetDefense.Weapons(c, next.Units.Single(u => u.Id == frame.Attack.Target)).Length > 0)
-            return new(true, message + " CAP завершён. Можно применить защитный огонь корабля.", next with { Sequence = before.Sequence + 1 });
+            return new(true, message + " CAP complete. The ship may use defensive fire.", next with { Sequence = before.Sequence + 1 });
         return FleetDefense.Resume(c, before, next with { Defense = null }, frame, message);
     }
     internal static bool ValidVolley(ContentCatalog c, BattleState s, PendingCombat volley)
@@ -95,29 +95,29 @@ public static class FleetCap
         var patrols = s.Units.Where(u => actors.Contains(u.Id) && u.Patrol != "").ToArray(); if (patrols.Length == 0) return null;
         var placements = command.Deployments ?? [];
         if (patrols.Any(u => u.Side != side) || placements.Length != patrols.Length || placements.Select(p => p.Unit).Distinct().Count() != placements.Length
-            || placements.Any(p => !patrols.Any(u => u.Id == p.Unit))) return new(false, "Выберите свободный соседний гекс выхода для каждого отряда CAP.", s);
+            || placements.Any(p => !patrols.Any(u => u.Id == p.Unit))) return new(false, "Choose a free adjacent exit hex for each CAP unit.", s);
         var expanded = s;
         foreach (var patrol in patrols)
         {
             var placement = placements.Single(p => p.Unit == patrol.Id); var cell = new Hex(placement.Q, placement.R);
-            if (!ExitCells(c, expanded, patrol).Contains(cell)) return new(false, "CAP может выйти до приказа, если отряд и корабль ещё не активированы.", s);
+            if (!ExitCells(c, expanded, patrol).Contains(cell)) return new(false, "CAP may exit before an order if both the unit and its host are still unactivated.", s);
             expanded = expanded with { Units = expanded.Units.Select(u => u.Id == patrol.Id ? u with { Patrol = "", Q = cell.Q, R = cell.R } : u).ToList() };
         }
         var result = new BasicCardRules().Apply(c, expanded, side, command with { Deployments = null });
-        return result.Accepted ? result with { Message = "Истребители вышли из CAP. " + result.Message } : result with { State = s };
+        return result.Accepted ? result with { Message = "Fighters exited CAP. " + result.Message } : result with { State = s };
     }
     public static CommandResult ApplyEntry(ContentCatalog c, BattleState s, int side, BattleCommand command)
     {
         var entry = s.CapEntry!; var unit = s.Units.Single(u => u.Id == entry.Unit);
-        if (side != entry.Side || command.Kind is not ("cap-enter" or "decline-cap")) return new(false, "Решите, назначать ли истребители в CAP.", s);
+        if (side != entry.Side || command.Kind is not ("cap-enter" or "decline-cap")) return new(false, "Choose whether to assign fighters to CAP.", s);
         var next = s with { CapEntry = null };
         if (command.Kind == "cap-enter")
         {
             var parent = Hosts(c, s, unit).FirstOrDefault(u => u.Id == command.Target);
-            if (parent == null) return new(false, "Нужен соседний союзный корабль без другого CAP.", s);
+            if (parent == null) return new(false, "An adjacent allied ship without another CAP is required.", s);
             next = next with { Units = next.Units.Select(u => u.Id == unit.Id ? u with { Patrol = parent.Id, Q = parent.Q, R = parent.R } : u).ToList() };
         }
-        return InterruptRules.Complete(c, s, next, command.Kind == "cap-enter" ? "Истребители назначены в CAP." : "Назначение в CAP пропущено.");
+        return InterruptRules.Complete(c, s, next, command.Kind == "cap-enter" ? "Fighters assigned to CAP." : "CAP assignment skipped.");
     }
     internal static BattleState Sync(BattleState before, BattleState next) => next with { Units = next.Units.Select(u =>
     {

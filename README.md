@@ -19,7 +19,7 @@ The current version uses differently sized blue and red cubes for ships, with gr
 - **ПОДГОТОВКА ФЛОТОВ** adds two independently editable faction rosters, star budgets and reserve funds, leader assignment, compulsory/optional blue and yellow tabs, derived free assigned units, deployment and carrier bays. Rosters save as local JSON; validated setup travels in battle saves and ENet snapshots. Available costs/tabs are explicitly synthetic training profiles until the actual cards arrive.
 - Optional card artwork packs selected in **Options → Card appearance**. Text mode is the default; removing an art pack does not affect match fingerprints or saves. Original blank frames can be rendered locally with `scripts/Import-CardFrames.ps1` and are never distributed.
 
-- **Options → Language / Опции → Язык** switches between English and Russian and retains the choice. Additional JSON language packs can live in mods or `.local/locales`; language does not affect saves or multiplayer content hashes. See [localization](docs/LOCALIZATION.md).
+- **Options → Language / Опции → Язык** switches between English and Russian and retains the choice. English is the source/default language and also has its own editable catalog; **Reload languages** applies JSON wording changes without recompilation. Additional JSON language packs can live in mods or `.local/locales`; language does not affect saves or multiplayer content hashes. See [localization](docs/LOCALIZATION.md).
 - Main menu: tutorial, single player, multiplayer, options, mods, exit.
 - A seven-step interactive tutorial with highlighted selection, movement, round reset and shooting. It uses a passive opponent and keeps existing saves untouched.
 - Skirmish with a simple computer opponent or local hotseat.

@@ -4,7 +4,7 @@
 
 - [x] Independent core, JSON content and checks.
 - [x] HW1-menu-inspired configurable palette, without original art/fonts.
-- [x] EN/RU display language, persisted choice, local/mod JSON language packs and fallback.
+- [x] English source/default language, EN/RU catalogs, live wording reloads, persisted choice and local/mod language packs with English fallback.
 - [x] High-level menu structure, cube battlefield and local controls.
 - [x] Dedicated interactive tutorial and right-drag orbit camera with zoom/reset.
 - [x] Battlefield names, object inspection, tactical class symbols and player identity settings.

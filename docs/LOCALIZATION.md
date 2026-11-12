@@ -1,12 +1,14 @@
 # Display languages
 
-Open **ОПЦИИ → ЯЗЫК / LANGUAGE** or **OPTIONS → LANGUAGE**. English and Russian are included; the choice is stored in `.local/settings.json` as `language`. Existing settings default to `ru`. Menus, battlefield text, tooltips, choices and the event log use the selected language. Editable player names and filesystem paths retain their entered values.
+English is the source language in C# and shipped content. Its original strings are the shared keys in **every** language catalog, including `en.json`. Russian and additional languages translate those English keys. The English file supplies the default English captions and can override them without changing source code.
 
-Language is a local presentation preference. Battle definitions, unit/card IDs, saved progress, RNG, original log entries and content hashes do not change. An English client can join a Russian host; each renders the same authoritative messages in its own language. Default Godot debug/exception diagnostics and names supplied by a mod without translations may retain their original text.
+Open **OPTIONS → LANGUAGE** (or the corresponding Russian menu). English is the default for new settings; an explicitly saved language choice is retained. The choice is stored in `.local/settings.json` as `language`. Menus, battlefield text, tooltips, choices and the event log use the selected language. Editable player names and filesystem paths retain their entered values.
+
+Language remains a local presentation preference. A language-file edit or selection does not change unit/card IDs, battle progress, RNG, source log records or gameplay hashes. English and Russian peers may share a match. Original log messages are written in English and translated only when displayed. Native language names in catalog metadata and deliberate Unicode test fixtures are independent of the source-language convention.
 
 ## Adding a language
 
-Place `<code>.json` under `.local/locales`, or a mod's `locales` directory. The included catalogs live in `content/locales`. Use two/three lowercase letters, optionally followed by a region, for example `de`, `fr` or `pt-BR`.
+Place `<code>.json` under `.local/locales`, or a mod's `locales` directory. Included catalogs live in `content/locales`. Use two/three lowercase letters, optionally followed by a region, for example `de`, `fr` or `pt-BR`.
 
 ```json
 {
@@ -14,19 +16,41 @@ Place `<code>.json` under `.local/locales`, or a mod's `locales` directory. The 
   "name": "Deutsch",
   "fallback": "en",
   "messages": {
-    "ОПЦИИ": "Optionen",
-    "ВЫХОД": "Beenden",
-    "Бой начался.": "Die Schlacht beginnt."
+    "OPTIONS": "Optionen",
+    "EXIT": "Beenden",
+    "Battle started.": "Die Schlacht beginnt."
   }
 }
 ```
 
-Restart or reload content after adding a file; the language then appears in the picker. Missing entries use its fallback. The Russian source text is the final fallback; an unknown saved language also selects Russian. Fallback cycles are rejected. Additional packs can override an existing language by using the same code. Precedence is base catalogs, enabled mods, then local catalogs. Locale files do not require changes to the gameplay mod manifest or content hash.
+Click **RELOAD LANGUAGES** on the language screen after adding or editing a file. Restarting or reloading content also reloads catalogs. Missing entries use the configured fallback, then the English catalog, then the literal English source text. An unknown saved language selects English. Omitting `fallback` defaults it to `en`; the base English catalog uses an empty fallback. Fallback cycles are rejected.
 
-## Translating messages
+Packs can override an existing language by using the same code. Precedence is base catalogs, enabled mods, then local catalogs. Files for a code merge rather than replace all other entries. Locale files need no gameplay manifest or hash changes.
 
-Copy source keys from the Russian catalog. Entries include complete messages and the literal fragments used around dynamic numbers/names. Preserve useful spaces, punctuation, symbols and `\n` line breaks in the translations. A full message has priority; composed messages use the longest matching phrase with letter boundaries. Matching is case-insensitive, and uppercase headings stay uppercase. Original source strings are retained per UI control so switching languages does not attempt to reverse-translate already rendered English text.
+## Editing English captions
 
-Supply entries for a mod's names, briefing, objective/event names and any extra visible phrases. A minimal pack may deliberately fall back to English while its translations are completed. Personal names and paths should not be catalog keys. Cosmetic card styles and language packs remain independent.
+English goes through the same catalog lookup as any other language. For example, a local `.local/locales/en.json` can contain:
 
-Core regression checks cover every included Russian catalog entry in English and a third-language fallback. Godot checks exercise the actual picker, persisted settings, menu screens, a Cyrillic player-name field and mid-battle EN → RU log switching. The network scenario uses different host/client languages while preserving card privacy and saved scenario progress.
+```json
+{
+  "code": "en",
+  "name": "English",
+  "fallback": "",
+  "messages": {
+    "OPTIONS": "SETTINGS",
+    "Battle started.": "Engagement started."
+  }
+}
+```
+
+After **RELOAD LANGUAGES**, the existing English source key `OPTIONS` displays as `SETTINGS`. No recompilation is needed. Russian, German and other catalogs still use `OPTIONS`, regardless of the current English display value. A missing translation in another language falls back to the edited English value.
+
+Keep these canonical source keys stable when correcting wording in a catalog. Exact entries honor the supplied value and casing, including identity mappings such as `"OPTIONS": "OPTIONS"`. UI controls retain the original English source separately from their rendered text, so language switches and reloads do not translate an already renamed caption a second time.
+
+## Translating composed messages
+
+Copy source keys from `en.json`. Entries include complete messages and literal fragments around dynamic numbers and names. Preserve useful punctuation, symbols and `\n` line breaks. Exact whole-message entries have priority; otherwise composed messages use the longest matching translated phrases with letter boundaries. Phrase lookup can handle heading case variants. An unknown phrase remains readable English.
+
+Supply English names, briefing and objective/event text in a mod's gameplay data, with translations in its `locales` directory. Personal names and paths should not be catalog keys. Debug/exception diagnostics and untranslated third-party content may retain their English source. Cosmetic card styles and language packs remain independent.
+
+Regression checks verify English keys in both shipped catalogs, English fallback, a third language, exact English caption overrides and reloads without battle-state changes. Godot checks exercise the picker, persistence, a live English JSON rename, menu screens, a Cyrillic name field and mid-battle EN → RU log switching. The network scenario uses different host/client languages while preserving card privacy and scenario progress.

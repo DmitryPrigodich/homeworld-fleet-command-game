@@ -13,13 +13,13 @@ public sealed class TutorialLesson
 
     public static void Register(ContentCatalog content)
     {
-        content.Ships["tutorial:scouts"] = new("tutorial:scouts", "Учебные перехватчики", "training", "", 6, 3, 1, 5, 0, 1, VisualSize: 0.28f);
-        content.Ships["tutorial:frigate"] = new("tutorial:frigate", "Учебный фрегат", "training", "", 2, 2, 3, 5, 2, 3, VisualSize: 0.6f);
-        content.Fleets["tutorial:blue"] = new("tutorial:blue", "Учебный флот", [new("tutorial:scouts", 1, 2), new("tutorial:frigate", 1, 4)]);
-        content.Fleets["tutorial:red"] = new("tutorial:red", "Учебная цель", [new("tutorial:scouts", 4, 2, 3)]);
-        content.Objects["tutorial:obstacle"] = new("tutorial:obstacle", "Непроходимый объект", BlocksMovement: true, Color: "#8792a2");
-        content.Rules["tutorial:rules"] = new("tutorial:rules", "Учебный бой", RearShots: false);
-        content.Maps[MapId] = new(MapId, "Основы командования", 7, 6, "", [new("tutorial:obstacle", 4, 4)],
+        content.Ships["tutorial:scouts"] = new("tutorial:scouts", "Training Interceptors", "training", "", 6, 3, 1, 5, 0, 1, VisualSize: 0.28f);
+        content.Ships["tutorial:frigate"] = new("tutorial:frigate", "Training frigate", "training", "", 2, 2, 3, 5, 2, 3, VisualSize: 0.6f);
+        content.Fleets["tutorial:blue"] = new("tutorial:blue", "Training fleet", [new("tutorial:scouts", 1, 2), new("tutorial:frigate", 1, 4)]);
+        content.Fleets["tutorial:red"] = new("tutorial:red", "Training target", [new("tutorial:scouts", 4, 2, 3)]);
+        content.Objects["tutorial:obstacle"] = new("tutorial:obstacle", "Impassable object", BlocksMovement: true, Color: "#8792a2");
+        content.Rules["tutorial:rules"] = new("tutorial:rules", "Training battle", RearShots: false);
+        content.Maps[MapId] = new(MapId, "Command basics", 7, 6, "", [new("tutorial:obstacle", 4, 4)],
             ["tutorial:blue", "tutorial:red"], "tutorial:rules");
     }
 

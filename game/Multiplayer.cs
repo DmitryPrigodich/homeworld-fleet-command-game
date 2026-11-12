@@ -20,31 +20,31 @@ public partial class Main
     private readonly Dictionary<long, int> _sideByPeer = [];
     private void NetworkMenu()
     {
-        ClearScreen(); Heading("Совместная игра"); var outer = Panel(70, 175, 720, 640);
+        ClearScreen(); Heading("Multiplayer"); var outer = Panel(70, 175, 720, 640);
         var scroll = new ScrollContainer { CustomMinimumSize = new(0, 600), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled }; outer.AddChild(scroll);
         var box = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill }; box.AddThemeConstantOverride("separation", 10); scroll.AddChild(box);
-        var cooperative = new CheckBox { Text = "Кооператив: общий синий флот против AI", ButtonPressed = true }; box.AddChild(cooperative);
-        var firstContact = new CheckBox { Text = "Сценарий 1: Первый контакт" }; box.AddChild(firstContact);
-        var cardMode = new CheckBox { Text = "Учебный бой с картами" }; box.AddChild(cardMode);
-        var objectives = new CheckBox { Text = "Цели и медали (учебная карта)" }; box.AddChild(objectives);
-        var logistics = new CheckBox { Text = "Ангары и подкрепления (учебная карта)" }; box.AddChild(logistics);
-        var economy = new CheckBox { Text = "Разведка и добыча (учебная карта)" }; box.AddChild(economy);
-        var tabletop = new CheckBox { Text = "Механики правил (режим разработки)" }; box.AddChild(tabletop);
-        var address = new LineEdit { Text = "127.0.0.1", PlaceholderText = "Адрес хоста", CustomMinimumSize = new(0, 40) }; box.AddChild(address);
-        Text(box, "Прототип: прямое подключение ENet, UDP-порт 24560. Комнаты по приглашению и relay — следующий этап.", 15, _colors.Muted);
-        Button(box, "ПОДГОТОВИТЬ ФЛОТЫ ДЛЯ СЕТИ", () => ForceMenu(true));
-        Button(box, "ПРОДОЛЖИТЬ СКИРМИШ ХОСТОМ", () => { LoadGame(false); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); }, !System.IO.File.Exists(SavePath(false)));
-        Button(box, "СОЗДАТЬ СКИРМИШ", () => { StartBattle(firstContact.ButtonPressed ? "core:first-contact" : objectives.ButtonPressed ? BasicCardBattle.ObjectivesMapId : logistics.ButtonPressed ? BasicCardBattle.LogisticsMapId : economy.ButtonPressed ? BasicCardBattle.EconomyMapId : tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
-        var campaignChoices = _content.Campaigns.Values.ToArray(); var campaignPicker = new OptionButton(); foreach (var definition in campaignChoices) campaignPicker.AddItem("Кампания: " + definition.Name); box.AddChild(campaignPicker);
-        Button(box, "СОЗДАТЬ КООП-КАМПАНИЮ", () =>
+        var cooperative = new CheckBox { Text = "Co-op: shared blue fleet against AI", ButtonPressed = true }; box.AddChild(cooperative);
+        var firstContact = new CheckBox { Text = "Scenario 1: First Contact" }; box.AddChild(firstContact);
+        var cardMode = new CheckBox { Text = "Training card battle" }; box.AddChild(cardMode);
+        var objectives = new CheckBox { Text = "Objectives and medals (training map)" }; box.AddChild(objectives);
+        var logistics = new CheckBox { Text = "Bays and reinforcements (training map)" }; box.AddChild(logistics);
+        var economy = new CheckBox { Text = "Survey and harvest (training map)" }; box.AddChild(economy);
+        var tabletop = new CheckBox { Text = "Rulebook mechanics (development mode)" }; box.AddChild(tabletop);
+        var address = new LineEdit { Text = "127.0.0.1", PlaceholderText = "Host address", CustomMinimumSize = new(0, 40) }; box.AddChild(address);
+        Text(box, "Prototype: direct ENet connection, UDP port 24560. Invitation rooms and relay are planned.", 15, _colors.Muted);
+        Button(box, "PREPARE FLEETS FOR MULTIPLAYER", () => ForceMenu(true));
+        Button(box, "HOST SAVED SKIRMISH", () => { LoadGame(false); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); }, !System.IO.File.Exists(SavePath(false)));
+        Button(box, "HOST SKIRMISH", () => { StartBattle(firstContact.ButtonPressed ? "core:first-contact" : objectives.ButtonPressed ? BasicCardBattle.ObjectivesMapId : logistics.ButtonPressed ? BasicCardBattle.LogisticsMapId : economy.ButtonPressed ? BasicCardBattle.EconomyMapId : tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
+        var campaignChoices = _content.Campaigns.Values.ToArray(); var campaignPicker = new OptionButton(); foreach (var definition in campaignChoices) campaignPicker.AddItem("Campaign: " + definition.Name); box.AddChild(campaignPicker);
+        Button(box, "HOST CO-OP CAMPAIGN", () =>
         {
             var campaign = campaignChoices[campaignPicker.Selected];
             _campaign = FleetCommand.Core.Campaign.Start(_content, campaign.Id, ["host"]);
             StartBattle(campaign.Missions.Single(m => m.Id == campaign.Start).Map, true, preserveCampaign: true); StartNetwork(true, address.Text, 24560, true);
         });
-        Button(box, "ПРОДОЛЖИТЬ КООП-КАМПАНИЮ", () => { LoadGame(true); StartNetwork(true, address.Text, 24560, true); }, !System.IO.File.Exists(SavePath(true)));
-        Button(box, "ПОДКЛЮЧИТЬСЯ", () => { StartBattle("core:training", false, persist: false); StartNetwork(false, address.Text, 24560, cooperative.ButtonPressed); });
-        Button(box, "НАЗАД", MainMenu); MenuScene();
+        Button(box, "RESUME CO-OP CAMPAIGN", () => { LoadGame(true); StartNetwork(true, address.Text, 24560, true); }, !System.IO.File.Exists(SavePath(true)));
+        Button(box, "CONNECT", () => { StartBattle("core:training", false, persist: false); StartNetwork(false, address.Text, 24560, cooperative.ButtonPressed); });
+        Button(box, "BACK", MainMenu); MenuScene();
     }
     private void StartNetwork(bool host, string address, int port, bool cooperative)
     {
@@ -59,12 +59,12 @@ public partial class Main
         {
             Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-scenarios-v1:" + _content.Fingerprint,
                 JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
-            Multiplayer.ConnectionFailed += () => { _status = "Не удалось подключиться."; StopNetwork(); DrawBattle(); };
-            Multiplayer.ServerDisconnected += () => { _status = "Хост отключился. Продолжение — из сохранения у хоста."; StopNetwork(); DrawBattle(); };
+            Multiplayer.ConnectionFailed += () => { _status = "Failed to connect."; StopNetwork(); DrawBattle(); };
+            Multiplayer.ServerDisconnected += () => { _status = "Host disconnected. Resume from the host's save."; StopNetwork(); DrawBattle(); };
             Multiplayer.PeerDisconnected += id => { _sideByPeer.Remove(id); };
             _networkSignalsBound = true;
         }
-        _status = host ? $"Хост запущен, UDP {port}. Можно подключаться." : "Подключение к хосту...";
+        _status = host ? $"Host running, UDP {port}. Players can now connect." : "Connecting to host...";
         DrawBattle();
     }
     private void StopNetwork()
@@ -327,7 +327,7 @@ public partial class Main
             _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
             _generation = saved.Generation; _campaign = saved.Campaign; _cooperative = cooperative; _localSide = cooperative ? 0 : 1;
             _commanders = ValidateCommanders(saved.Commanders);
-            _status = "Синхронизация с хостом: действие " + _state.Sequence; DrawBattle();
+            _status = "Host synchronization: action " + _state.Sequence; DrawBattle();
             if (_args.Contains("--smoke-forces"))
             {
                 if (_preparation == null || _state.Map != ForceBattle.MapId || _state.Reserves?.Count != 2 || _state.Funds0 != 3 || _content.Fleets["prepared:side-1"].Units[0].Leader != "practice:taiidan-admiral") throw new InvalidDataException("Prepared forces were not synchronized.");
@@ -420,7 +420,7 @@ public partial class Main
                 }
                 if (_args.Contains("--smoke-special"))
                 {
-                    if (_smokeRequestSent && cards.Pending == null && _state.Log!.Any(e => e.Side == 1 && e.Text.Contains("Приказ завершён")))
+                    if (_smokeRequestSent && cards.Pending == null && _state.Log!.Any(e => e.Side == 1 && e.Text.Contains("Order complete")))
                     { GD.Print("SPECIAL_NETWORK_OK"); GetTree().Quit(); return; }
                     if (cards.Pending is { } pending && pending.Step > _specialNetworkStep)
                     {
@@ -436,7 +436,7 @@ public partial class Main
                     if (cards.Phase == "orders" && _state.ActiveSide == 1 && !_smokeRequestSent)
                     { _smokeRequestSent = true; Submit(new("special", _state.Units.First(u => u.Side == 1).Id, Card: "order-01")); return; }
                 }
-                if (_smokeRequestSent && _state.Log!.Any(e => e.Side == 1 && e.Text.Contains("приказы пропущены"))) { GD.Print("CARD_NETWORK_OK"); GetTree().Quit(); return; }
+                if (_smokeRequestSent && _state.Log!.Any(e => e.Side == 1 && e.Text.Contains("orders passed"))) { GD.Print("CARD_NETWORK_OK"); GetTree().Quit(); return; }
                 if (cards.Phase == "initiative" && !cards.Ready1) Submit(new("initiative"));
                 if (cards.Phase == "orders" && _state.ActiveSide == 1 && !_smokeRequestSent) { _smokeRequestSent = true; Submit(new("pass")); }
                 return;
@@ -449,7 +449,7 @@ public partial class Main
                     Commander(0).Color == Commander(1).Color || Commander(1).IsNpc)
                     throw new InvalidDataException("Commander identities were not synchronized.");
                 GD.Print("NETWORK_IDENTITIES_OK");
-                if (_state.Log == null || !_state.Log.Any(entry => entry.Text.Contains("приказы пропущены")))
+                if (_state.Log == null || !_state.Log.Any(entry => entry.Text.Contains("orders passed")))
                     throw new InvalidDataException("Battle log was not synchronized.");
                 GD.Print("NETWORK_LOG_OK");
                 GD.Print((_cooperative ? "COOP_" : "") + "NETWORK_SNAPSHOT_OK"); GetTree().Quit();

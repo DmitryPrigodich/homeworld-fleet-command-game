@@ -24,10 +24,10 @@ public partial class Main
             }
             CardGuide(); await Frames();
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "card-guide.png"));
-            Press("НАЧАТЬ КАРТОЧНЫЙ БОЙ"); await Frames();
+            Press("START CARD BATTLE"); await Frames();
             Require(_state?.Cards != null, "Card guide opens the playable card battle");
             Fixture(); _selectedCard = "order-01"; SelectUnit("s0-0"); await Frames();
-            Press("СПЕЦПРИКАЗ"); await Frames();
+            Press("SPECIAL ORDER"); await Frames();
             Require(_state!.Cards!.Pending is { Step: 0 } && _selected == "s0-0", "UI starts the selected special card");
             var position = _camera.UnprojectPosition(World(new(2, 2)));
             GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = position }, true);
@@ -37,14 +37,14 @@ public partial class Main
             string snapshot = _engine.Save(_state); SaveGame(); LoadGame(false); await Frames();
             Require(_engine.Save(_state!) == snapshot && _state!.Cards!.Pending is { Step: 1 }, "Save/load resumes the second action");
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "special-order.png"));
-            Press("ПРОПУСТИТЬ ДЕЙСТВИЕ"); await Frames();
+            Press("SKIP ACTION"); await Frames();
             Require(_state.Cards!.Pending == null && _state.Orders0 == 1, "Skip completes the card without extra activation");
             Fixture(); _selectedCard = "order-09"; SelectUnit("s0-0"); await Frames();
-            Press("СПЕЦПРИКАЗ"); await Frames();
+            Press("SPECIAL ORDER"); await Frames();
             Require(_state!.Cards!.Pending!.Units.SequenceEqual(new[] { "s0-0", "s0-1" }), "Formation preassigns two units");
-            Press("ПРОПУСТИТЬ ДЕЙСТВИЕ"); await Frames(); Press("ПРОПУСТИТЬ ДЕЙСТВИЕ"); await Frames();
+            Press("SKIP ACTION"); await Frames(); Press("SKIP ACTION"); await Frames();
             Require(_selected == "s0-1" && _action == "move", "UI switches actor and order mode for the second unit");
-            Press("ЗАВЕРШИТЬ ПРИКАЗ"); await Frames();
+            Press("FINISH ORDER"); await Frames();
             Require(_state!.Cards!.Pending == null, "Finish button skips remaining steps");
             GD.Print("SPECIAL_UI_OK"); GetTree().Quit();
         }

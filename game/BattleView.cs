@@ -17,7 +17,7 @@ public partial class Main
         if (mapId is BasicCardBattle.MapId or BasicCardBattle.TabletopMapId) BasicCardBattle.Register(_content);
         uint battleSeed = _args.Any(a => a.StartsWith("--check-") || a.StartsWith("--smoke-")) ? 12345u : BitConverter.ToUInt32(System.Security.Cryptography.RandomNumberGenerator.GetBytes(4));
         _state = _engine.Create(mapId, battleSeed);
-        _bot = bot; _selected = ""; _phaseKey = ""; _phaseCards.Clear(); _action = "move"; _status = "Выбери подразделение, затем клетку назначения или цель.";
+        _bot = bot; _selected = ""; _phaseKey = ""; _phaseCards.Clear(); _action = "move"; _status = "Select a unit, then a destination hex or target.";
         _inspectedObject = null; InitializeCommanders();
         ResetBattleCamera(update: false);
         DrawBattle(); if (persist) SaveGame();
@@ -108,10 +108,10 @@ public partial class Main
         }
         DrawTutorialMarker();
         var top = Panel(30, 22, 1380, 68);
-        Text(top, $"{map.Name.ToUpperInvariant()}     /     РАУНД {_state.Round}     /     " + (_state.Combat != null ? "БРОСОК: " + SideName(_state.Combat.Side) : _state.Cards?.Response != null ? "ОТВЕТ: " + SideName(InterruptRules.Responder(_state)) : "ХОД: " + SideName(_state.ActiveSide)), 22, _colors.Accent);
+        Text(top, $"{map.Name.ToUpperInvariant()}     /     ROUND {_state.Round}     /     " + (_state.Combat != null ? "ROLL: " + SideName(_state.Combat.Side) : _state.Cards?.Response != null ? "RESPONSE: " + SideName(InterruptRules.Responder(_state)) : "TURN: " + SideName(_state.ActiveSide)), 22, _colors.Accent);
         var left = ScrollBattlePanel(Panel(30, 112, 260, 610));
-        Text(left, _tutorial != null ? "ОБУЧЕНИЕ" : _campaign == null ? "СКИРМИШ" : "КАМПАНИЯ", 18, _colors.Highlight);
-        Text(left, _tutorial != null ? "СИНИЕ — МЫ / КРАСНЫЕ — ВРАГ" : _generation == null ? "Сценарий из данных" : $"Seed: {_generation.Seed}", 13, _colors.Muted);
+        Text(left, _tutorial != null ? "TUTORIAL" : _campaign == null ? "SKIRMISH" : "CAMPAIGN", 18, _colors.Highlight);
+        Text(left, _tutorial != null ? "BLUE — OUR SIDE / RED — ENEMY" : _generation == null ? "Data-defined scenario" : $"Seed: {_generation.Seed}", 13, _colors.Muted);
         OwnerLegend(left);
         DrawObjectives(left);
         DrawCards(left);
@@ -120,56 +120,56 @@ public partial class Main
         foreach (var unit in _state.Units.OrderBy(u => u.Side).ThenBy(u => u.Id))
         {
             var ship = _content.Ships[unit.Definition]; var owner = Commander(unit.Side);
-            var b = Button(roster, $"{(unit.Patrol == "" ? "" : "CAP · ")}{FleetPresentation.ShipName(ship)} ×{unit.Models}\n{owner.Name} · отряд №{FleetPresentation.UnitNumber(_content, _state, unit)}" + (unit.Activated ? " · ✓" : ""), () => SelectUnit(unit.Id));
+            var b = Button(roster, $"{(unit.Patrol == "" ? "" : "CAP · ")}{FleetPresentation.ShipName(ship)} ×{unit.Models}\n{owner.Name} · unit #{FleetPresentation.UnitNumber(_content, _state, unit)}" + (unit.Activated ? " · ✓" : ""), () => SelectUnit(unit.Id));
             b.Icon = TacticalTextures.Icon(FleetPresentation.ShipIcon(ship), C(owner.Color)); b.ExpandIcon = true;
             b.AddThemeConstantOverride("icon_max_width", 20); b.AddThemeFontSizeOverride("font_size", 13);
             b.CustomMinimumSize = new(0, 54);
-            b.TooltipText = _content.Ships[unit.Definition].Name + (unit.Activated ? " — приказ уже выполнен" : " — готово к приказу");
+            b.TooltipText = _content.Ships[unit.Definition].Name + (unit.Activated ? " — order already completed" : " — ready for orders");
         }
         foreach (var unit in _state.Reserves ?? [])
         {
             var ship = _content.Ships[unit.Definition];
-            Button(roster, (unit.Embarked == "" ? "РЕЗЕРВ · " : "АНГАР · ") + FleetPresentation.UnitName(_content, _state, unit) + (unit.Activated ? " · ✓" : ""), () => SelectUnit(unit.Id));
+            Button(roster, (unit.Embarked == "" ? "RESERVE · " : "BAY · ") + FleetPresentation.UnitName(_content, _state, unit) + (unit.Activated ? " · ✓" : ""), () => SelectUnit(unit.Id));
         }
-        Text(left, _state.Cards?.Response != null ? "ЛКМ — выбор / ответ\nПКМ — обзор · Alt — имена" : "ЛКМ — выбор / приказ\nПКМ + мышь — обзор\nКолёсико — масштаб\nAlt — названия на поле\nF — исходный ракурс", 14, _colors.Muted);
+        Text(left, _state.Cards?.Response != null ? "Left-click — select / respond\nRight-click — orbit · Alt — names" : "Left-click — select / order\nRight-drag — orbit\nWheel — zoom\nAlt — field names\nF — reset view", 14, _colors.Muted);
         var right = ScrollBattlePanel(Panel(_tutorial == null ? 1150 : 1060, 112, _tutorial == null ? 260 : 350, 610));
         if (_tutorial != null) right.AddThemeConstantOverride("separation", 7);
         DrawTutorial(right);
         var selected = FleetTerrain.Find(_state, _selected) ?? _state.Reserves?.Find(u => u.Id == _selected) ?? _state.Combat?.Ghost;
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
-            Text(right, _inspectedObject != null ? FleetPresentation.ObjectName(_content.Objects[_inspectedObject.Definition]) : selected == null ? "ПРИКАЗЫ" : FleetPresentation.UnitName(_content, _state, selected), 19, _colors.Highlight);
+            Text(right, _inspectedObject != null ? FleetPresentation.ObjectName(_content.Objects[_inspectedObject.Definition]) : selected == null ? "ORDERS" : FleetPresentation.UnitName(_content, _state, selected), 19, _colors.Highlight);
         if (_inspectedObject != null && _tutorial == null)
         {
-            Text(right, "НЕЙТРАЛЬНЫЙ ОБЪЕКТ", 13, FleetPresentation.NeutralColor);
+            Text(right, "NEUTRAL OBJECT", 13, FleetPresentation.NeutralColor);
             Text(right, TerrainEffects(_inspectedObject), 16);
         }
         if (selected != null && _tutorial == null)
         {
             var def = _content.Ships[selected.Definition];
-            Text(right, $"Ход {def.Move} / Дальность {def.Range}\nБроня {def.Armor} / Кубики {def.DicePerModel} × {selected.Models}\nFocus Fire: {selected.FocusFire}", 15);
-            if (def.Footprint == 2) Text(right, "Корпус занимает 2 гекса. Клик задаёт нос; оба конца могут пройти не более 2 гексов. Курс выбирается ниже.", 13, _colors.Muted);
-            if (_state.Scenario?.Tokens.Any(t => t.Unit == selected.Id) == true) Text(right, "НА БОРТУ: РАЗВЕДДАННЫЕ", 14, _colors.Highlight);
-            foreach (var leader in FleetRuleTools.AssignedLeaders(_content, selected)) Text(right, "Лидер: " + leader.Name, 14, _colors.Highlight);
+            Text(right, $"Move {def.Move} / Range {def.Range}\nArmor {def.Armor} / Dice {def.DicePerModel} × {selected.Models}\nFocus Fire: {selected.FocusFire}", 15);
+            if (def.Footprint == 2) Text(right, "The hull occupies 2 hexes. Click to place the bow; each end can travel at most 2 hexes. Choose facing below.", 13, _colors.Muted);
+            if (_state.Scenario?.Tokens.Any(t => t.Unit == selected.Id) == true) Text(right, "ON BOARD: INTELLIGENCE", 14, _colors.Highlight);
+            foreach (var leader in FleetRuleTools.AssignedLeaders(_content, selected)) Text(right, "Leader: " + leader.Name, 14, _colors.Highlight);
         }
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
         {
-            Button(right, _action == "move" ? "▶ ПЕРЕМЕЩЕНИЕ" : "ПЕРЕМЕЩЕНИЕ", () => ChooseBattleAction("move"), FleetDecision || _state.Cards?.Response != null || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.Move);
-            Button(right, _action == "attack" ? "▶ АТАКА" : "АТАКА", () => ChooseBattleAction("attack"), FleetDecision || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.Attack);
-            Button(right, "ЗАВЕРШИТЬ ХОД", () => Submit(new("pass")), FleetDecision || _state.Cards?.Response != null || _state.Cards?.Pending != null || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.EndTurn);
+            Button(right, _action == "move" ? "▶ MOVE" : "MOVEMENT", () => ChooseBattleAction("move"), FleetDecision || _state.Cards?.Response != null || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.Move);
+            Button(right, _action == "attack" ? "▶ ATTACK" : "ATTACK", () => ChooseBattleAction("attack"), FleetDecision || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.Attack);
+            Button(right, "END TURN", () => Submit(new("pass")), FleetDecision || _state.Cards?.Response != null || _state.Cards?.Pending != null || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.EndTurn);
         }
-        if (_tutorial == null && !_interruptLesson) Button(right, "СОХРАНИТЬ", () => { SaveGame(); _status = "Сохранено."; DrawBattle(); }, _networkActive && !_isHost);
-        if (_interruptLesson) { Button(right, "ПОВТОРИТЬ УРОК", StartInterruptLesson); Button(right, "К ОБУЧЕНИЮ", CardGuide); }
+        if (_tutorial == null && !_interruptLesson) Button(right, "SAVE", () => { SaveGame(); _status = "Saved."; DrawBattle(); }, _networkActive && !_isHost);
+        if (_interruptLesson) { Button(right, "REPEAT LESSON", StartInterruptLesson); Button(right, "TUTORIAL MENU", CardGuide); }
         if (_state.Finished)
         {
-            Text(right, _state.EndReason == "" ? _state.Winner == null ? "Лимит раундов. Ничья." : $"Победа: {SideName(_state.Winner.Value)}" : FleetObjectives.ResultText(_state) + (_state.Winner == null ? "\nНичья." : $"\nПобеда: {SideName(_state.Winner.Value)}"), 18, _colors.Highlight);
+            Text(right, _state.EndReason == "" ? _state.Winner == null ? "Round limit. Draw." : $"Winner: {SideName(_state.Winner.Value)}" : FleetObjectives.ResultText(_state) + (_state.Winner == null ? "\nDraw." : $"\nWinner: {SideName(_state.Winner.Value)}"), 18, _colors.Highlight);
             if (_campaign != null)
-                Button(right, "ДАЛЕЕ ПО КАМПАНИИ", AdvanceCampaign, _networkActive && !_isHost);
+                Button(right, "CONTINUE CAMPAIGN", AdvanceCampaign, _networkActive && !_isHost);
         }
-        Button(right, "ГЛАВНОЕ МЕНЮ", () => { SaveGame(); MainMenu(); });
+        Button(right, "MAIN MENU", () => { SaveGame(); MainMenu(); });
         DrawLogistics(right, selected);
         DrawEconomy(right, selected);
         DrawFleetUnitOptions(right, selected);
-        if (_tutorial == null) Text(right, _interruptLesson ? "УРОК / БЕЗ СОХРАНЕНИЯ" : _networkActive ? (_cooperative ? "CO-OP / ОБЩИЙ ФЛОТ" : "PVP") : _bot ? "ОДИНОЧНАЯ / AI" : "ЛОКАЛЬНАЯ / HOTSEAT", 13, _colors.Muted);
+        if (_tutorial == null) Text(right, _interruptLesson ? "LESSON / NO SAVE" : _networkActive ? (_cooperative ? "CO-OP / SHARED FLEET" : "PVP") : _bot ? "SINGLE PLAYER / AI" : "LOCAL / HOTSEAT", 13, _colors.Muted);
         if (_state.Deposits != null || _state.Reserves != null || _state.Reinforce != null) { ConstrainEconomyPanel(left); ConstrainEconomyPanel(right); }
         DrawEventLog();
     }
@@ -333,7 +333,7 @@ public partial class Main
         if (_generation != null) MapGenerator.Generate(_content, _generation);
         RestorePreparation(saved);
         _state = _engine.Load(JsonSerializer.Serialize(saved.State, JsonData.Options));
-        _tutorial = null; _campaign = saved.Campaign; _bot = saved.ComputerOpponent; _selected = ""; _action = "move"; _status = "Партия восстановлена.";
+        _tutorial = null; _campaign = saved.Campaign; _bot = saved.ComputerOpponent; _selected = ""; _action = "move"; _status = "Match restored.";
         _inspectedObject = null; _commanders = ValidateCommanders(saved.Commanders);
         ResetBattleCamera(update: false);
         if (_campaign?.Completed == true) { ShowCampaignEnd(); return; }
@@ -350,9 +350,9 @@ public partial class Main
     private void ShowCampaignEnd()
     {
         int medals = _campaign?.Medals ?? 0, opponent = _campaign?.OpponentMedals ?? 0; _state = null;
-        ClearScreen(); Heading("Кампания завершена"); var box = Panel(70, 230, 560, 280);
-        Text(box, $"Учебная кампания завершена.\nМедали флота: {medals}\nМедали противника: {opponent}", 22, _colors.Highlight);
-        foreach (var result in _campaign?.Results ?? []) Text(box, $"{result.Mission}: {result.Medals0}:{result.Medals1} медалей, раунд {result.Round}", 15);
-        Button(box, "ГЛАВНОЕ МЕНЮ", MainMenu); MenuScene();
+        ClearScreen(); Heading("Campaign complete"); var box = Panel(70, 230, 560, 280);
+        Text(box, $"Training campaign complete.\nFleet medals: {medals}\nOpponent's medals: {opponent}", 22, _colors.Highlight);
+        foreach (var result in _campaign?.Results ?? []) Text(box, $"{result.Mission}: {result.Medals0}:{result.Medals1} medals, round {result.Round}", 15);
+        Button(box, "MAIN MENU", MainMenu); MenuScene();
     }
 }

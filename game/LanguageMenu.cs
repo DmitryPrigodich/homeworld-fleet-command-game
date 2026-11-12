@@ -13,14 +13,16 @@ public partial class Main
     }
     private void LanguageMenu()
     {
-        ClearScreen(); Heading("Язык / Language"); var box = Panel(70, 180, 650, 530);
+        ClearScreen(); Heading("Language"); var box = Panel(70, 180, 650, 530);
         var languages = _locale.Languages.ToArray(); var dropdown = new OptionButton { Name = "LanguagePicker" };
         foreach (var language in languages) dropdown.AddItem(language.Name + " / " + language.Code);
         dropdown.Select(Math.Max(0, Array.FindIndex(languages, p => p.Code == _locale.Language))); box.AddChild(dropdown);
         dropdown.ItemSelected += i => { _settings = _settings with { Language = languages[(int)i].Code }; _locale.SetLanguage(_settings.Language); SaveSettings(); LanguageMenu(); };
-        Text(box, "Язык применяется к меню, подсказкам и журналу. Сохранения и сетевая игра от языка не зависят.", 18);
-        Text(box, "Другие языки можно добавить файлом JSON в папку locales рядом с локальными сохранениями или в мод. Недостающие строки используют резервный язык.", 16, _colors.Muted);
-        Button(box, "НАЗАД", OptionsMenu); MenuScene();
+        Text(box, "Language applies to menus, tooltips and the log. Saves and network play are independent of language.", 18);
+        Text(box, "English source strings are the shared keys for every language. English captions can also be overridden in the catalog.", 16, _colors.Muted);
+        Text(box, "Add another language as a JSON file in the locales folder alongside local saves, or in a mod. Missing entries use the fallback language.", 16, _colors.Muted);
+        Button(box, "RELOAD LANGUAGES", () => { LoadLanguages(); LanguageMenu(); });
+        Button(box, "BACK", OptionsMenu); MenuScene();
     }
     private void LocalizeInterface()
     {

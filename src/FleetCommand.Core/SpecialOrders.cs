@@ -5,11 +5,11 @@ public static class SpecialOrders
 {
     public static bool Formation(string card) => card != null && card.Length >= 6 && int.TryParse(card.AsSpan(6), out int number) && number is >= 9 and <= 16;
     public static string Name(string card) => int.TryParse(card != null && card.Length >= 6 ? card.AsSpan(6) : "".AsSpan(), out int n) ? n switch
-    { <= 8 => "All Ahead Full", <= 16 => "Stay in Formation", <= 20 => "Interrupt Attack", _ => "Базовый приказ " + n } : "Неизвестная карта";
+    { <= 8 => "All Ahead Full", <= 16 => "Stay in Formation", <= 20 => "Interrupt Attack", _ => "Basic order " + n } : "Unknown card";
     public static bool Supported(string card) => card != null && card.StartsWith("order-") && int.TryParse(card.AsSpan(6), out int n) && n is >= 1 and <= 16;
     public static string Action(PendingOrder order) => order.BasicAction == "harvest" ? order.Step == 0 ? "move" : "harvest" : order.BasicAction != "" ? order.BasicAction : Formation(order.Card) ? new[] { "move", "attack", "lightning", "attack" }[order.Step] : "move";
     public static string Actor(PendingOrder order) => order.Units[order.BasicAction == "" && Formation(order.Card) && order.Step >= 2 ? 1 : 0];
-    public static string ActionName(PendingOrder order) => Action(order) switch { "attack" => "Атака", "lightning" => "Lightning Move", "harvest" => "Добыча ресурсов", _ => "Перемещение" };
+    public static string ActionName(PendingOrder order) => Action(order) switch { "attack" => "Attack", "lightning" => "Lightning Move", "harvest" => "Resource harvesting", _ => "Movement" };
     public static int Steps(PendingOrder order) => order.BasicAction == "harvest" ? 2 : order.BasicAction != "" ? 1 : Formation(order.Card) ? 4 : 2;
     public static int Lightning(ShipDefinition ship) => ship.Afterburners >= 0 ? ship.Afterburners : ship.Id is "core:kushan-interceptor" or "core:taiidan-interceptor" ? 2 : 0;
     private static BattleState Sandbox(ContentCatalog c, BattleState state, PendingOrder order) => state with
@@ -65,16 +65,16 @@ public static class SpecialOrders
         var cards = state.Cards!;
         bool partialFormation = FleetRuleTools.Enabled(c, state) && Formation(command.Card);
         var unit = state.Units.Find(u => u.Id == (command.Unit == "" && partialFormation ? command.OtherUnit : command.Unit));
-        if (!Supported(command.Card) || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(command.Card)) return Reject("Выберите доступную специальную карту.");
-        if (state.ActiveSide != side || unit == null || unit.Side != side || unit.Activated || unit.Hulk || (side == 0 ? state.Orders0 : state.Orders1) >= FleetRuleTools.PlayLimit(c, state, side)) return Reject("Это подразделение не может получить приказ.");
+        if (!Supported(command.Card) || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(command.Card)) return Reject("Select an available special card.");
+        if (state.ActiveSide != side || unit == null || unit.Side != side || unit.Activated || unit.Hulk || (side == 0 ? state.Orders0 : state.Orders1) >= FleetRuleTools.PlayLimit(c, state, side)) return Reject("This unit cannot receive an order.");
         string[] units = Formation(command.Card) ? [command.Unit, command.OtherUnit] : [command.Unit];
-        if (units.Distinct().Count() != units.Length || units.All(id => id == "") || units.Any(id => (id != "" || !partialFormation) && !state.Units.Any(u => u.Id == id && u.Side == side && !u.Activated && !u.Hulk))) return Reject("Назначьте разные готовые подразделения для используемых строк.");
+        if (units.Distinct().Count() != units.Length || units.All(id => id == "") || units.Any(id => (id != "" || !partialFormation) && !state.Units.Any(u => u.Id == id && u.Side == side && !u.Activated && !u.Hulk))) return Reject("Assign different ready units to the action lines you want to use.");
         var order = new PendingOrder(command.Card, side, units, partialFormation && command.Unit == "" ? 2 : 0);
         cards = cards with { Hand0 = cards.Hand0.Where(id => id != command.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != command.Card).ToArray(), Discard = cards.Discard.Append(command.Card).ToArray(), Pending = order };
         var next = state with { Cards = cards,
             Units = state.Units.Select(u => units.Contains(u.Id) ? (FleetRuleTools.Enabled(c, state) ? FleetRuleTools.NewOrder(u) : u) with { Activated = true } : u).ToList(),
             Orders0 = state.Orders0 + (side == 0 ? 1 : 0), Orders1 = state.Orders1 + (side == 1 ? 1 : 0), Sequence = state.Sequence + 1 };
-        string message = Name(command.Card) + ": приказ начат, подразделения назначены. ";
+        string message = Name(command.Card) + ": order started and units assigned. ";
         if (FleetRuleTools.Enabled(c, state)) for (int i = 0; i < units.Length; i++)
         { if (units[i] == "") continue; next = FleetRuleTools.DamageControl(c, next, units[i], i == 0 ? command.Repair : command.OtherRepair, out var repair); message += repair; }
         return FleetTerrain.Activation(c, state, next, units, "order", message);
@@ -85,23 +85,23 @@ public static class SpecialOrders
         var cards = state.Cards!;
         if (!FleetRuleTools.Enabled(c, state) || unit == null || state.ActiveSide != side || command.Target is not ("move" or "attack" or "harvest") || command.Target == "harvest" && c.Ships[unit.Definition].Harvest < 0
             || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(command.Card) || (side == 0 ? state.Orders0 : state.Orders1) >= FleetRuleTools.PlayLimit(c, state, side))
-            return new(false, "Базовый приказ недоступен.", state);
+            return new(false, "Basic order unavailable.", state);
         var next = state with { Units = state.Units.Select(u => u.Id == unit.Id ? FleetRuleTools.NewOrder(u) with { Activated = true } : u).ToList(),
             Orders0 = state.Orders0 + (side == 0 ? 1 : 0), Orders1 = state.Orders1 + (side == 1 ? 1 : 0), Sequence = state.Sequence + 1,
             Cards = cards with { Hand0 = cards.Hand0.Where(id => id != command.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != command.Card).ToArray(),
                 Discard = cards.Discard.Append(command.Card).ToArray(), Pending = new(command.Card, side, [unit.Id], 0, BasicAction: command.Target) } };
         next = FleetRuleTools.DamageControl(c, next, unit.Id, command.Repair, out var message);
-        return FleetTerrain.Activation(c, state, next, [unit.Id], "order", "Базовый приказ начат. " + message);
+        return FleetTerrain.Activation(c, state, next, [unit.Id], "order", "Basic order started. " + message);
     }
     public static CommandResult Apply(ContentCatalog c, BattleState state, int side, BattleCommand command)
     {
         var order = state.Cards!.Pending!;
         CommandResult Reject(string message) => new(false, message, state);
-        if (order.Side != side) return Reject("Дождитесь завершения специального приказа.");
+        if (order.Side != side) return Reject("Wait for the special order to finish.");
         BattleState next = state; string message;
         if (command.Kind == "damage-control" && FleetRuleTools.Enabled(c, state) && Action(order) == "attack" && FleetRuleTools.Has(state.Units.Single(u => u.Id == Actor(order)), "weapons"))
         {
-            if (command.Repair != "ask" && command.Repair != "focus" && !FleetRuleTools.Debuffs.Contains(command.Repair)) return Reject("Выберите эффект для Damage Control.");
+            if (command.Repair != "ask" && command.Repair != "focus" && !FleetRuleTools.Debuffs.Contains(command.Repair)) return Reject("Choose an effect for Damage Control.");
             next = FleetRuleTools.DamageControl(c, state, Actor(order), command.Repair, out message, advance: true);
             if (next.Repairs is { Length: > 0 }) return new(true, message, next with { Sequence = state.Sequence + 1 });
             return Advance(c, state, next, side, message);
@@ -109,18 +109,18 @@ public static class SpecialOrders
         if (command.Kind == "embark" && Action(order) is "move" or "lightning" && command.Unit == Actor(order))
         {
             if (order.BasicAction == "" && !Formation(order.Card) && order.Direction >= 0
-                && !state.Units.Any(p => p.Id == command.Target && StraightDirection(new(state.Units.Single(u => u.Id == command.Unit).Q, state.Units.Single(u => u.Id == command.Unit).R), new(p.Q, p.R)) == order.Direction)) return Reject("Посадка должна продолжать прямой курс приказа.");
+                && !state.Units.Any(p => p.Id == command.Target && StraightDirection(new(state.Units.Single(u => u.Id == command.Unit).Q, state.Units.Single(u => u.Id == command.Unit).R), new(p.Q, p.R)) == order.Direction)) return Reject("Embarkation must continue the order's straight course.");
             return InterruptRules.Start(c, state, side, command, basic: false);
         }
         if (command.Kind == "harvest") return FleetEconomy.Harvest(c, state, side, command);
-        if (command.Kind is "skip" or "finish-order") message = command.Kind == "skip" ? "Действие пропущено." : "Оставшиеся действия пропущены.";
+        if (command.Kind is "skip" or "finish-order") message = command.Kind == "skip" ? "Action skipped." : "Remaining actions skipped.";
         else
         {
             var expected = Action(order) == "attack" ? "attack" : "move";
             var options = Actions(c, state, side, command.Unit);
             bool turn = expected == "move" && FleetRuleTools.Enabled(c, state) && !command.AutoFacing && state.Units.Any(u => u.Id == command.Unit && u.Q == command.Q && u.R == command.R);
             if (command.Kind != expected || command.Unit != Actor(order) || (expected == "move" ? !turn && !options.MoveCells.Contains(new(command.Q, command.R)) : !options.AttackTargets.Contains(command.Target)))
-                return Reject("Действие не соответствует текущему шагу или цели приказа.");
+                return Reject("The action does not match the order's current step or target.");
             return InterruptRules.Start(c, state, side, command, basic: false);
         }
         return Advance(c, state, next, side, message, command.Kind == "finish-order");
@@ -133,7 +133,7 @@ public static class SpecialOrders
         if (next.Finished || order.Step >= Steps(order))
         {
             next = next with { Cards = next.Cards! with { Pending = null } };
-            var result = SkirmishRules.FinishOrder(c, original, next, side, message + " Приказ завершён.");
+            var result = SkirmishRules.FinishOrder(c, original, next, side, message + " Order complete.");
             return result with { State = result.State.Round != original.Round && !result.State.Finished ? BasicCardRules.NextRound(c, result.State) : result.State };
         }
         return new(true, message, next with { Cards = next.Cards! with { Pending = order }, Sequence = original.Sequence + 1 });

@@ -1,16 +1,17 @@
 using System.Text.RegularExpressions;
 namespace FleetCommand.Core;
 
-public sealed record LanguagePack(string Code, string Name, Dictionary<string, string> Messages, string Fallback = "ru");
+public sealed record LanguagePack(string Code, string Name, Dictionary<string, string> Messages, string Fallback = "en");
 
 // Presentation only: source messages stay unchanged in authoritative saves and snapshots.
 public sealed class Localizer
 {
     private readonly Dictionary<string, LanguagePack> _packs = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _cache = new(StringComparer.Ordinal);
-    private Dictionary<string, string> _messages = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, string> _messages = new(StringComparer.Ordinal);
+    private Dictionary<string, string> _phrasesByCase = new(StringComparer.OrdinalIgnoreCase);
     private Regex? _phrases;
-    public string Language { get; private set; } = "ru";
+    public string Language { get; private set; } = "en";
     public IEnumerable<LanguagePack> Languages => _packs.Values.OrderBy(p => p.Code, StringComparer.Ordinal);
     public void Load(IEnumerable<string> directories)
     {
@@ -24,35 +25,42 @@ public sealed class Localizer
             foreach (var message in p.Messages) merged[message.Key] = message.Value;
             _packs[p.Code] = p with { Messages = merged };
         }
+        if (!_packs.ContainsKey("en")) _packs["en"] = new("en", "English", [], "");
         SetLanguage(Language);
     }
     public void SetLanguage(string? language)
     {
-        Language = language != null && _packs.ContainsKey(language) ? language : "ru";
-        _messages = new(StringComparer.OrdinalIgnoreCase); var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        void Add(string code)
+        Language = language != null && _packs.ContainsKey(language) ? language : "en";
+        _messages = new(StringComparer.Ordinal);
+        void Add(string code, HashSet<string> seen)
         {
             if (!seen.Add(code)) throw new InvalidDataException("Language fallback cycle.");
             if (!_packs.TryGetValue(code, out var p)) return;
-            if (p.Fallback != "" && !string.Equals(p.Fallback, code, StringComparison.OrdinalIgnoreCase)) Add(p.Fallback);
-            foreach (var message in p.Messages)
-                if (message.Key == message.Value) _messages.Remove(message.Key); else _messages[message.Key] = message.Value;
+            if (p.Fallback != "" && !string.Equals(p.Fallback, code, StringComparison.OrdinalIgnoreCase)) Add(p.Fallback, seen);
+            foreach (var message in p.Messages) _messages[message.Key] = message.Value;
         }
-        Add(Language); _cache.Clear();
+        // English is a normal, overridable catalog, as well as the final fallback.
+        Add("en", new(StringComparer.OrdinalIgnoreCase));
+        if (Language != "en") Add(Language, new(StringComparer.OrdinalIgnoreCase));
+        _cache.Clear();
         string Pattern(string key) => (char.IsLetter(key[0]) ? "(?<![\\p{L}])" : "") + Regex.Escape(key) + (char.IsLetter(key[^1]) ? "(?![\\p{L}])" : "");
         var changed = _messages.Where(p => p.Key != p.Value).Select(p => p.Key).OrderByDescending(k => k.Length).ThenBy(k => k, StringComparer.Ordinal).ToArray();
+        _phrasesByCase = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string key in changed) _phrasesByCase[key] = _messages[key];
         _phrases = changed.Length == 0 ? null : new Regex(string.Join("|", changed.Select(Pattern)), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
     }
     public string Text(string source)
     {
-        if (source == "" || _phrases == null) return source;
+        if (source == "") return source;
         if (_cache.TryGetValue(source, out string? cached)) return cached;
         string Render(string key)
         {
-            string result = _messages[key];
+            if (_messages.TryGetValue(key, out var exact)) return exact;
+            string result = _phrasesByCase[key];
             return key.Any(char.IsLetter) && key.Where(char.IsLetter).All(char.IsUpper) ? result.ToUpperInvariant() : result;
         }
-        string translated = _messages.TryGetValue(source.Trim(), out _) ? source.Replace(source.Trim(), Render(source.Trim()), StringComparison.Ordinal) : _phrases.Replace(source, match => Render(match.Value));
+        string translated = _messages.TryGetValue(source.Trim(), out _) ? source.Replace(source.Trim(), Render(source.Trim()), StringComparison.Ordinal)
+            : _phrases?.Replace(source, match => Render(match.Value)) ?? source;
         if (_cache.Count >= 4096) _cache.Clear(); _cache[source] = translated; return translated;
     }
 }

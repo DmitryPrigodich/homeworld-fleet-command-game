@@ -37,8 +37,8 @@ public static class FleetLogistics
             _ => false
         };
         if (!FleetRuleTools.Enabled(c, s) || !allowed || side != s.ActiveSide || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(cmd.Card)
-            || (side == 0 ? s.Orders0 : s.Orders1) >= FleetRuleTools.PlayLimit(c, s, side)) return new(false, "Подкрепление недоступно: проверьте резерв, ангары, Launch Tubes и карту приказа.", s);
-        return new(true, "Reinforce: карта и Play потрачены. Выберите размещение; носитель не активируется выпуском отрядов.", s with
+            || (side == 0 ? s.Orders0 : s.Orders1) >= FleetRuleTools.PlayLimit(c, s, side)) return new(false, "Reinforce unavailable: check reserves, bays, Launch Tubes and the order card.", s);
+        return new(true, "Reinforce: card and Play spent. Choose placement; launching units does not activate their carrier.", s with
         {
             Sequence = s.Sequence + 1, Reinforce = new(side, cmd.Card, cmd.Unit, cmd.Target), Orders0 = s.Orders0 + (side == 0 ? 1 : 0), Orders1 = s.Orders1 + (side == 1 ? 1 : 0),
             Cards = cards with { Hand0 = cards.Hand0.Where(id => id != cmd.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != cmd.Card).ToArray(), Discard = cards.Discard.Append(cmd.Card).ToArray() }
@@ -47,56 +47,56 @@ public static class FleetLogistics
     private static CommandResult Finish(ContentCatalog c, BattleState before, BattleState s, string message)
     {
         int side = s.Reinforce!.Side;
-        var result = SkirmishRules.FinishOrder(c, before, s with { Reinforce = null }, side, message + " Reinforce завершён.");
+        var result = SkirmishRules.FinishOrder(c, before, s with { Reinforce = null }, side, message + " Reinforce complete.");
         return result with { State = result.State.Round != before.Round && !result.State.Finished ? BasicCardRules.NextRound(c, result.State) : result.State };
     }
     internal static CommandResult Resume(ContentCatalog c, BattleState before, BattleState s, string message)
     {
         var frame = s.Reinforce!;
         if (s.Finished || frame.Mode is "deploy" or "build" || !s.Units.Any(u => u.Id == frame.Source)) return Finish(c, before, s, message);
-        return new(true, message + " Можно продолжить подкрепление или завершить приказ.", s with { Sequence = before.Sequence + 1 });
+        return new(true, message + " Continue reinforcing or finish the order.", s with { Sequence = before.Sequence + 1 });
     }
     public static CommandResult Apply(ContentCatalog c, BattleState s, int side, BattleCommand cmd)
     {
         var frame = s.Reinforce!; CommandResult Reject(string why) => new(false, why, s);
-        if (frame.Side != side) return Reject("Подкрепление размещает владелец приказа.");
-        if (cmd.Kind == "finish-reinforce") return Finish(c, s, s, "Оставшиеся подкрепления пропущены.");
+        if (frame.Side != side) return Reject("The order's owner places the reinforcements.");
+        if (cmd.Kind == "finish-reinforce") return Finish(c, s, s, "Remaining reinforcements skipped.");
         var parent = s.Units.Find(u => u.Id == frame.Source); var next = s; BattleUnit? arriving;
         var destination = new Hex(cmd.Q, cmd.R);
-        if (cmd.Facing is < 0 or > 5) return Reject("Неверный курс подкрепления.");
+        if (cmd.Facing is < 0 or > 5) return Reject("Invalid reinforcement facing.");
         if (frame.Mode == "deploy" && cmd.Kind == "deploy")
         {
             arriving = s.Reserves?.Find(u => u.Id == frame.Source && u.Embarked == "" && !u.Activated);
-            if (arriving == null || !DeployCells(c, s, side).Contains(destination)) return Reject("Выберите свободный гекс своей зоны развёртывания.");
+            if (arriving == null || !DeployCells(c, s, side).Contains(destination)) return Reject("Choose a free hex in your deployment zone.");
             next = s with { Reserves = s.Reserves!.Where(u => u.Id != arriving.Id).ToList() };
         }
         else if (frame.Mode == "launch" && cmd.Kind == "launch")
         {
             arriving = Children(s, frame.Source).FirstOrDefault(u => u.Id == cmd.Unit && !u.Activated);
-            if (arriving == null || parent == null || !CanLaunch(c, s, parent) || !Adjacent(c, s, parent).Contains(destination)) return Reject("Нужен готовый отряд в ангаре, Launch Tubes и свободный соседний гекс.");
+            if (arriving == null || parent == null || !CanLaunch(c, s, parent) || !Adjacent(c, s, parent).Contains(destination)) return Reject("Requires a ready embarked unit, Launch Tubes and a free adjacent hex.");
             next = s with { Reserves = s.Reserves!.Where(u => u.Id != arriving.Id).ToList() };
         }
         else if (frame.Mode == "build" && cmd.Kind == "build")
         {
-            if (parent == null || !Buildable(c, s, parent).Contains(cmd.Definition)) return Reject("Эта фабрика не производит выбранный тип корабля.");
+            if (parent == null || !Buildable(c, s, parent).Contains(cmd.Definition)) return Reject("This factory cannot produce the selected ship type.");
             var ship = c.Ships[cmd.Definition]; int funds = side == 0 ? s.Funds0 : s.Funds1;
-            if (cmd.ReserveSpend < 0 || cmd.ReserveSpend > ship.Stars || cmd.ReserveSpend > funds || ship.Stars - cmd.ReserveSpend > parent.Cargo) return Reject("Недостаточно ресурсов или неверная оплата из резерва.");
+            if (cmd.ReserveSpend < 0 || cmd.ReserveSpend > ship.Stars || cmd.ReserveSpend > funds || ship.Stars - cmd.ReserveSpend > parent.Cargo) return Reject("Insufficient resources or invalid payment from reserves.");
             if (cmd.ToBay ? !FleetRuleTools.Strike(ship) || Children(s, parent.Id).Length >= c.Ships[parent.Definition].Bays
-                : !CanLaunch(c, s, parent) || !Adjacent(c, s, parent).Contains(destination)) return Reject("Нет места для нового отряда или исчерпан выпуск через Launch Tubes.");
+                : !CanLaunch(c, s, parent) || !Adjacent(c, s, parent).Contains(destination)) return Reject("No space for a new unit, or the Launch Tubes limit is exhausted.");
             int firstFree = Math.Max(s.NextUnit, c.Maps[s.Map].Fleets.Sum(id => c.Fleets[id].Units.Length));
             while (s.Units.Concat(s.Reserves ?? []).Any(u => u.Id == $"s{side}-{firstFree}")) firstFree++;
             arriving = new($"s{side}-{firstFree}", ship.Id, side, -1, -1, cmd.Facing, ship.Models, Activated: true);
             next = s with { NextUnit = firstFree + 1, Funds0 = s.Funds0 - (side == 0 ? cmd.ReserveSpend : 0), Funds1 = s.Funds1 - (side == 1 ? cmd.ReserveSpend : 0),
                 Units = s.Units.Select(u => u.Id == parent.Id ? u with { Cargo = u.Cargo - ship.Stars + cmd.ReserveSpend } : u).ToList() };
-            if (cmd.ToBay) return Finish(c, s, next with { Reserves = (next.Reserves ?? []).Append(arriving with { Embarked = parent.Id }).ToList() }, $"Построен отряд: {FleetPresentation.ShipName(ship)}. Размещён в ангаре, считается активированным.");
+            if (cmd.ToBay) return Finish(c, s, next with { Reserves = (next.Reserves ?? []).Append(arriving with { Embarked = parent.Id }).ToList() }, $"Unit built: {FleetPresentation.ShipName(ship)}. Placed in a bay and counts as activated.");
         }
-        else return Reject("Выберите действие текущего приказа Reinforce.");
-        if (!FleetFootprint.CanPlace(c, next, arriving, destination, cmd.Facing)) return Reject("Для корабля нужно место под весь корпус.");
-        if (frame.Mode == "deploy" && FleetFootprint.Cells(c.Ships[arriving.Definition], destination, cmd.Facing).Any(h => !DeployCells(c, s, side).Contains(h))) return Reject("Весь корабль должен помещаться в зоне развёртывания.");
+        else return Reject("Choose an action for the current Reinforce order.");
+        if (!FleetFootprint.CanPlace(c, next, arriving, destination, cmd.Facing)) return Reject("There must be space for the ship's entire hull.");
+        if (frame.Mode == "deploy" && FleetFootprint.Cells(c.Ships[arriving.Definition], destination, cmd.Facing).Any(h => !DeployCells(c, s, side).Contains(h))) return Reject("The entire ship must fit inside the deployment zone.");
         arriving = FleetRuleTools.NewOrder(arriving) with { Q = cmd.Q, R = cmd.R, Facing = cmd.Facing, Embarked = "", Activated = true };
         next = next with { Units = next.Units.Append(arriving).Select(u => parent != null && u.Id == parent.Id ? u with { Launches = u.Launches + 1 } : u).ToList() };
         next = FleetRuleTools.DamageControl(c, next, arriving.Id, cmd.Repair, out var repair);
-        return FleetTerrain.Activation(c, s, next, [arriving.Id], "reinforce", $"Размещён отряд: {FleetPresentation.UnitName(c, next, arriving)}. " + repair);
+        return FleetTerrain.Activation(c, s, next, [arriving.Id], "reinforce", $"Unit placed: {FleetPresentation.UnitName(c, next, arriving)}. " + repair);
     }
     public static bool CanEmbark(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit parent) => FleetRuleTools.Strike(c.Ships[unit.Definition]) && unit.Id != parent.Id
         && !unit.Hulk && unit.Patrol == "" && !parent.Hulk && parent.Patrol == "" && unit.Side == parent.Side && Children(s, unit.Id).Length == 0 && FleetCap.Patrol(s, unit.Id) == null

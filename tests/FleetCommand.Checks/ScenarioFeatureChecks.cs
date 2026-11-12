@@ -131,7 +131,7 @@ internal static class ScenarioFeatureChecks
             s.C.Ships["core:kushan-contact-interceptor"] = s.C.Ships["core:kushan-contact-interceptor"] with { Success = 2, Weapons = [new("test", "Test", 20, 2)] };
             s.C.Ships["core:taiidan-contact-interceptor"] = s.C.Ships["core:taiidan-contact-interceptor"] with { Evasive = 0 };
             s.Do(0, new("attack", "s0-0", "s1-3", Card: "order-01")); s.Settle();
-            Check(!s.S.Units.Any(u => u.Id == "s1-3") && !ScenarioEvents.HasToken(s.S, "s1-3", "data") && s.S.Log!.Any(e => e.Text.Contains("данные", StringComparison.OrdinalIgnoreCase)), "Destroyed scout retained its data");
+            Check(!s.S.Units.Any(u => u.Id == "s1-3") && !ScenarioEvents.HasToken(s.S, "s1-3", "data") && s.S.Log!.Any(e => e.Text.Contains("intelligence", StringComparison.OrdinalIgnoreCase)), "Destroyed scout retained its data");
         });
         Case("first-contact-seven-round-defense-objective", "core:first-contact", s =>
         {
@@ -157,18 +157,32 @@ internal static class ScenarioFeatureChecks
         Case("localization-catalogs-and-live-messages", "practice:large", s =>
         {
             var l = new Localizer(); l.Load([Path.Combine(root, "content", "locales")]); l.SetLanguage("en");
+            var en = JsonData.Read<LanguagePack>(Path.Combine(root, "content", "locales", "en.json"));
             var ru = JsonData.Read<LanguagePack>(Path.Combine(root, "content", "locales", "ru.json"));
-            foreach (string key in ru.Messages.Keys) Check(!Regex.IsMatch(l.Text(key), "[А-Яа-яЁё]"), "Missing English translation: " + key);
-            Check(l.Text("Раунд 3 · Бой: Бой начался.") == "Round 3 · Battle: Battle started.", "Dynamic log localization failed");
-            string before = s.E.Save(s.S); l.SetLanguage("ru"); Check(l.Text("ОПЦИИ") == "ОПЦИИ" && s.E.Save(s.S) == before, "Language changed gameplay state");
-            l.SetLanguage("unknown"); Check(l.Language == "ru", "Unknown language has no fallback");
+            Check(en.Messages.Keys.All(k => !Regex.IsMatch(k, @"\p{IsCyrillic}")) && ru.Messages.Keys.All(en.Messages.ContainsKey), "Catalogs must share English source keys");
+            foreach (string key in ru.Messages.Keys) Check(!Regex.IsMatch(l.Text(key), @"\p{IsCyrillic}"), "Missing English translation: " + key);
+            Check(l.Text("Round 3 · Battle: Battle started.") == "Round 3 · Battle: Battle started.", "Dynamic log localization failed");
+            string before = s.E.Save(s.S); l.SetLanguage("ru"); Check(l.Text("OPTIONS") == "\u041e\u041f\u0426\u0418\u0418" && s.E.Save(s.S) == before, "Language changed gameplay state");
+            l.SetLanguage("unknown"); Check(l.Language == "en", "Unknown language has no fallback");
         });
         Case("localization-extra-language-and-fallback", "practice:large", s =>
         {
             string dir = Path.Combine(root, "tmp", "test-results", "extra-language"); Directory.CreateDirectory(dir);
-            File.WriteAllText(Path.Combine(dir, "de.json"), JsonSerializer.Serialize(new LanguagePack("de", "Deutsch", new() { ["ОПЦИИ"] = "Optionen" }, "en"), JsonData.Options));
+            File.WriteAllText(Path.Combine(dir, "de.json"), JsonSerializer.Serialize(new LanguagePack("de", "Deutsch", new() { ["OPTIONS"] = "Optionen" }, "en"), JsonData.Options));
             var l = new Localizer(); l.Load([Path.Combine(root, "content", "locales"), dir]); l.SetLanguage("de");
-            Check(l.Text("ОПЦИИ") == "OPTIONEN" && l.Text("ВЫХОД") == "EXIT", "Additional language or fallback failed");
+            Check(l.Text("OPTIONS") == "Optionen" && l.Text("EXIT") == "EXIT", "Additional language or fallback failed");
+        });
+        Case("localization-edit-english-without-recompilation", "practice:large", s =>
+        {
+            string dir = Path.Combine(root, "tmp", "test-results", "english-catalog-override"); Directory.CreateDirectory(dir);
+            string file = Path.Combine(dir, "en.json"); string snapshot = s.E.Save(s.S);
+            void Write(string caption) => File.WriteAllText(file, JsonSerializer.Serialize(new LanguagePack("en", "English", new()
+                { ["OPTIONS"] = caption, ["Battle started."] = "Engagement started.", ["Example caption"] = "Edited English fallback" }, ""), JsonData.Options));
+            Write("Settings"); var l = new Localizer(); l.Load([Path.Combine(root, "content", "locales"), dir]);
+            Check(l.Language == "en" && l.Text("OPTIONS") == "Settings" && l.Text("Battle started.") == "Engagement started.", "English catalog edits were not applied verbatim");
+            l.SetLanguage("ru"); Check(l.Text("OPTIONS") == "\u041e\u041f\u0426\u0418\u0418" && l.Text("Example caption") == "Edited English fallback", "Localized text or edited English fallback was lost");
+            Write("Preferences"); l.Load([Path.Combine(root, "content", "locales"), dir]); l.SetLanguage("en");
+            Check(l.Text("OPTIONS") == "Preferences" && s.E.Save(s.S) == snapshot, "Catalog reload failed or changed battle state");
         });
         Console.WriteLine($"SCENARIO_FEATURES_OK {count} scenarios");
     }

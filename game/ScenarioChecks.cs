@@ -52,20 +52,20 @@ public partial class Main
             async Task Frames() { await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame); }
             IEnumerable<Node> Nodes(Node root) => root.GetChildren().Where(n => !n.IsQueuedForDeletion()).SelectMany(n => new[] { n }.Concat(Nodes(n)));
             void Press(string text) { var b = Nodes(_ui).OfType<Godot.Button>().Single(b => b.Text == text); Require(!b.Disabled, "Enabled: " + text); b.EmitSignal(BaseButton.SignalName.Pressed); }
-            SinglePlayerMenu(); await Frames(); Press("ДВУХГЕКСНЫЕ КОРАБЛИ"); _bot = false; await Frames();
+            SinglePlayerMenu(); await Frames(); Press("TWO-HEX SHIPS"); _bot = false; await Frames();
             ConfigureFeatureBattle(true); _state = _state! with { ActiveSide = 0 }; _facingChoice = 1; SelectUnit("s0-0"); await Frames();
-            Require(_world.GetNodeOrNull("SelectedFootprint") != null && Nodes(_ui).OfType<Label>().Any(l => l.Text.Contains("Корпус занимает 2 гекса")), "Two-hex hull and controls are visible");
+            Require(_world.GetNodeOrNull("SelectedFootprint") != null && Nodes(_ui).OfType<Label>().Any(l => l.Text.Contains("hull occupies 2 hexes")), "Two-hex hull and controls are visible");
             Submit(new("move", "s0-0", Q: 2, R: 2, Facing: 1, AutoFacing: false, Card: "order-01")); await Frames();
             if (_state!.Cards?.Response != null) Submit(new("decline"));
             Require(_state.Units.Single(u => u.Id == "s0-0").Facing == 1, "Turn-in-place command pivots stern");
             string before = _engine.Save(_state); SaveGame(); LoadGame(false); Require(before == _engine.Save(_state!), "Wide ship restores exactly");
-            MainMenu(); SinglePlayerMenu(); await Frames(); Press("СЦЕНАРИИ ИЗ КНИГИ"); await Frames(); Press("ИГРАТЬ ВДВОЁМ ЛОКАЛЬНО"); await Frames();
+            MainMenu(); SinglePlayerMenu(); await Frames(); Press("RULEBOOK SCENARIOS"); await Frames(); Press("PLAY LOCAL HOTSEAT"); await Frames();
             Require(_world.GetNodeOrNull("EscapeZone") != null && _state!.Map == "core:first-contact", "Rulebook map and escape zone are reachable");
             ConfigureFeatureBattle(false); _facingChoice = -1; SelectUnit("s1-3"); Submit(new("move", "s1-3", Q: 4, R: 2, Card: "order-21")); await Frames();
-            Require(ScenarioEvents.HasToken(_state!, "s1-3", "data") && Nodes(_ui).OfType<Label>().Any(l => l.Text == "НА БОРТУ: РАЗВЕДДАННЫЕ"), "Collected intelligence is visible");
+            Require(ScenarioEvents.HasToken(_state!, "s1-3", "data") && Nodes(_ui).OfType<Label>().Any(l => l.Text == "ON BOARD: INTELLIGENCE"), "Collected intelligence is visible");
             before = _engine.Save(_state!); SaveGame(); LoadGame(false); await Frames(); Require(before == _engine.Save(_state!), "Scenario token restores");
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "first-contact.png"));
-            NetworkMenu(); await Frames(); Require(Nodes(_ui).OfType<CheckBox>().Any(b => b.Text == "Сценарий 1: Первый контакт"), "Scenario can be hosted in PvP or shared co-op");
+            NetworkMenu(); await Frames(); Require(Nodes(_ui).OfType<CheckBox>().Any(b => b.Text == "Scenario 1: First Contact"), "Scenario can be hosted in PvP or shared co-op");
             GD.Print("SCENARIO_UI_OK"); GetTree().Quit();
         }
         catch (Exception e) { GD.PushError(e.ToString()); GetTree().Quit(1); }

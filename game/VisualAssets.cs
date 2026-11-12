@@ -71,7 +71,7 @@ public partial class Main
             if (faction is not ("kushan" or "taiidan")) faction = side == 0 ? "kushan" : "taiidan";
             bool npc = side == 1 && (_bot || _tutorial != null);
             string emblem = side == 0 && player.Emblem != "auto" ? player.Emblem : FleetPresentation.DefaultEmblem(faction);
-            return new CommanderAppearance(side, npc ? "НПЦ" : side == 0 ? player.Name : "Игрок 2",
+            return new CommanderAppearance(side, npc ? "NPC" : side == 0 ? player.Name : "Player 2",
                 npc ? FleetPresentation.NeutralColor : side == 0 ? player.Color : FleetPresentation.DistinctColor(FleetPresentation.PlayerColors[1], [player.Color]), emblem, faction, npc);
         }).ToArray();
     }

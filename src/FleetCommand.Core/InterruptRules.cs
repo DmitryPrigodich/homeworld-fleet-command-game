@@ -24,19 +24,19 @@ public static class InterruptRules
         if (command.Kind == "embark")
         {
             var parent = state.Units.Find(u => u.Id == command.Target);
-            if (parent == null) return new(false, "Носитель недоступен.", state);
+            if (parent == null) return new(false, "Carrier unavailable.", state);
             command = command with { Kind = "move", Q = parent.Q, R = parent.R, Embark = parent.Id };
         }
         command = command with { Facing = (command.Facing % 6 + 6) % 6 };
         bool tabletop = FleetRuleTools.Enabled(c, state);
         var acting = state.Units.Find(u => u.Id == command.Unit);
         var pendingOrder = state.Cards!.Pending;
-        if (tabletop && command.Power && (pendingOrder == null || SpecialOrders.Action(pendingOrder) != "power")) return new(false, "Для Power Attack требуется соответствующий приказ.", state);
+        if (tabletop && command.Power && (pendingOrder == null || SpecialOrders.Action(pendingOrder) != "power")) return new(false, "Power Attack requires the corresponding order.", state);
         var geometry = pendingOrder == null ? c : SpecialOrders.Geometry(c, state, pendingOrder);
         bool embarking = command.Embark != "";
-        if (embarking && (command.Kind != "move" || !tabletop || acting == null || !state.Units.Any(p => p.Id == command.Embark && FleetLogistics.CanEmbark(c, state, acting, p)))) return new(false, "Нельзя войти в этот ангар.", state);
+        if (embarking && (command.Kind != "move" || !tabletop || acting == null || !state.Units.Any(p => p.Id == command.Embark && FleetLogistics.CanEmbark(c, state, acting, p)))) return new(false, "Cannot embark in this bay.", state);
         if (embarking && pendingOrder != null && SpecialOrders.Action(pendingOrder) == "lightning" && (FleetRuleTools.Has(acting!, "engines") || SpecialOrders.Lightning(c.Ships[acting!.Definition]) == 0
-            || !state.Units.Any(first => first.Id == pendingOrder.Units[0] && new Hex(first.Q, first.R).Distance(new(command.Q, command.R)) == 1))) return new(false, "Lightning Move должен закончиться рядом с первым отрядом.", state);
+            || !state.Units.Any(first => first.Id == pendingOrder.Units[0] && new Hex(first.Q, first.R).Distance(new(command.Q, command.R)) == 1))) return new(false, "Lightning Move must end adjacent to the first unit.", state);
         MovementStep[]? steps = null;
         if (tabletop && command.Kind == "move" && acting != null)
         {
@@ -51,9 +51,9 @@ public static class InterruptRules
                 && state.Units.Any(u => u.Id == pendingOrder.Units[0] && new Hex(u.Q, u.R).Distance(new(command.Q, command.R)) == 1);
         if (command.Kind == "move" ? (!options.MoveCells.Contains(new(command.Q, command.R)) && !turning && !embarking) || tabletop && steps == null : !options.AttackTargets.Contains(command.Target)
             || tabletop && !FleetCombat.Allowed(c, state, acting!, state.Units.Find(u => u.Id == command.Target), command))
-            return new(false, "Действие не соответствует текущему шагу или цели приказа.", state);
+            return new(false, "The action does not match the order's current step or target.", state);
         if ((turning || embarking) && (acting!.Hulk || acting.Side != side || state.ActiveSide != side || basic && (acting.Activated || (side == 0 ? state.Orders0 : state.Orders1) >= FleetRuleTools.PlayLimit(c, state, side))))
-            return new(false, "Отряд не может получить приказ на поворот.", state);
+            return new(false, "The unit cannot receive a turn-in-place order.", state);
         var unit = state.Units.Single(u => u.Id == command.Unit);
         var next = state;
         if (basic)
@@ -106,21 +106,21 @@ public static class InterruptRules
     private static bool Offer(ContentCatalog c, BattleState state, PendingResponse pause) =>
         Available(state.Cards!, 1 - pause.Side) && state.Units.Any(u => u.Side == 1 - pause.Side && CanShoot(c, state, u, pause.Command.Unit));
     private static CommandResult Paused(BattleState original, BattleState next, string message) => new(true,
-        message + " Окно Interrupt Attack: противник может ответить или пропустить.", next with { Sequence = original.Sequence + 1 });
+        message + " Interrupt Attack window: the opponent may respond or decline.", next with { Sequence = original.Sequence + 1 });
     private static CommandResult Continue(ContentCatalog c, BattleState original, BattleState next, string message, bool offerAttack = false)
     {
         var pause = next.Cards!.Response!;
         var unit = next.Units.Find(u => u.Id == pause.Command.Unit);
-        if (unit == null || next.Finished) return Complete(c, original, next, message + " Действия уничтоженного отряда отменены.");
+        if (unit == null || next.Finished) return Complete(c, original, next, message + " The destroyed unit's remaining actions were cancelled.");
         if (pause.Command.Kind == "attack")
         {
-            if (offerAttack && Offer(c, next, pause)) return Paused(original, next, "Атака объявлена.");
+            if (offerAttack && Offer(c, next, pause)) return Paused(original, next, "Attack declared.");
             var result = Attack(c, next, pause.Side, pause.Command);
             if (result.State.Combat != null || result.State.Defense != null || result.State.Overrun != null) return result with { Message = message + " " + result.Message, State = result.State with { Sequence = original.Sequence + 1 } };
             return Complete(c, original, result.State, message + " " + result.Message);
         }
         if (pause.Command.Embark != "" && !next.Units.Any(p => p.Id == pause.Command.Embark && FleetLogistics.CanEmbark(c, next, unit, p)))
-            return Complete(c, original, next, message + " Посадка в ангар отменена: носитель недоступен.");
+            return Complete(c, original, next, message + " Embarkation cancelled: carrier unavailable.");
         var remaining = pause.RemainingPath.ToList();
         var facings = pause.PathFacings?.ToList();
         while (remaining.Count > 0)
@@ -128,7 +128,7 @@ public static class InterruptRules
             var cell = remaining[0]; remaining.RemoveAt(0);
             int facing = facings?.FirstOrDefault() ?? (pause.Command.Facing % 6 + 6) % 6; if (facings != null) facings.RemoveAt(0);
             if (pause.Command.Embark != "" && remaining.Count == 0)
-                return Complete(c, original, FleetLogistics.Embark(next, unit with { Facing = facing }, pause.Command.Embark), message + " Отряд вошёл в ангар; потрачен 1 Move на посадку.");
+                return Complete(c, original, FleetLogistics.Embark(next, unit with { Facing = facing }, pause.Command.Embark), message + " Unit embarked; 1 Move spent entering the bay.");
             // A pause cannot leave two units sharing a cell: pass through allies first.
             var priorStep = new MovementStep(pause.Transit ?? new Hex(unit.Q, unit.R), pause.TransitFacing < 0 ? unit.Facing : pause.TransitFacing);
             var currentStep = new MovementStep(cell, facing);
@@ -158,14 +158,14 @@ public static class InterruptRules
                 var terrain = FleetTerrain.Entry(c, original, next, unit.Id, cell, message, entered);
                 if (terrain != null) return terrain;
             }
-            if (Offer(c, next, pause)) return Paused(original, next, message + $" {FleetPresentation.UnitName(c, next, unit)}: перемещение в клетку ({cell.Q + 1}, {cell.R + 1}).");
+            if (Offer(c, next, pause)) return Paused(original, next, message + $" {FleetPresentation.UnitName(c, next, unit)}: moving to hex ({cell.Q + 1}, {cell.R + 1}).");
         }
         var surveyed = FleetEconomy.Survey(c, next, unit);
-        if (!ReferenceEquals(surveyed, next)) message += " Разведаны соседние астероиды; запасы видны только вашему флоту.";
+        if (!ReferenceEquals(surveyed, next)) message += " Adjacent asteroids surveyed; their resources are visible only to your fleet.";
         next = surveyed;
-        string completed = message + $" {FleetPresentation.UnitName(c, next, unit)}: перемещение завершено ({unit.Q + 1}, {unit.R + 1}).";
+        string completed = message + $" {FleetPresentation.UnitName(c, next, unit)}: movement complete ({unit.Q + 1}, {unit.R + 1}).";
         if (FleetRuleTools.Enabled(c, next) && FleetCap.Hosts(c, next, unit).Length > 0)
-            return new(true, completed + " Можно назначить истребители в CAP.", next with { CapEntry = new(pause.Side, unit.Id), Sequence = original.Sequence + 1 });
+            return new(true, completed + " Fighters may be assigned to CAP.", next with { CapEntry = new(pause.Side, unit.Id), Sequence = original.Sequence + 1 });
         return Complete(c, original, next, completed);
     }
     internal static CommandResult Complete(ContentCatalog c, BattleState original, BattleState next, string message)
@@ -186,11 +186,11 @@ public static class InterruptRules
     {
         CommandResult Reject(string text) => new(false, text, state);
         var cards = state.Cards!; var pause = cards.Response!;
-        if (side != 1 - pause.Side) return Reject("Ожидается ответ противника на прерывание.");
-        if (command.Kind == "decline") return Continue(c, state, state, "Возможность прерывания пропущена.");
-        if (FleetRuleTools.Enabled(c, state) && command.Power) return Reject("Interrupt Attack не даёт Power Attack.");
+        if (side != 1 - pause.Side) return Reject("Waiting for the opponent's interrupt response.");
+        if (command.Kind == "decline") return Continue(c, state, state, "Interrupt opportunity declined.");
+        if (FleetRuleTools.Enabled(c, state) && command.Power) return Reject("Interrupt Attack does not grant Power Attack.");
         if (command.Kind != "interrupt" || !IsAttack(command.Card) || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(command.Card)
-            || !Actions(c, state, side, command.Unit).AttackTargets.Contains(command.Target)) return Reject("Нужна карта Interrupt Attack и свой отряд, способный атаковать действующего противника.");
+            || !Actions(c, state, side, command.Unit).AttackTargets.Contains(command.Target)) return Reject("Requires Interrupt Attack and one of your units able to attack the acting enemy.");
         cards = cards with { Hand0 = cards.Hand0.Where(id => id != command.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != command.Card).ToArray(),
             Interrupts0 = side == 0 ? Played(cards, side).Append(command.Card).ToArray() : cards.Interrupts0,
             Interrupts1 = side == 1 ? Played(cards, side).Append(command.Card).ToArray() : cards.Interrupts1 };

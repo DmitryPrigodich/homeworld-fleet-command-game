@@ -50,7 +50,7 @@ Check(FleetPresentation.DefaultEmblem("kushan") == "kushan" && FleetPresentation
 Check(FleetPresentation.ShipIcon(content.Ships["core:kushan-interceptor"]) == "triangle"
     && FleetPresentation.ShipIcon(content.Ships["core:taiidan-frigate"]) == "diamond", "legacy ship definitions resolve to Homeworld tactical classes");
 Check(FleetPresentation.ShipIcon(content.Ships["core:kushan-interceptor"] with { TacticalIcon = "square" }) == "square", "mods can explicitly select a tactical symbol");
-Check(FleetPresentation.ObjectEffects(content.Objects["core:planet"]).Contains("перекрывает огонь")
+Check(FleetPresentation.ObjectEffects(content.Objects["core:planet"]).Contains("blocks firing lines")
     && FleetPresentation.ObjectEffects(content.Objects["core:asteroids"]).Contains("2"), "object inspection explains movement and attack effects");
 var state = engine.Create("core:training", 17);
 var before = engine.Save(state);
@@ -61,7 +61,7 @@ Check(before == engine.Save(state), "rejected commands do not mutate state");
 var moved = engine.Apply(state, 0, new("move", unit.Id, Q: unit.Q + 1, R: unit.R));
 Check(moved.Accepted && moved.State.Sequence == 1 && moved.State.ActiveSide == 1, "legal move advances authoritative sequence and turn");
 var movementLog = moved.State.Log!;
-Check(movementLog.Any(e => e.Text.Contains("перемещение")) && movementLog.Last().Side == 1
+Check(movementLog.Any(e => e.Text.Contains("moving to hex")) && movementLog.Last().Side == 1
     && state.Log!.Count == 2, "accepted movement appends immutable action and turn log entries");
 Check(!movementLog.Any(e => e.Text.Contains(unit.Id)) && FleetPresentation.UnitNumber(content, state, state.Units.First(u => u.Side == 1)) == 1,
     "player-facing names replace technical IDs and number each fleet separately");
@@ -80,7 +80,7 @@ var attack = new BattleCommand("attack", attackState.Units[0].Id, attackState.Un
 var a = engine.Apply(attackState, 0, attack);
 var b = engine.Apply(engine.Load(engine.Save(attackState)), 0, attack);
 Check(a.Accepted && engine.Save(a.State) == engine.Save(b.State), "random state survives saves and reproduces combat");
-Check(a.State.Log!.Any(e => e.Text.Contains("Броски:") && e.Text.Contains("Потери цели:")), "attack log reports dice and actual casualties");
+Check(a.State.Log!.Any(e => e.Text.Contains("Rolls:") && e.Text.Contains("Target losses:")), "attack log reports dice and actual casualties");
 Check(FleetPresentation.UnitNumber(content, state with { Units = state.Units.Skip(1).ToList() }, state.Units[1]) == 2,
     "unit labels remain stable after earlier units are lost");
 var legacyState = state with { Log = null };
@@ -126,7 +126,7 @@ lesson.Accepted(trainingPass);
 training = trainingEngine.Apply(training, 1, trainingPass).State;
 Check(training.Round == 2 && training.ActiveSide == 0 && !training.Units.Single(u => u.Id == TutorialLesson.ScoutId).Activated,
     "passive tutorial opponent permits a new round with refreshed units");
-Check(training.Log!.Any(e => e.Round == 2 && e.Text.Contains("Начался раунд")), "round transitions are recorded in the battle history");
+Check(training.Log!.Any(e => e.Round == 2 && e.Text.Contains("Round started")), "round transitions are recorded in the battle history");
 var trainingShot = new BattleCommand("attack", TutorialLesson.ScoutId, TutorialLesson.TargetId);
 var trainingFired = trainingEngine.Apply(training, 0, trainingShot);
 Check(lesson.Allows(trainingShot) && trainingFired.Accepted, "tutorial target is in range after the demonstrated move");

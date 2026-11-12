@@ -12,11 +12,11 @@ public static class BattleLog
         void Add(int round, int actor, string text) => entries.Add(new((entries.LastOrDefault()?.Number ?? -1) + 1, round, actor, text));
         Add(before.Round, side, message);
         if (after.Finished)
-            Add(after.Round, after.Winner ?? -1, after.EndReason != "" ? FleetObjectives.ResultText(after) + (after.Winner == null ? " Ничья." : " Победа.") : after.Winner == null ? "Бой завершён: лимит раундов, ничья." : "Победа. Бой завершён.");
+            Add(after.Round, after.Winner ?? -1, after.EndReason != "" ? FleetObjectives.ResultText(after) + (after.Winner == null ? " Draw." : " Victory.") : after.Winner == null ? "Battle complete: round limit reached, draw." : "Victory. Battle complete.");
         else
         {
-            if (after.Round != before.Round) Add(after.Round, -1, $"Начался раунд {after.Round}. Подразделения снова готовы к приказам.");
-            if (after.ActiveSide != before.ActiveSide || after.Round != before.Round) Add(after.Round, after.ActiveSide, "Очередь отдавать приказ.");
+            if (after.Round != before.Round) Add(after.Round, -1, $"Round started {after.Round}. Units are ready for orders again.");
+            if (after.ActiveSide != before.ActiveSide || after.Round != before.Round) Add(after.Round, after.ActiveSide, "Your turn to issue an order.");
         }
         return entries.TakeLast(Capacity).ToList();
     }

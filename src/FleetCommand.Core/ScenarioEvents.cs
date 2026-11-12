@@ -66,8 +66,8 @@ public static class ScenarioEvents
         var fired = (after.Scenario?.Fired ?? []).Except(before.Scenario?.Fired ?? []).ToHashSet();
         string message = string.Join(" ", (c.Maps[after.Map].Events ?? []).Where(e => fired.Contains(e.Id)).Select(e => e.Name + "."));
         int tokens = (after.Scenario?.Tokens.Length ?? 0) - (before.Scenario?.Tokens.Length ?? 0);
-        if (tokens > 0 && fired.Count == 0) message += " Получены новые данные разведки.";
-        if ((before.Scenario?.Tokens ?? []).Any(t => !after.Units.Concat(after.Reserves ?? []).Any(u => u.Id == t.Unit) && !(after.Scenario?.Escaped ?? []).Any(u => u.Id == t.Unit))) message += " Данные уничтоженного отряда потеряны.";
+        if (tokens > 0 && fired.Count == 0) message += " New intelligence gathered.";
+        if ((before.Scenario?.Tokens ?? []).Any(t => !after.Units.Concat(after.Reserves ?? []).Any(u => u.Id == t.Unit) && !(after.Scenario?.Escaped ?? []).Any(u => u.Id == t.Unit))) message += " The destroyed unit's intelligence was lost.";
         return message == "" ? "" : " " + message;
     }
     internal static void ValidateDefinitions(ContentCatalog c, MapDefinition map)

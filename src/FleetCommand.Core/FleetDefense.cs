@@ -26,7 +26,7 @@ public static class FleetDefense
         string threat = Threat(c, s, unit, defender, attack);
         if (threat == "" || Locked(s, defender, attack) || Weapons(c, defender).Length == 0 && !FleetCap.Available(s, defender.Id)) return null;
         var frame = new PendingDefense(side, attack, interrupt, threat, FleetCombat.AttackDice(c, s, attack));
-        return new(true, "До атаки: противник может применить CAP / защитный огонь или пропустить защиту.", s with { Defense = frame });
+        return new(true, "Before the attack: the opponent may use CAP / defensive fire or skip defense.", s with { Defense = frame });
     }
     public static int Dice(ContentCatalog c, BattleState s, WeaponDefinition weapon)
     {
@@ -39,12 +39,12 @@ public static class FleetDefense
     public static CommandResult Apply(ContentCatalog c, BattleState s, int side, BattleCommand command)
     {
         var frame = s.Defense!;
-        if (side != 1 - frame.Side || frame.Fired) return new(false, "Решение о защитном огне принимает защищающийся.", s);
+        if (side != 1 - frame.Side || frame.Fired) return new(false, "The defender decides on defensive fire.", s);
         if (command.Kind == "cap") return FleetCap.Activate(c, s, side, command);
-        if (command.Kind == "decline-defense") return Resume(c, s, s with { Defense = null }, frame, "Защитный огонь пропущен.");
+        if (command.Kind == "decline-defense") return Resume(c, s, s with { Defense = null }, frame, "Defensive fire skipped.");
         var defender = s.Units.Single(u => u.Id == frame.Attack.Target);
         var weapon = Weapons(c, defender).FirstOrDefault(w => command.Weapon == "" || w.Id == command.Weapon);
-        if (command.Kind != "defend" || weapon == null) return new(false, "Выберите оружие с защитным огнём.", s);
+        if (command.Kind != "defend" || weapon == null) return new(false, "Choose a weapon capable of defensive fire.", s);
         var result = FleetCombat.DefensiveRoll(c, s with { Defense = frame with { Fired = true } }, weapon, Dice(c, s, weapon));
         return result.State.Combat != null ? result with { State = result.State with { Sequence = s.Sequence + 1 } } : AfterRoll(c, s, result);
     }
@@ -56,7 +56,7 @@ public static class FleetDefense
     }
     internal static CommandResult Resume(ContentCatalog c, BattleState before, BattleState next, PendingDefense frame, string message)
     {
-        if (next.Hazard is { } hazard && hazard.Kind == "mine" && FleetTerrain.MineCount(next, hazard.Job.Object) == 0) return FleetTerrain.AfterDamage(c, before, new(true, message + " Минное поле снято.", next));
+        if (next.Hazard is { } hazard && hazard.Kind == "mine" && FleetTerrain.MineCount(next, hazard.Job.Object) == 0) return FleetTerrain.AfterDamage(c, before, new(true, message + " Minefield removed.", next));
         if (next.Hazard != null)
         {
             var terrain = FleetCombat.RollAttack(c, next, frame.Side, frame.Attack, false, frame.Reduction);
@@ -65,7 +65,7 @@ public static class FleetDefense
         }
         var unit = next.Units.Find(u => u.Id == frame.Attack.Unit);
         if (unit == null || unit.Hulk)
-            return InterruptRules.CombatResolved(c, before, FleetClose.Outcome(next, c), message + " Атака остановлена защитным огнём.", frame.Interrupt);
+            return InterruptRules.CombatResolved(c, before, FleetClose.Outcome(next, c), message + " Defensive fire stopped the attack.", frame.Interrupt);
         var attack = FleetCombat.RollAttack(c, next, frame.Side, frame.Attack, frame.Interrupt, frame.Reduction);
         if (attack.State.Combat != null || attack.State.Overrun != null)
             return attack with { Message = message + " " + attack.Message, State = attack.State with { Sequence = before.Sequence + 1 } };

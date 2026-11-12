@@ -77,8 +77,8 @@
     },
     {
       "id": "core:kushan-contact-interceptor",
-      "name": "Перехватчики / Кушане",
-      "label": "Перехватчики",
+      "name": "Interceptors / Kushan",
+      "label": "Interceptors",
       "faction": "kushan",
       "model": "",
       "models": 6,
@@ -94,7 +94,7 @@
       "weapons": [
         {
           "id": "cannon",
-          "name": "Снарядная пушка",
+          "name": "Projectile cannon",
           "dicePerModel": 1,
           "range": 1,
           "rapidFire": 1,
@@ -109,8 +109,8 @@
     },
     {
       "id": "core:taiidan-contact-interceptor",
-      "name": "Перехватчики / Таиидане",
-      "label": "Перехватчики",
+      "name": "Interceptors / Taiidan",
+      "label": "Interceptors",
       "faction": "taiidan",
       "model": "",
       "models": 6,
@@ -126,7 +126,7 @@
       "weapons": [
         {
           "id": "cannon",
-          "name": "Снарядная пушка",
+          "name": "Projectile cannon",
           "dicePerModel": 1,
           "range": 1,
           "rapidFire": 1,
@@ -188,7 +188,7 @@
     },
     {
       "id": "core:kushan-first-contact",
-      "name": "Первый контакт / Кушане",
+      "name": "First Contact / Kushan",
       "units": [
         {
           "ship": "core:kushan-contact-interceptor",
@@ -215,7 +215,7 @@
     },
     {
       "id": "core:taiidan-first-contact",
-      "name": "Первый контакт / Таиидане",
+      "name": "First Contact / Taiidan",
       "units": [
         {
           "ship": "core:taiidan-contact-interceptor",
@@ -257,7 +257,7 @@
     },
     {
       "id": "core:contact-asteroids",
-      "name": "Астероидное поле",
+      "name": "Asteroid field",
       "kind": "asteroid",
       "attackPenalty": 2,
       "moveCost": 1,
@@ -296,7 +296,7 @@
     },
     {
       "id": "core:first-contact",
-      "name": "Сценарий 1: Первый контакт",
+      "name": "Scenario 1: First Contact",
       "width": 18,
       "height": 9,
       "background": "#07121f",
@@ -832,14 +832,14 @@
           "r": 8
         }
       ],
-      "briefing": "Кхарак. Таиидане собирают данные, завершив приказ в пределах 2 гексов от планеты, и возвращаются в красную зону. Кушане должны помешать. Лимит — 7 раундов. Карта, цели и показанные в книге перехватчики/лидеры перенесены из сценария 1; колода пока учебная.",
+      "briefing": "Kharak. Taiidan units gather data by ending an order within 2 hexes of the planet, then return to the red zone. Kushan units must stop them. Limit: 7 rounds. The map, objectives and illustrated Interceptor/leader profiles come from Scenario 1; the command deck is still a training deck.",
       "events": [
         {
           "id": "scan",
           "trigger": "end-order",
           "side": 1,
           "effect": "mark",
-          "name": "Собраны разведданные у Кхарака",
+          "name": "Intelligence gathered near Kharak",
           "object": 0,
           "radius": 2,
           "token": "data",
@@ -851,7 +851,7 @@
           "trigger": "end-order",
           "side": 1,
           "effect": "deliver",
-          "name": "Разведданные доставлены в зону эвакуации",
+          "name": "Intelligence delivered to the escape zone",
           "requiresToken": "data",
           "zone": [
             {
@@ -897,14 +897,14 @@
           "trigger": "battle-end",
           "side": 0,
           "effect": "award",
-          "name": "Разведданные не доставлены: Кхарак защищён",
+          "name": "Intelligence not delivered: Kharak defended",
           "ifNoEvent": "delivered"
         }
       ],
       "objectives": [
         {
           "id": "deny-data",
-          "name": "Не дать противнику вывезти данные",
+          "name": "Prevent the enemy from extracting intelligence",
           "side": 0,
           "kind": "event",
           "medals": 2,
@@ -912,7 +912,7 @@
         },
         {
           "id": "kushan-kills",
-          "name": "Уничтожить 2 отряда таиидан",
+          "name": "Destroy 2 Taiidan units",
           "side": 0,
           "kind": "destroy-count",
           "medals": 1,
@@ -920,7 +920,7 @@
         },
         {
           "id": "return-data",
-          "name": "Собрать и вывезти разведданные",
+          "name": "Gather and extract intelligence",
           "side": 1,
           "kind": "event",
           "medals": 2,
@@ -928,7 +928,7 @@
         },
         {
           "id": "taiidan-kills",
-          "name": "Уничтожить 2 отряда кушан",
+          "name": "Destroy 2 Kushan units",
           "side": 1,
           "kind": "destroy-count",
           "medals": 1,
@@ -948,7 +948,7 @@
     },
     {
       "id": "core:first-contact",
-      "name": "Первый контакт",
+      "name": "First Contact",
       "handler": "cards-basic-v1",
       "roundLimit": 7,
       "tabletop": true
@@ -993,7 +993,7 @@
   "leaders": [
     {
       "id": "core:kushan-contact-wing",
-      "name": "Командир крыла",
+      "name": "Wing Commander",
       "faction": "kushan",
       "classes": [
         "fighter"
@@ -1005,7 +1005,7 @@
     },
     {
       "id": "core:kushan-contact-squadron",
-      "name": "Командир эскадрильи",
+      "name": "Squadron Leader",
       "faction": "kushan",
       "classes": [
         "fighter"
@@ -1017,7 +1017,7 @@
     },
     {
       "id": "core:taiidan-contact-wing",
-      "name": "Командир крыла",
+      "name": "Wing Commander",
       "faction": "taiidan",
       "classes": [
         "fighter"
@@ -1029,7 +1029,7 @@
     },
     {
       "id": "core:taiidan-contact-squadron",
-      "name": "Командир эскадрильи",
+      "name": "Squadron Leader",
       "faction": "taiidan",
       "classes": [
         "fighter"

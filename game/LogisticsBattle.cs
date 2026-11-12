@@ -10,11 +10,11 @@ public partial class Main
     private bool DrawReinforcePhase(Control parent)
     {
         if (_state?.Reinforce is not { } frame) return false;
-        Text(parent, "ПОДКРЕПЛЕНИЯ / REINFORCE", 15, _colors.Highlight);
-        Text(parent, frame.Mode switch { "deploy" => "Ввод из резерва в свою зону развёртывания.", "build" => "Производство одного нового отряда.", _ => "Выпуск готовых отрядов из ангаров до лимита Launch Tubes." }, 14);
-        Text(parent, "Карта и Play уже потрачены. Отряды прибывают активированными. Выпуск не активирует носитель.", 13);
-        if (LocalCommandSide == frame.Side) Button(parent, "ЗАВЕРШИТЬ ПРИКАЗ", () => Submit(new("finish-reinforce")));
-        else Text(parent, "Ожидается размещение противника.", 14);
+        Text(parent, "REINFORCEMENTS / REINFORCE", 15, _colors.Highlight);
+        Text(parent, frame.Mode switch { "deploy" => "Deploying reserves into your deployment zone.", "build" => "Producing one new unit.", _ => "Launching ready embarked units up to the Launch Tubes limit." }, 14);
+        Text(parent, "Card and Play already spent. Units arrive activated. Launching does not activate the carrier.", 13);
+        if (LocalCommandSide == frame.Side) Button(parent, "FINISH ORDER", () => Submit(new("finish-reinforce")));
+        else Text(parent, "Waiting for the opponent to place units.", 14);
         return true;
     }
     private Hex[] ReinforceCells()
@@ -39,12 +39,12 @@ public partial class Main
     private void DrawLogistics(Control parent, BattleUnit? unit)
     {
         if (!FleetBattle) return;
-        Text(parent, $"Резерв ресурсов: {(_state!.ActiveSide == 0 ? _state.Funds0 : _state.Funds1)} ★", 13);
+        Text(parent, $"Reserve resources: {(_state!.ActiveSide == 0 ? _state.Funds0 : _state.Funds1)} ★", 13);
         if (_state.Reinforce is { } frame && _state.Hazard == null && _state.Defense == null && _state.Combat == null && _state.Repairs is not { Length: > 0 })
         {
             if (LocalCommandSide != frame.Side) return;
             var source = _state.Units.Find(u => u.Id == frame.Source);
-            if (source != null) Text(parent, $"Ангары: {FleetLogistics.Children(_state, source.Id).Length}/{_content.Ships[source.Definition].Bays} · Выпуск: {source.Launches}/{_content.Ships[source.Definition].LaunchTubes}", 13);
+            if (source != null) Text(parent, $"Bays: {FleetLogistics.Children(_state, source.Id).Length}/{_content.Ships[source.Definition].Bays} · Launches: {source.Launches}/{_content.Ships[source.Definition].LaunchTubes}", 13);
             if (frame.Mode == "launch")
             {
                 var ready = FleetLogistics.Children(_state, frame.Source).Where(u => !u.Activated).ToArray();
@@ -57,40 +57,40 @@ public partial class Main
                 var factory = _state.Units.Single(u => u.Id == frame.Source); var buildable = FleetLogistics.Buildable(_content, _state, factory);
                 if (!buildable.Contains(_productionShip)) _productionShip = buildable.FirstOrDefault() ?? "";
                 var dropdown = new OptionButton(); foreach (string id in buildable) dropdown.AddItem(FleetPresentation.ShipName(_content.Ships[id]) + $" · {_content.Ships[id].Stars} ★");
-                if (buildable.Length == 0) { Text(parent, "Нет доступных профилей производства.", 13); return; }
+                if (buildable.Length == 0) { Text(parent, "No available production profiles.", 13); return; }
                 dropdown.Select(Array.IndexOf(buildable, _productionShip)); dropdown.ItemSelected += i => { _productionShip = buildable[(int)i]; DrawBattle(); }; parent.AddChild(dropdown);
                 int cost = _content.Ships[_productionShip].Stars, funds = frame.Side == 0 ? _state.Funds0 : _state.Funds1;
                 _reserveSpend = Math.Clamp(Math.Max(_reserveSpend, cost - factory.Cargo), 0, Math.Min(cost, funds));
-                Text(parent, $"Цена: {cost} ★. Груз фабрики: {factory.Cargo} ★. Остаток цены оплачивается из груза.", 13);
-                var reserve = new SpinBox { MinValue = 0, MaxValue = Math.Min(cost, funds), Step = 1, Value = _reserveSpend, Prefix = "Из резерва: " }; reserve.ValueChanged += value => _reserveSpend = (int)value; parent.AddChild(reserve);
+                Text(parent, $"Cost: {cost} ★. Factory cargo: {factory.Cargo} ★. The remaining cost comes from cargo.", 13);
+                var reserve = new SpinBox { MinValue = 0, MaxValue = Math.Min(cost, funds), Step = 1, Value = _reserveSpend, Prefix = "From reserve: " }; reserve.ValueChanged += value => _reserveSpend = (int)value; parent.AddChild(reserve);
                 bool bay = FleetRuleTools.Strike(_content.Ships[_productionShip]) && FleetLogistics.Children(_state, factory.Id).Length < _content.Ships[factory.Definition].Bays;
                 if (!bay) _productionToBay = false;
-                var docked = new CheckBox { Text = "Построить в ангар", ButtonPressed = _productionToBay, Disabled = !bay }; docked.Toggled += value => { _productionToBay = value; DrawBattle(); }; parent.AddChild(docked);
-                if (_productionToBay) { Button(parent, "ПОСТРОИТЬ В АНГАР", () => PlaceReinforcement(new(-1, -1))); return; }
+                var docked = new CheckBox { Text = "Build into bay", ButtonPressed = _productionToBay, Disabled = !bay }; docked.Toggled += value => { _productionToBay = value; DrawBattle(); }; parent.AddChild(docked);
+                if (_productionToBay) { Button(parent, "BUILD INTO BAY", () => PlaceReinforcement(new(-1, -1))); return; }
             }
             var cells = ReinforceCells();
-            if (cells.Length == 0) { Text(parent, "Нет свободных гексов. Можно завершить приказ.", 13); return; }
+            if (cells.Length == 0) { Text(parent, "No free hexes. You may finish the order.", 13); return; }
             if (!cells.Contains(_reinforceCell)) _reinforceCell = cells[0];
-            Text(parent, "Выбери свободный гекс кнопкой или нажми на поле.", 13);
-            var positions = new OptionButton(); foreach (var h in cells) positions.AddItem($"Гекс {h.Q + 1}, {h.R + 1}"); positions.Select(Array.IndexOf(cells, _reinforceCell)); positions.ItemSelected += i => _reinforceCell = cells[(int)i]; parent.AddChild(positions);
-            var facing = new OptionButton(); for (int i = 0; i < 6; i++) facing.AddItem($"Курс {i * 60}°"); facing.Select(Math.Max(0, _facingChoice)); facing.ItemSelected += i => _facingChoice = (int)i; parent.AddChild(facing);
-            Button(parent, "РАЗМЕСТИТЬ НА ПОЛЕ", () => PlaceReinforcement(_reinforceCell), frame.Mode == "launch" && (source == null || _launchUnit == "" || !FleetLogistics.CanLaunch(_content, _state, source))); return;
+            Text(parent, "Choose a free hex using a button or click the field.", 13);
+            var positions = new OptionButton(); foreach (var h in cells) positions.AddItem($"Hex {h.Q + 1}, {h.R + 1}"); positions.Select(Array.IndexOf(cells, _reinforceCell)); positions.ItemSelected += i => _reinforceCell = cells[(int)i]; parent.AddChild(positions);
+            var facing = new OptionButton(); for (int i = 0; i < 6; i++) facing.AddItem($"Facing {i * 60}°"); facing.Select(Math.Max(0, _facingChoice)); facing.ItemSelected += i => _facingChoice = (int)i; parent.AddChild(facing);
+            Button(parent, "PLACE ON FIELD", () => PlaceReinforcement(_reinforceCell), frame.Mode == "launch" && (source == null || _launchUnit == "" || !FleetLogistics.CanLaunch(_content, _state, source))); return;
         }
         if (unit == null) return;
         var ship = _content.Ships[unit.Definition];
-        if (ship.Bays > 0) Text(parent, $"Ангары: {FleetLogistics.Children(_state, unit.Id).Length}/{ship.Bays}\nВыпуск за раунд: {unit.Launches}/{ship.LaunchTubes}", 14);
+        if (ship.Bays > 0) Text(parent, $"Bays: {FleetLogistics.Children(_state, unit.Id).Length}/{ship.Bays}\nLaunches this round: {unit.Launches}/{ship.LaunchTubes}", 14);
         foreach (var carrier in FleetLogistics.EmbarkHosts(_content, _state, LocalCommandSide, unit.Id))
-        { string target = carrier.Id; Button(parent, "В АНГАР: " + FleetPresentation.UnitName(_content, _state, carrier), () => Submit(new("embark", unit.Id, target))); }
+        { string target = carrier.Id; Button(parent, "INTO BAY: " + FleetPresentation.UnitName(_content, _state, carrier), () => Submit(new("embark", unit.Id, target))); }
         bool available = !FleetDecision && unit.Side == LocalCommandSide && _state.ActiveSide == LocalCommandSide && _state.Cards is { Phase: "orders", Pending: null, Response: null };
         if (!available) return;
         if ((_state.Reserves ?? []).Any(u => u.Id == unit.Id))
         {
-            if (unit.Embarked == "") Button(parent, "ВВЕСТИ ИЗ РЕЗЕРВА", () => Submit(new("begin-reinforce", unit.Id, "deploy")), unit.Activated || FleetLogistics.DeployCells(_content, _state, unit.Side).Length == 0);
-            else Text(parent, "В ангаре. Выбери носитель для выпуска этого отряда.", 13);
+            if (unit.Embarked == "") Button(parent, "DEPLOY FROM RESERVE", () => Submit(new("begin-reinforce", unit.Id, "deploy")), unit.Activated || FleetLogistics.DeployCells(_content, _state, unit.Side).Length == 0);
+            else Text(parent, "Embarked. Select the carrier to launch this unit.", 13);
             return;
         }
-        if (FleetLogistics.Children(_state, unit.Id).Any(u => !u.Activated)) Button(parent, "ВЫПУСТИТЬ ИЗ АНГАРА", () => Submit(new("begin-reinforce", unit.Id, "launch")), !FleetLogistics.CanLaunch(_content, _state, unit));
-        if (FleetLogistics.Buildable(_content, _state, unit).Length > 0) Button(parent, "ПРОИЗВОДСТВО", () => Submit(new("begin-reinforce", unit.Id, "build")));
+        if (FleetLogistics.Children(_state, unit.Id).Any(u => !u.Activated)) Button(parent, "LAUNCH FROM BAY", () => Submit(new("begin-reinforce", unit.Id, "launch")), !FleetLogistics.CanLaunch(_content, _state, unit));
+        if (FleetLogistics.Buildable(_content, _state, unit).Length > 0) Button(parent, "PRODUCTION", () => Submit(new("begin-reinforce", unit.Id, "build")));
 
     }
 }

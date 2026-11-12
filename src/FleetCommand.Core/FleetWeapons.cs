@@ -3,7 +3,7 @@ namespace FleetCommand.Core;
 public static class FleetWeapons
 {
     public static WeaponDefinition[] Weapons(ContentCatalog c, ShipDefinition ship) => ship.Weapons ?? (ship.DicePerModel == 0 ? [] :
-        [new("main", "Основное оружие", ship.DicePerModel, ship.Range,
+        [new("main", "Main weapon", ship.DicePerModel, ship.Range,
             Penetrating: (ship.Abilities ?? []).Select(id => c.Abilities[id]).Where(a => a.Handler == "penetrating").Sum(a => a.Value),
             RapidFire: (ship.Abilities ?? []).Select(id => c.Abilities[id]).Where(a => a.Handler == "rapid-fire").Sum(a => a.Value),
             RapidTargets: ship.Id is "core:kushan-interceptor" or "core:taiidan-interceptor" ? ["fighter", "corvette", "platform"] : null)]);
@@ -17,8 +17,8 @@ public static class FleetWeapons
     }
     public static (bool Allowed, int Cover, string Error) Attack(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit? target, string weapon = "")
     {
-        if (target == null || target.Side == unit.Side) return (false, 0, "Выберите противника.");
-        if (FleetRuleTools.Has(unit, "weapons")) return (false, 0, "Оружие выведено из строя.");
+        if (target == null || target.Side == unit.Side) return (false, 0, "Select an enemy.");
+        if (FleetRuleTools.Has(unit, "weapons")) return (false, 0, "Weapons are crippled.");
         var choices = Weapons(c, c.Ships[unit.Definition]).Where(w => (weapon == "" || w.Id == weapon)
             && ((w.Targets?.Length ?? 0) == 0 || w.Targets!.Contains(FleetRuleTools.Class(c.Ships[target.Definition]))));
         foreach (var w in choices)
@@ -30,7 +30,7 @@ public static class FleetWeapons
                 if (geometry.Allowed) return geometry;
             }
         }
-        return (false, 0, "Нет подходящего оружия: дальность, сектор, тип цели или линия огня.");
+        return (false, 0, "No suitable weapon: check range, arc, target type and firing line.");
     }
     public static WeaponDefinition? Select(ContentCatalog c, BattleState s, BattleUnit u, BattleUnit target, string id) =>
         Weapons(c, c.Ships[u.Definition]).FirstOrDefault(w => (id == "" || w.Id == id) && Attack(c, s, u, target, w.Id).Allowed);

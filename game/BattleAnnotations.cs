@@ -37,20 +37,20 @@ public partial class Main
         var color = C(FleetPresentation.NeutralColor);
         string effects = TerrainEffects(placement);
         _annotations.Marker(World(new(placement.Q, placement.R)) + Vector3.Up * (height + 0.3f),
-            FleetPresentation.ObjectName(obj), "НЕЙТРАЛЬНЫЙ ОБЪЕКТ", TacticalTextures.Icon(obj.BlocksMovement ? "circle" : "hexagon", color), null,
-            color, effects + $"\nКлетка {placement.Q + 1}, {placement.R + 1}. Нажми для подробностей.", () => InspectObject(placement));
+            FleetPresentation.ObjectName(obj), "NEUTRAL OBJECT", TacticalTextures.Icon(obj.BlocksMovement ? "circle" : "hexagon", color), null,
+            color, effects + $"\nHex {placement.Q + 1}, {placement.R + 1}. Click for details.", () => InspectObject(placement));
     }
 
     private void UnitAnnotation(BattleUnit unit, ShipDefinition ship, float height)
     {
         var owner = Commander(unit.Side);
         var color = C(owner.Color);
-        string details = $"{FleetPresentation.UnitName(_content, _state!, unit)}\n{owner.Name}\nХод {ship.Move} · Дальность {ship.Range} · Броня {ship.Armor}\n" +
-            (_state!.Scenario?.Tokens.Any(t => t.Unit == unit.Id) == true ? "РАЗВЕДДАННЫЕ НА БОРТУ\n" : "") + (unit.Activated ? "Приказ в этом раунде уже выполнен." : "Подразделение готово к приказу.");
+        string details = $"{FleetPresentation.UnitName(_content, _state!, unit)}\n{owner.Name}\nMove {ship.Move} · Range {ship.Range} · Armor {ship.Armor}\n" +
+            (_state!.Scenario?.Tokens.Any(t => t.Unit == unit.Id) == true ? "INTELLIGENCE ON BOARD\n" : "") + (unit.Activated ? "This unit has already completed its order this round." : "The unit is ready for an order.");
         var hull = FleetFootprint.Cells(_content, unit).Select(World).ToArray();
         var centre = hull.Aggregate(Vector3.Zero, (a, b) => a + b) / hull.Length;
         _annotations.Marker(centre + Vector3.Up * height,
-            $"{(unit.Patrol == "" ? "" : "CAP · ")}{FleetPresentation.ShipName(ship)} ×{unit.Models}", $"{owner.Name} · отряд №{FleetPresentation.UnitNumber(_content, _state!, unit)}" + (unit.Activated ? " · ✓" : ""),
+            $"{(unit.Patrol == "" ? "" : "CAP · ")}{FleetPresentation.ShipName(ship)} ×{unit.Models}", $"{owner.Name} · unit #{FleetPresentation.UnitNumber(_content, _state!, unit)}" + (unit.Activated ? " · ✓" : ""),
             TacticalTextures.Icon(FleetPresentation.ShipIcon(ship), color), EmblemTexture(owner.Emblem), color, details, () => ClickUnit(unit.Id));
     }
 
@@ -78,9 +78,9 @@ public partial class Main
         if (FleetTerrain.Kind(definition) == "mine")
         {
             int index = Array.FindIndex(_content.Maps[_state!.Map].Objects, p => ReferenceEquals(p, placement));
-            text += $"\nМин осталось: {FleetTerrain.MineCount(_state, index)}. " + (placement.Owner < 0 ? "Нейтральное поле." : "Владелец: " + SideName(placement.Owner) + ".");
+            text += $"\nMines remaining: {FleetTerrain.MineCount(_state, index)}. " + (placement.Owner < 0 ? "Neutral field." : "Owner: " + SideName(placement.Owner) + ".");
         }
-        text += $"\nАтака при входе / активации: {attack.Dice}D" + (FleetTerrain.Kind(definition) == "mine" ? " за мину" : "") + $", успех {attack.Success}+, Penetrating {attack.Penetrating}.";
+        text += $"\nAttack on entry / activation: {attack.Dice}D" + (FleetTerrain.Kind(definition) == "mine" ? " per mine" : "") + $", success {attack.Success}+, Penetrating {attack.Penetrating}.";
         return text;
     }
 
@@ -92,7 +92,7 @@ public partial class Main
             row.AddChild(new TextureRect { Texture = EmblemTexture(owner.Emblem), CustomMinimumSize = new(26, 26),
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered });
             row.AddChild(new ColorRect { Color = C(owner.Color), CustomMinimumSize = new(5, 26) });
-            var name = Text(row, owner.Name + (owner.IsNpc ? " · компьютер" : " · игрок"), 14, owner.Color);
+            var name = Text(row, owner.Name + (owner.IsNpc ? " · computer" : " · player"), 14, owner.Color);
             name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         }
     }

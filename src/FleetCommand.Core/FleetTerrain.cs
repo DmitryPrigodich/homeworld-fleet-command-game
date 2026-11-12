@@ -15,7 +15,7 @@ public static class FleetTerrain
             var attack = Attack(obj); if (attack == null) continue;
             string id = ProfileId(obj.Id);
             c.Ships[id] = new(id, FleetPresentation.ObjectName(obj), "terrain", "", 5, 0, attack.Dice, attack.Success, 0, 0,
-                Class: "station", Weapons: [new("terrain", "Воздействие местности", attack.Dice, 1, Kind: "close", Penetrating: attack.Penetrating)]);
+                Class: "station", Weapons: [new("terrain", "Terrain effect", attack.Dice, 1, Kind: "close", Penetrating: attack.Penetrating)]);
         }
     }
     public static int MineCount(BattleState s, int index) => s.Mines?.GetValueOrDefault(index, 5) ?? 5;
@@ -102,8 +102,8 @@ public static class FleetTerrain
     internal static CommandResult Defended(BattleState s, int successes)
     {
         var frame = s.Defense!;
-        return s.Hazard!.Kind == "mine" ? new(true, "Защитный огонь: минное поле будет уменьшено после атаки.", s with { Combat = null, Hazard = s.Hazard with { ReduceAfter = s.Hazard.ReduceAfter || successes > 0 } })
-            : new(true, $"Защитный огонь: атака астероидов -{successes} кубиков.", s with { Combat = null, Defense = frame with { Reduction = frame.Reduction + successes } });
+        return s.Hazard!.Kind == "mine" ? new(true, "Defensive fire: the minefield will be reduced after its attack.", s with { Combat = null, Hazard = s.Hazard with { ReduceAfter = s.Hazard.ReduceAfter || successes > 0 } })
+            : new(true, $"Defensive fire: asteroid attack -{successes} dice.", s with { Combat = null, Defense = frame with { Reduction = frame.Reduction + successes } });
     }
     internal static CommandResult CapExchange(ContentCatalog c, BattleState next, PendingDefense frame)
     {
@@ -116,7 +116,7 @@ public static class FleetTerrain
             if (!next.Units.Any(u => u.Id == fighter.Id && u.Models == fighter.Models)) next = ReduceMine(next);
         }
         else next = next with { Defense = next.Defense! with { Reduction = frame.Reduction + successes } };
-        return result with { State = next, Message = "CAP встретил опасную местность. " + result.Message };
+        return result with { State = next, Message = "CAP encountered hazardous terrain. " + result.Message };
     }
     internal static void Validate(ContentCatalog c, BattleState s)
     {

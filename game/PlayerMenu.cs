@@ -7,13 +7,13 @@ public partial class Main
 {
     private void PlayerMenu()
     {
-        ClearScreen(); Heading("Настройки игрока");
+        ClearScreen(); Heading("Player settings");
         var profile = FleetPresentation.Normalize(_settings.Player);
         var box = Panel(70, 180, 560, 650);
-        Text(box, "ПРОФИЛЬ КОМАНДИРА", 19, _colors.Highlight);
-        Text(box, "Имя игрока", 15, _colors.Muted);
+        Text(box, "COMMANDER PROFILE", 19, _colors.Highlight);
+        Text(box, "Player name", 15, _colors.Muted);
         var name = new LineEdit { Text = profile.Name, MaxLength = 24, CustomMinimumSize = new(0, 42) }; box.AddChild(name);
-        Text(box, "Цвет проекции на поле", 15, _colors.Muted);
+        Text(box, "Battlefield projection color", 15, _colors.Muted);
         var picker = new ColorPickerButton { Color = C(profile.Color), EditAlpha = false, CustomMinimumSize = new(0, 44) }; box.AddChild(picker);
         var palette = new HBoxContainer(); box.AddChild(palette);
         foreach (string color in FleetPresentation.PlayerColors)
@@ -24,48 +24,48 @@ public partial class Main
             swatch.Pressed += () => { picker.Color = C(color); picker.EmitSignal(ColorPickerButton.SignalName.ColorChanged, picker.Color); };
             palette.AddChild(swatch);
         }
-        Text(box, "Эмблема игрока", 15, _colors.Muted);
+        Text(box, "Player badge", 15, _colors.Muted);
         var emblems = new OptionButton { CustomMinimumSize = new(0, 48) };
         emblems.AddThemeConstantOverride("icon_max_width", 32);
         foreach (string id in FleetPresentation.Emblems)
             emblems.AddIconItem(EmblemTexture(id == "auto" ? "kushan" : id), FleetPresentation.EmblemName(id));
         emblems.Select(Array.IndexOf(FleetPresentation.Emblems, profile.Emblem)); box.AddChild(emblems);
-        Text(box, "«По фракции»: кушанская эмблема у кушан, таииданская у таиидан. Можно выбрать эмблему киита.", 16, _colors.Muted);
-        var feedback = Text(box, "Серый зарезервирован за НПЦ и нейтральными объектами. Цвет игрока должен быть достаточно ярким и насыщенным.", 15, _colors.Muted);
+        Text(box, "By faction: Kushan badge for Kushan ships, Taiidan badge for Taiidan ships. You can also choose a kiith badge.", 16, _colors.Muted);
+        var feedback = Text(box, "Grey is reserved for NPCs and neutral objects. Player colors must be bright and saturated enough.", 15, _colors.Muted);
         var previewBox = Panel(710, 180, 660, 650);
-        Text(previewBox, "КАК ЭТО БУДЕТ НА ПОЛЕ", 19, _colors.Highlight);
+        Text(previewBox, "BATTLEFIELD PREVIEW", 19, _colors.Highlight);
         var preview = new IdentityPreview { CustomMinimumSize = new(0, 280), Tint = C(profile.Color), Emblem = EmblemTexture(profile.Emblem == "auto" ? "kushan" : profile.Emblem) };
         previewBox.AddChild(preview);
         var previewName = Text(previewBox, profile.Name, 23, _colors.Text);
-        Text(previewBox, "Цветная плоская проекция повторяет контур кубиков. Класс корабля отмечен знаком ТО, владелец — эмблемой и именем.", 17);
-        Text(previewBox, _emblems.Count > 0 ? $"Эмблем HWRM в локальном кэше: {_emblems.Count}. В репозиторий они не входят." : "Пока используются условные знаки. Оригинальные эмблемы можно прочитать из своей HWRM.", 14, _colors.Muted);
-        var installation = new LineEdit { Text = _settings.HwrmInstallation, PlaceholderText = "Папка Homeworld Remastered", CustomMinimumSize = new(0, 40) }; previewBox.AddChild(installation);
-        Button(previewBox, "ПОДКЛЮЧИТЬ ЭМБЛЕМЫ ИЗ HWRM", () =>
+        Text(previewBox, "The flat colored projection follows the cube hulls. A tactical symbol identifies the ship class; a badge and name identify its owner.", 17);
+        Text(previewBox, _emblems.Count > 0 ? $"Cached local HWRM badges: {_emblems.Count}. They are not included in the repository." : "Placeholder symbols are active. Original badges can be read from your HWRM installation.", 14, _colors.Muted);
+        var installation = new LineEdit { Text = _settings.HwrmInstallation, PlaceholderText = "Homeworld Remastered folder", CustomMinimumSize = new(0, 40) }; previewBox.AddChild(installation);
+        Button(previewBox, "IMPORT BADGES FROM HWRM", () =>
         {
             if (!System.IO.File.Exists(System.IO.Path.Combine(installation.Text, "HomeworldRM", "Data", "Homeworld2.big")))
-            { feedback.Text = "В этой папке не найден HomeworldRM/Data/Homeworld2.big."; return; }
+            { feedback.Text = "HomeworldRM/Data/Homeworld2.big was not found in this folder."; return; }
             _settings = _settings with { HwrmInstallation = installation.Text }; SaveSettings(); LoadEmblems(import: true);
             for (int i = 0; i < FleetPresentation.Emblems.Length; i++)
                 emblems.SetItemIcon(i, EmblemTexture(i == 0 ? "kushan" : FleetPresentation.Emblems[i]));
             string current = FleetPresentation.Emblems[emblems.Selected];
             preview.Emblem = EmblemTexture(current == "auto" ? "kushan" : current); preview.QueueRedraw();
-            feedback.Text = $"Подключено эмблем: {_emblems.Count}. Текущие имя и цвет сохранены в форме.";
+            feedback.Text = $"Badges imported: {_emblems.Count}. Your current name and color remain in the form.";
         });
         picker.ColorChanged += color =>
         {
             preview.Tint = color; preview.QueueRedraw();
-            feedback.Text = FleetPresentation.IsPlayerColor("#" + color.ToHtml(false)) ? "Этот цвет можно использовать." : "Выбери более насыщенный и яркий цвет: серые и тёмные оттенки зарезервированы.";
+            feedback.Text = FleetPresentation.IsPlayerColor("#" + color.ToHtml(false)) ? "This color is available." : "Choose a brighter, more saturated color: grey and dark shades are reserved.";
         };
         name.TextChanged += value => previewName.Text = value;
         emblems.ItemSelected += i => { string id = FleetPresentation.Emblems[(int)i]; preview.Emblem = EmblemTexture(id == "auto" ? "kushan" : id); preview.QueueRedraw(); };
-        Button(box, "СОХРАНИТЬ ПРОФИЛЬ", () =>
+        Button(box, "SAVE PROFILE", () =>
         {
             string color = "#" + picker.Color.ToHtml(false);
-            if (!FleetPresentation.IsPlayerColor(color)) { feedback.Text = "Этот цвет слишком близок к нейтральному или слишком тёмный. Выбери яркий цвет."; return; }
+            if (!FleetPresentation.IsPlayerColor(color)) { feedback.Text = "This color is too close to neutral or too dark. Choose a bright color."; return; }
             _settings = _settings with { Player = FleetPresentation.Normalize(new(name.Text, color, FleetPresentation.Emblems[emblems.Selected])) };
             SaveSettings(); OptionsMenu();
         });
-        Button(box, "НАЗАД", OptionsMenu);
+        Button(box, "BACK", OptionsMenu);
     }
 }
 

@@ -7,8 +7,8 @@ public partial class Main
     private void DrawObjectives(Control parent)
     {
         if (_state == null || !FleetObjectives.Enabled(_content, _state)) return;
-        Text(parent, $"МЕДАЛИ: {_state.Medals0} : {_state.Medals1} / {_content.Maps[_state.Map].VictoryMedals}", 15, _colors.Highlight);
-        Button(parent, _showObjectives ? "СКРЫТЬ ЦЕЛИ" : "ЦЕЛИ СЦЕНАРИЯ", () => { _showObjectives = !_showObjectives; DrawBattle(); });
+        Text(parent, $"MEDALS: {_state.Medals0} : {_state.Medals1} / {_content.Maps[_state.Map].VictoryMedals}", 15, _colors.Highlight);
+        Button(parent, _showObjectives ? "HIDE OBJECTIVES" : "SCENARIO OBJECTIVES", () => { _showObjectives = !_showObjectives; DrawBattle(); });
         if (!_showObjectives) return;
         foreach (int side in new[] { 0, 1 })
         {
@@ -17,9 +17,9 @@ public partial class Main
             {
                 bool active = FleetObjectives.Active(_state, goal); int progress = active ? goal.Threshold : FleetObjectives.Progress(_content, _state, goal);
                 string status = active ? "✓ " : (_state.Claims ?? []).Contains(goal.Id) ? "↺ " : "○ ";
-                Text(parent, status + goal.Name + $" · {goal.Medals} мед.\n{Math.Min(progress, goal.Threshold)}/{goal.Threshold}" + (goal.Reversible ? " · можно отнять перезахватом" : ""), 12, active ? _colors.Highlight : _colors.Text);
+                Text(parent, status + goal.Name + $" · {goal.Medals} med.\n{Math.Min(progress, goal.Threshold)}/{goal.Threshold}" + (goal.Reversible ? " · reversible by recapture" : ""), 12, active ? _colors.Highlight : _colors.Text);
             }
         }
-        Text(parent, $"Уничтожено ★ {_state.Stars0}:{_state.Stars1}\nСобрано ★ {_state.Harvested0}:{_state.Harvested1}", 12, _colors.Muted);
+        Text(parent, $"Destroyed ★ {_state.Stars0}:{_state.Stars1}\nHarvested ★ {_state.Harvested0}:{_state.Harvested1}", 12, _colors.Muted);
     }
 }

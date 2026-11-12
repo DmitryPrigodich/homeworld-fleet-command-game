@@ -6,7 +6,7 @@ namespace FleetCommand.Game;
 
 public sealed record AppSettings(string Theme = "core:hw1", string[]? EnabledMods = null, PlayerProfile? Player = null,
     // ShowLabels remains readable for older settings files; holding Alt now controls battlefield names.
-    string HwrmInstallation = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Homeworld", bool ShowLabels = true, string CardStyle = "text", string Language = "ru");
+    string HwrmInstallation = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Homeworld", bool ShowLabels = true, string CardStyle = "text", string Language = "en");
 public sealed record SavedGame(BattleState State, GenerationOptions? Generation = null, CampaignProgress? Campaign = null,
     bool ComputerOpponent = true, CommanderAppearance[]? Commanders = null, PreparedBattle? Preparation = null);
 
@@ -46,6 +46,7 @@ public partial class Main : Node3D
             var settings = System.IO.Path.Combine(_data, "settings.json");
             if (System.IO.File.Exists(settings)) _settings = JsonData.Read<AppSettings>(settings);
             _settings = _settings with { Player = FleetPresentation.Normalize(_settings.Player) };
+            if (_args.Any(a => a.StartsWith("--check-") || a.StartsWith("--smoke-"))) _settings = _settings with { Language = "en" };
             LoadContent();
             ReloadCardStyles();
             LoadEmblems();
@@ -67,7 +68,7 @@ public partial class Main : Node3D
                 if (coop) _campaign = FleetCommand.Core.Campaign.Start(_content, "core:patrol", ["host"]);
                 StartBattle(_args.Contains("--smoke-objectives") ? BasicCardBattle.ObjectivesMapId : _args.Contains("--smoke-logistics") ? BasicCardBattle.LogisticsMapId : _args.Contains("--smoke-economy") ? BasicCardBattle.EconomyMapId : _args.Contains("--smoke-terrain") ? TerrainCheckMap : _args.Contains("--smoke-tabletop") || _args.Contains("--smoke-defense") || _args.Contains("--smoke-cap") ? BasicCardBattle.TabletopMapId : _args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop);
                 if (_args.Contains("--smoke-forces")) StartPrepared(new([ForceBattle.PracticeForce("kushan"), ForceBattle.PracticeForce("taiidan")]), false);
-                if (_args.Contains("--smoke-scenario")) { StartBattle("core:first-contact", false); ConfigureFeatureBattle(false); }
+                if (_args.Contains("--smoke-scenario")) { _settings = _settings with { Language = "ru" }; _locale.SetLanguage("ru"); StartBattle("core:first-contact", false); ConfigureFeatureBattle(false); }
                 if (_args.Contains("--smoke-large")) { StartBattle("practice:large", false); ConfigureFeatureBattle(true); }
                 if (_args.Contains("--smoke-defense")) ConfigureDefenseBattle();
                 if (_args.Contains("--smoke-cap")) ConfigureCapBattle();
@@ -187,10 +188,10 @@ public partial class Main : Node3D
     }
     private void ShowError(string message, string? report = null)
     {
-        ClearScreen(); Heading("Ошибка"); var box = Panel(70, 220, 1000, 510);
+        ClearScreen(); Heading("Error"); var box = Panel(70, 220, 1000, 510);
         Text(box, message, 18, _colors.Enemy);
-        if (report != null) Text(box, "Подробности сохранены:\n" + report, 16, _colors.Muted);
-        Button(box, "В главное меню", MainMenu);
+        if (report != null) Text(box, "Details saved:\n" + report, 16, _colors.Muted);
+        Button(box, "Main menu", MainMenu);
     }
     public override void _Process(double delta)
     {

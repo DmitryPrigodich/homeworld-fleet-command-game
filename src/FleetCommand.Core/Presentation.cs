@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace FleetCommand.Core;
 
-public sealed record PlayerProfile(string Name = "Командир", string Color = "#39a4c5", string Emblem = "auto");
+public sealed record PlayerProfile(string Name = "Commander", string Color = "#39a4c5", string Emblem = "auto");
 public sealed record CommanderAppearance(int Side, string Name, string Color, string Emblem, string Faction, bool IsNpc = false);
 
 public static class FleetPresentation
@@ -27,7 +27,7 @@ public static class FleetPresentation
     {
         profile ??= new();
         string name = new((profile.Name ?? "").Where(c => !char.IsControl(c)).Take(24).ToArray());
-        return new(string.IsNullOrWhiteSpace(name) ? "Командир" : name.Trim(),
+        return new(string.IsNullOrWhiteSpace(name) ? "Commander" : name.Trim(),
             IsPlayerColor(profile.Color) ? profile.Color.ToLowerInvariant() : PlayerColors[0],
             Emblems.Contains(profile.Emblem) ? profile.Emblem : "auto");
     }
@@ -47,8 +47,8 @@ public static class FleetPresentation
     public static string DefaultEmblem(string faction) => faction.Equals("taiidan", StringComparison.OrdinalIgnoreCase) ? "taiidan" : "kushan";
     public static string EmblemName(string id) => id switch
     {
-        "auto" => "По фракции", "kushan" => "Кушане", "taiidan" => "Таиидане", "kiith-sjet" => "Киит С'джет",
-        "kiith-naabal" => "Киит Наабал", "kiith-manaan" => "Киит Манаан", "kiith-paktu" => "Киит Пакту", "kiith-soban" => "Киит Собан", _ => id
+        "auto" => "By faction", "kushan" => "Kushan", "taiidan" => "Taiidan", "kiith-sjet" => "Kiith S'jet",
+        "kiith-naabal" => "Kiith Naabal", "kiith-manaan" => "Kiith Manaan", "kiith-paktu" => "Kiith Paktu", "kiith-soban" => "Kiith Soban", _ => id
     };
 
     public static string ShipIcon(ShipDefinition ship)
@@ -62,9 +62,9 @@ public static class FleetPresentation
     }
     public static string ShipName(ShipDefinition ship) => !string.IsNullOrWhiteSpace(ship.Label) ? ship.Label : ship.Id switch
     {
-        "core:kushan-interceptor" or "core:taiidan-interceptor" => "Перехватчики",
-        "core:kushan-frigate" or "core:taiidan-frigate" => "Штурмовые фрегаты",
-        "tutorial:scouts" => "Учебные перехватчики", "tutorial:frigate" => "Учебный фрегат", _ => ship.Name
+        "core:kushan-interceptor" or "core:taiidan-interceptor" => "Interceptors",
+        "core:kushan-frigate" or "core:taiidan-frigate" => "Assault frigates",
+        "tutorial:scouts" => "Training Interceptors", "tutorial:frigate" => "Training frigate", _ => ship.Name
     };
     public static int UnitNumber(ContentCatalog content, BattleState state, BattleUnit unit)
     {
@@ -72,12 +72,12 @@ public static class FleetPresentation
         return int.TryParse(unit.Id.AsSpan(unit.Id.LastIndexOf('-') + 1), out int index) ? Math.Max(1, index - offset + 1) : 1;
     }
     public static string UnitName(ContentCatalog content, BattleState state, BattleUnit unit) =>
-        unit.Id.StartsWith("terrain:") ? ShipName(content.Ships[unit.Definition]) : $"{ShipName(content.Ships[unit.Definition])} №{UnitNumber(content, state, unit)}" + (unit.Hulk ? " · дрейфующий остов" : "");
+        unit.Id.StartsWith("terrain:") ? ShipName(content.Ships[unit.Definition]) : $"{ShipName(content.Ships[unit.Definition])} №{UnitNumber(content, state, unit)}" + (unit.Hulk ? " · drifting hulk" : "");
     public static string ObjectName(ObjectDefinition obj) => !string.IsNullOrWhiteSpace(obj.Label) ? obj.Label : obj.Id switch
     {
-        "core:asteroids" => "Астероиды", "core:planet" => "Планета", _ => obj.Name
+        "core:asteroids" => "asteroids", "core:planet" => "Planet", _ => obj.Name
     };
     public static string ObjectEffects(ObjectDefinition obj) =>
-        (obj.BlocksMovement ? "Нельзя пройти; перекрывает огонь." : $"Стоимость движения: {obj.MoveCost}.") +
-        (obj.AttackPenalty > 0 ? $" Штраф к кубикам атаки: {obj.AttackPenalty}." : "");
+        (obj.BlocksMovement ? "Impassable; blocks firing lines." : $"Movement cost: {obj.MoveCost}.") +
+        (obj.AttackPenalty > 0 ? $" Attack dice penalty: {obj.AttackPenalty}." : "");
 }

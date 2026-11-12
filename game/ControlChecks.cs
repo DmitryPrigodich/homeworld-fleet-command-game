@@ -35,11 +35,11 @@ public partial class Main
             string ReadSave(bool campaign) => System.IO.File.Exists(SavePath(campaign)) ? System.IO.File.ReadAllText(SavePath(campaign)) : "";
             string skirmish = ReadSave(false), campaign = ReadSave(true);
             string objects = string.Join(',', _content.Objects.Keys.Order());
-            Press("ОБУЧЕНИЕ"); await Frame(); await Frame();
+            Press("TUTORIAL"); await Frame(); await Frame();
             Check(_tutorial?.Step == TutorialStep.Welcome, "main menu opens dedicated tutorial");
             Check(!_annotations.ShowNames && _annotations.GetChildren().OfType<PanelContainer>().All(p => p.TooltipText == ""),
                 "battlefield names and hover text start hidden while tactical icons remain");
-            Press("НАЧАТЬ ОБУЧЕНИЕ"); await Frame(); await Frame();
+            Press("START TUTORIAL"); await Frame(); await Frame();
             var before = _camera.Transform;
             InputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Right, Pressed = true, Position = new(650, 450) });
             InputEvent(new InputEventMouseMotion { Position = new(700, 470), Relative = new(50, 20), ButtonMask = MouseButtonMask.Right });
@@ -83,23 +83,23 @@ public partial class Main
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "tutorial-move.png"));
             await ClickCell(TutorialLesson.Destination);
             Check(_tutorial?.Step == TutorialStep.EndTurn && _state?.ActiveSide == 0, "highlighted move and passive opponent advance lesson");
-            Check(_eventLog.Text.Contains("перемещение") && _eventLog.Text.Contains("приказы пропущены"), "bottom log displays player and training-opponent actions");
+            Check(_eventLog.Text.Contains("moving to hex") && _eventLog.Text.Contains("orders passed"), "bottom log displays player and training-opponent actions");
             Check(_camera.Transform == before, "camera survives an accepted order");
-            Press("ЗАВЕРШИТЬ ХОД"); await Frame(); await Frame();
+            Press("END TURN"); await Frame(); await Frame();
             Check(_tutorial?.Step == TutorialStep.Attack && _state?.Round == 2, "end turn refreshes units for shooting");
             Check(_unitActions.MoveCells.Length == 0 && _unitActions.AttackTargets.SequenceEqual(new[] { TutorialLesson.TargetId }),
                 "tutorial shooting step highlights the legal target from the current position");
-            Press("АТАКА"); await Frame(); await Frame();
+            Press("ATTACK"); await Frame(); await Frame();
             int sequence = _state!.Sequence;
             await ClickCell(new(2, 2));
             Check(_state.Sequence == sequence, "attack mode does not move to an empty hex");
             await ClickCell(new(4, 2));
             Check(_tutorial?.Step == TutorialStep.Complete, "target click completes the guided lesson");
-            Check(_eventLog.Text.Contains("Броски:") && _eventLog.Text.Contains("Потери цели:") && !_eventLog.Text.Contains(TutorialLesson.ScoutId),
+            Check(_eventLog.Text.Contains("Rolls:") && _eventLog.Text.Contains("Target losses:") && !_eventLog.Text.Contains(TutorialLesson.ScoutId),
                 "battle log shows dice and losses with readable unit names");
             Check(skirmish == ReadSave(false) && campaign == ReadSave(true), "tutorial leaves existing saves untouched");
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "tutorial-complete.png"));
-            Press("ГЛАВНОЕ МЕНЮ"); await Frame(); await Frame();
+            Press("MAIN MENU"); await Frame(); await Frame();
             Check(_tutorial == null && _state == null && !_orbitDragging, "leaving tutorial resets control state");
             Check(string.Join(',', _content.Objects.Keys.Order()) == objects && !_content.Maps.ContainsKey(TutorialLesson.MapId), "tutorial content cannot change later generated maps");
             GD.Print("CONTROLS_CHECKS_OK"); GetTree().Quit();

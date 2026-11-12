@@ -41,14 +41,14 @@ public static class FleetEconomy
     }
     internal static CommandResult Harvest(ContentCatalog c, BattleState s, int side, BattleCommand cmd)
     {
-        if (!Targets(c, s, side, cmd.Unit).Contains(cmd.Object)) return new(false, "Выберите несобранное поле в пределах Harvest.", s);
+        if (!Targets(c, s, side, cmd.Unit).Contains(cmd.Object)) return new(false, "Choose an unharvested field within Harvest range.", s);
         var deposit = s.Deposits![cmd.Object];
-        if (s.Units.Single(u => u.Id == cmd.Unit).Cargo > 1000000 - deposit.Stars) return new(false, "Слишком большой груз ресурсов.", s);
+        if (s.Units.Single(u => u.Id == cmd.Unit).Cargo > 1000000 - deposit.Stars) return new(false, "Resource cargo is too large.", s);
         var deposits = new Dictionary<int, AsteroidDeposit>(s.Deposits) { [cmd.Object] = deposit with { Harvested = true } };
         var next = s with { Deposits = deposits, Units = s.Units.Select(u => u.Id == cmd.Unit ? u with { Cargo = u.Cargo + deposit.Stars } : u).ToList(),
             Harvested0 = s.Harvested0 + (side == 0 ? deposit.Stars : 0), Harvested1 = s.Harvested1 + (side == 1 ? deposit.Stars : 0) };
         next = FleetObjectives.Check(c, next);
-        return SpecialOrders.Advance(c, s, next, side, $"Добыто ресурсов: {deposit.Stars} ★. Астероиды остаются на поле.");
+        return SpecialOrders.Advance(c, s, next, side, $"Resources harvested: {deposit.Stars} ★. Asteroids remain on the battlefield.");
     }
     internal static CommandResult BeginTransfer(ContentCatalog c, BattleState s, int side, BattleCommand cmd)
     {
@@ -56,7 +56,7 @@ public static class FleetEconomy
         var other = s.Units.Find(u => u.Id == cmd.Target && u.Side == side && !u.Hulk && u.Patrol == ""); var cards = s.Cards!;
         if (!FleetRuleTools.Enabled(c, s) || side != s.ActiveSide || actor == null || other == null || FleetFootprint.Distance(c, actor, other) != 1
             || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(cmd.Card) || (side == 0 ? s.Orders0 : s.Orders1) >= FleetRuleTools.PlayLimit(c, s, side)
-            || cmd.Amount < 1 || cmd.Amount > (cmd.Receive ? other.Cargo : actor.Cargo) || cmd.Amount > 1000000 - (cmd.Receive ? actor.Cargo : other.Cargo)) return new(false, "Передача требует готовый отряд, соседний союзный корабль и доступные ресурсы.", s);
+            || cmd.Amount < 1 || cmd.Amount > (cmd.Receive ? other.Cargo : actor.Cargo) || cmd.Amount > 1000000 - (cmd.Receive ? actor.Cargo : other.Cargo)) return new(false, "Transfer requires a ready unit, an adjacent allied ship and available resources.", s);
         var next = s with { Sequence = s.Sequence + 1, Units = s.Units.Select(u => u.Id == actor.Id ? FleetRuleTools.NewOrder(u) with { Activated = true } : u).ToList(),
             Orders0 = s.Orders0 + (side == 0 ? 1 : 0), Orders1 = s.Orders1 + (side == 1 ? 1 : 0),
             Cards = cards with { Hand0 = cards.Hand0.Where(id => id != cmd.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != cmd.Card).ToArray(), Discard = cards.Discard.Append(cmd.Card).ToArray(),
@@ -68,11 +68,11 @@ public static class FleetEconomy
     {
         var cmd = s.Cards!.Pending!.Deferred!; var actor = s.Units.Single(u => u.Id == cmd.Unit); var other = s.Units.Single(u => u.Id == cmd.Target);
         // Terrain resolves before cargo moves. A destroyed/disabled actor cancels its action.
-        if (actor.Hulk || cmd.Amount > (cmd.Receive ? other.Cargo : actor.Cargo)) return SpecialOrders.Advance(c, before, s, actor.Side, message + " Передача отменена.");
+        if (actor.Hulk || cmd.Amount > (cmd.Receive ? other.Cargo : actor.Cargo)) return SpecialOrders.Advance(c, before, s, actor.Side, message + " Transfer cancelled.");
         int delta = cmd.Receive ? cmd.Amount : -cmd.Amount;
         var next = s with { Cards = s.Cards with { Pending = s.Cards.Pending with { Deferred = null } },
             Units = s.Units.Select(u => u.Id == actor.Id ? u with { Cargo = u.Cargo + delta } : u.Id == other.Id ? u with { Cargo = u.Cargo - delta } : u).ToList() };
-        return SpecialOrders.Advance(c, before, next, actor.Side, message + $" Передано ресурсов: {cmd.Amount} ★.");
+        return SpecialOrders.Advance(c, before, next, actor.Side, message + $" Resources transferred: {cmd.Amount} ★.");
     }
     internal static void Validate(ContentCatalog c, BattleState s)
     {

@@ -46,7 +46,7 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
             }
         }
         var state = new BattleState(mapId, content.Fingerprint, units, Reserves: reserves.Count == 0 ? null : reserves, NextUnit: counter, Funds0: map.ReserveStars?[0] ?? 0, Funds1: map.ReserveStars?[1] ?? 0, RandomState: seed == 0 ? 1u : seed,
-            Log: [new(0, 1, -1, "Бой начался."), new(1, 1, 0, "Первый приказ.")]);
+            Log: [new(0, 1, -1, "Battle started."), new(1, 1, 0, "First order.")]);
         state = FleetEconomy.Initialize(content, state);
         state = content.Rules[map.Rules].Handler == "cards-basic-v1" ? BasicCardRules.Initialize(state, content) : state;
         return FleetObjectives.Refresh(content, ScenarioEvents.Process(content, state, "round-start"));
@@ -54,7 +54,7 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
 
     public CommandResult Apply(BattleState state, int side, BattleCommand command)
     {
-        if (state.ContentFingerprint != content.Fingerprint) return new(false, "Набор игровых данных не совпадает.", state);
+        if (state.ContentFingerprint != content.Fingerprint) return new(false, "Game content does not match.", state);
         var result = _modules[content.Rules[content.Maps[state.Map].Rules].Handler].Apply(content, state, side, command);
         if (!result.Accepted) return result;
         var settled = FleetObjectives.Check(content, ScenarioEvents.Prune(FleetCap.Sync(state, result.State)));
@@ -117,8 +117,8 @@ public sealed class SkirmishRules : IRuleModule
     public CommandResult Apply(ContentCatalog c, BattleState original, int side, BattleCommand cmd)
     {
         CommandResult Reject(string text) => new(false, text, original);
-        if (original.Finished) return Reject("Бой уже завершён.");
-        if (side != original.ActiveSide) return Reject("Дождись своего хода.");
+        if (original.Finished) return Reject("The battle is already over.");
+        if (side != original.ActiveSide) return Reject("Wait for your turn.");
         var map = c.Maps[original.Map];
         var rules = c.Rules[map.Rules];
         var state = original with { Units = [.. original.Units] };
@@ -129,23 +129,23 @@ public sealed class SkirmishRules : IRuleModule
         if (cmd.Kind == "pass")
         {
             state = side == 0 ? state with { Orders0 = FleetRuleTools.PlayLimit(c, state, 0) } : state with { Orders1 = FleetRuleTools.PlayLimit(c, state, 1) };
-            message = "Оставшиеся приказы пропущены.";
+            message = "Remaining orders passed.";
         }
         else
         {
-            if (unit is null || unit.Side != side) return Reject("Выбери своё подразделение.");
-            if (unit.Activated || unit.Hulk) return Reject("Это подразделение уже выполнило приказ или является дрейфующим остовом.");
-            if (Remaining(side) <= 0) return Reject("Приказы на этот раунд закончились.");
+            if (unit is null || unit.Side != side) return Reject("Select one of your units.");
+            if (unit.Activated || unit.Hulk) return Reject("This unit has already acted or is a drifting hulk.");
+            if (Remaining(side) <= 0) return Reject("No orders remaining this round.");
             var definition = c.Ships[unit.Definition];
             var abilities = (definition.Abilities ?? []).Select(a => c.Abilities[a]).ToArray();
             if (cmd.Kind == "move")
             {
                 var goal = new Hex(cmd.Q, cmd.R);
                 if (!Inside(goal) || goal == new Hex(unit.Q, unit.R) || SkirmishGeometry.Blocked(c, map, goal) || state.Units.Any(u => u.Q == goal.Q && u.R == goal.R))
-                    return Reject("Клетка занята, непроходима или находится за границей поля.");
-                if (!SkirmishGeometry.Movement(c, original, unit).Contains(goal)) return Reject("До этой клетки не хватает движения или нет свободного пути.");
+                    return Reject("The hex is occupied, impassable or outside the battlefield.");
+                if (!SkirmishGeometry.Movement(c, original, unit).Contains(goal)) return Reject("Not enough movement to reach that hex, or no clear path.");
                 unit = unit with { Q = cmd.Q, R = cmd.R, Facing = (cmd.Facing % 6 + 6) % 6 };
-                message = $"{FleetPresentation.UnitName(c, original, unit)}: перемещение в клетку ({cmd.Q + 1}, {cmd.R + 1}).";
+                message = $"{FleetPresentation.UnitName(c, original, unit)}: moving to hex ({cmd.Q + 1}, {cmd.R + 1}).";
             }
             else if (cmd.Kind == "attack")
             {
@@ -170,11 +170,11 @@ public sealed class SkirmishRules : IRuleModule
                 state.Units.Remove(target);
                 if (target.Models > killed) state.Units.Add(target with { Models = target.Models - killed, FocusFire = Math.Max(0, target.FocusFire + focus - killed) });
                 state = state with { RandomState = random };
-                message = $"{FleetPresentation.UnitName(c, original, unit)} → противник: {FleetPresentation.UnitName(c, original, target)}. " +
-                    $"Броски: [{string.Join(", ", rolls)}]. Потери цели: {Math.Min(killed, target.Models)}; осталось: {Math.Max(0, target.Models - killed)}." +
-                    (focus > 0 ? $" Метки сосредоточенного огня: +{focus}." : "") + (killed >= target.Models ? " Подразделение уничтожено." : "");
+                message = $"{FleetPresentation.UnitName(c, original, unit)} → enemy: {FleetPresentation.UnitName(c, original, target)}. " +
+                    $"Rolls: [{string.Join(", ", rolls)}]. Target losses: {Math.Min(killed, target.Models)}; remaining: {Math.Max(0, target.Models - killed)}." +
+                    (focus > 0 ? $" Focus Fire tokens: +{focus}." : "") + (killed >= target.Models ? " Unit destroyed." : "");
             }
-            else return Reject("Неизвестный приказ.");
+            else return Reject("Unknown order.");
             state.Units.RemoveAll(u => u.Id == unit.Id);
             state.Units.Add(unit with { Activated = true });
             state = side == 0 ? state with { Orders0 = state.Orders0 + 1 } : state with { Orders1 = state.Orders1 + 1 };

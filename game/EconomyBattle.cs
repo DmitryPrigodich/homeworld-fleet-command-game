@@ -20,9 +20,9 @@ public partial class Main
     private string DepositDescription(int index)
     {
         if (_state == null || _state.Deposits == null || !_state.Deposits.TryGetValue(index, out var deposit)) return "";
-        if (deposit.Harvested) return $"Собрано: {deposit.Stars} ★. Повторная добыча невозможна.";
+        if (deposit.Harvested) return $"Harvested: {deposit.Stars} ★. Cannot be harvested again.";
         int? known = FleetEconomy.KnownStars(_state, index, LocalCommandSide);
-        return known.HasValue ? $"Запасы: {known.Value} ★ (разведано вашим флотом)." : "Запасы неизвестны. Разведчик раскрывает соседние поля после движения.";
+        return known.HasValue ? $"Resources: {known.Value} ★ (surveyed by your fleet)." : "Resources unknown. A survey ship reveals adjacent fields after moving.";
     }
     private bool TryHarvestObject(MapObject placement)
     {
@@ -35,37 +35,37 @@ public partial class Main
     {
         if (!FleetBattle || unit == null) return;
         var ship = _content.Ships[unit.Definition];
-        if (unit.Cargo > 0 || ship.Harvest >= 0) Text(parent, $"Груз ресурсов: {unit.Cargo} ★" + (ship.Harvest >= 0 ? $"\nHarvest {ship.Harvest}" : "") + (ship.Survey ? " · Survey" : ""), 14);
+        if (unit.Cargo > 0 || ship.Harvest >= 0) Text(parent, $"Resource cargo: {unit.Cargo} ★" + (ship.Harvest >= 0 ? $"\nHarvest {ship.Harvest}" : "") + (ship.Survey ? " · Survey" : ""), 14);
         if (_state!.Cards?.Pending is { BasicAction: "harvest" } order && order.Side == LocalCommandSide && SpecialOrders.Actor(order) == unit.Id && !FleetDecision && _state.Cards.Response == null)
         {
-            if (order.Step == 0) Text(parent, "Сначала можно бесплатно переместиться. Чтобы добывать с места, пропусти это действие слева.", 14);
+            if (order.Step == 0) Text(parent, "You may first move for free. To harvest in place, skip this action on the left.", 14);
             else
             {
                 var targets = FleetEconomy.Targets(_content, _state, LocalCommandSide, unit.Id);
-                Text(parent, "Выбери астероиды на карте или кнопкой. Чужие корабли добыче не мешают.", 14);
+                Text(parent, "Choose asteroids on the field or with a button. Other ships do not prevent harvesting.", 14);
                 foreach (int index in targets)
                 {
                     int target = index; var field = _content.Maps[_state.Map].Objects[index]; int? known = FleetEconomy.KnownStars(_state, index, LocalCommandSide);
-                    Button(parent, $"ДОБЫТЬ: {field.Q + 1}, {field.R + 1} · " + (known.HasValue ? known.Value + " ★" : "? ★"), () => Submit(new("harvest", unit.Id, Object: target)));
+                    Button(parent, $"HARVEST: {field.Q + 1}, {field.R + 1} · " + (known.HasValue ? known.Value + " ★" : "? ★"), () => Submit(new("harvest", unit.Id, Object: target)));
                 }
-                if (targets.Length == 0) Text(parent, "Несобранных полей в пределах Harvest нет. Можно завершить приказ.", 13);
+                if (targets.Length == 0) Text(parent, "No unharvested fields within Harvest range. You may finish the order.", 13);
             }
             return;
         }
         if (FleetDecision || unit.Side != LocalCommandSide || unit.Activated || unit.Hulk || unit.Patrol != "" || _state.ActiveSide != LocalCommandSide || _state.Cards is not { Phase: "orders", Pending: null, Response: null }) return;
-        if (ship.Harvest >= 0) Button(parent, "ДОБЫЧА РЕСУРСОВ", () => ChooseBattleAction("harvest"));
+        if (ship.Harvest >= 0) Button(parent, "RESOURCE HARVESTING", () => ChooseBattleAction("harvest"));
         var neighbors = _state.Units.Where(u => u.Side == unit.Side && !u.Hulk && u.Patrol == "" && new Hex(u.Q, u.R).Distance(new(unit.Q, unit.R)) == 1 && (unit.Cargo > 0 || u.Cargo > 0)).ToArray();
         if (neighbors.Length == 0) return;
-        Text(parent, "ПЕРЕДАЧА РЕСУРСОВ", 14, _colors.Highlight);
+        Text(parent, "RESOURCE TRANSFER", 14, _colors.Highlight);
         if (!neighbors.Any(u => u.Id == _cargoTarget)) _cargoTarget = neighbors[0].Id;
         var other = neighbors.Single(u => u.Id == _cargoTarget);
         var targetsMenu = new OptionButton(); foreach (var target in neighbors) targetsMenu.AddItem(FleetPresentation.UnitName(_content, _state, target) + $" · {target.Cargo} ★");
         targetsMenu.Select(Array.FindIndex(neighbors, u => u.Id == _cargoTarget)); targetsMenu.ItemSelected += i => { _cargoTarget = neighbors[(int)i].Id; DrawBattle(); }; parent.AddChild(targetsMenu);
-        var receive = new CheckBox { Text = "Забрать у соседа", ButtonPressed = _cargoReceive };
+        var receive = new CheckBox { Text = "Take from neighbor", ButtonPressed = _cargoReceive };
         receive.Toggled += value => { _cargoReceive = value; DrawBattle(); }; parent.AddChild(receive);
         int maximum = _cargoReceive ? other.Cargo : unit.Cargo; _cargoAmount = Math.Clamp(_cargoAmount, 1, Math.Max(1, maximum));
-        var amount = new SpinBox { MinValue = 1, MaxValue = Math.Max(1, maximum), Step = 1, Value = _cargoAmount, Prefix = "Ресурсы: " }; amount.ValueChanged += value => _cargoAmount = (int)value; parent.AddChild(amount);
-        Text(parent, "Одна карта и один Play. Активируется выбранный корабль; сосед может уже действовать.", 12, _colors.Muted);
-        Button(parent, "ПЕРЕДАТЬ РЕСУРСЫ", () => Submit(new("transfer-stars", unit.Id, _cargoTarget, Amount: _cargoAmount, Receive: _cargoReceive, Repair: _repairChoice)), maximum == 0);
+        var amount = new SpinBox { MinValue = 1, MaxValue = Math.Max(1, maximum), Step = 1, Value = _cargoAmount, Prefix = "Resources: " }; amount.ValueChanged += value => _cargoAmount = (int)value; parent.AddChild(amount);
+        Text(parent, "One card and one Play. The selected ship activates; its neighbor may already be activated.", 12, _colors.Muted);
+        Button(parent, "TRANSFER RESOURCES", () => Submit(new("transfer-stars", unit.Id, _cargoTarget, Amount: _cargoAmount, Receive: _cargoReceive, Repair: _repairChoice)), maximum == 0);
     }
 }

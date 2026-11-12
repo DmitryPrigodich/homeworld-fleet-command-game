@@ -18,28 +18,28 @@ public partial class Main
             void Press(string text) { var b = Nodes(_ui).OfType<Button>().Single(b => b.Text == text); Require(!b.Disabled, "Enabled: " + text); b.EmitSignal(BaseButton.SignalName.Pressed); }
             void Position(string label)
             {
-                var dropdown = Nodes(_ui).OfType<OptionButton>().Single(o => o.ItemCount > 0 && o.GetItemText(0).StartsWith("Гекс "));
+                var dropdown = Nodes(_ui).OfType<OptionButton>().Single(o => o.ItemCount > 0 && o.GetItemText(0).StartsWith("Hex "));
                 int index = Enumerable.Range(0, dropdown.ItemCount).Single(i => dropdown.GetItemText(i) == label); dropdown.Select(index); dropdown.EmitSignal(OptionButton.SignalName.ItemSelected, index);
             }
-            SinglePlayerMenu(); await Frames(); Press("АНГАРЫ И ПОДКРЕПЛЕНИЯ"); _bot = false; await Frames();
+            SinglePlayerMenu(); await Frames(); Press("BAYS AND REINFORCEMENTS"); _bot = false; await Frames();
             Require(_state!.Map == BasicCardBattle.LogisticsMapId && _state.Units.Count == 4 && _state.Reserves!.Count == 6, "Logistics map keeps reserves off the battlefield");
-            ConfigureLogisticsBattle(); SelectUnit("s1-5"); await Frames(); Press("ВЫПУСТИТЬ ИЗ АНГАРА"); await Frames();
+            ConfigureLogisticsBattle(); SelectUnit("s1-5"); await Frames(); Press("LAUNCH FROM BAY"); await Frames();
             string snapshot = _engine.Save(_state!); SaveGame(); LoadGame(false); await Frames(); Require(_engine.Save(_state!) == snapshot, "Paid launch order restores before placement");
             Require(_world.GetChildren().OfType<MeshInstance3D>().Any(n => n.Name == "ReinforceHighlights"), "Legal placement cells are highlighted on the field");
-            Position("Гекс 9, 3"); Press("РАЗМЕСТИТЬ НА ПОЛЕ"); await Frames();
+            Position("Hex 9, 3"); Press("PLACE ON FIELD"); await Frames();
             Require(_state!.Units.Any(u => u.Id == "s1-6" && u.Activated) && _state.Units.Single(u => u.Id == "s1-5") is { Activated: false, Launches: 1 }, "Launch activates only the arriving squadron");
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "logistics-launch.png"));
-            Press("ЗАВЕРШИТЬ ПРИКАЗ"); ApplyCommand(0, new("pass")); SelectUnit("s1-5"); await Frames(); Press("ПРОИЗВОДСТВО"); await Frames();
-            var production = Nodes(_ui).OfType<OptionButton>().Single(o => Enumerable.Range(0, o.ItemCount).Any(i => o.GetItemText(i) == "Учебное звено · 2 ★"));
-            int wing = Enumerable.Range(0, production.ItemCount).Single(i => production.GetItemText(i) == "Учебное звено · 2 ★"); production.Select(wing); production.EmitSignal(OptionButton.SignalName.ItemSelected, (long)wing); await Frames();
-            Nodes(_ui).OfType<SpinBox>().Single(s => s.Prefix == "Из резерва: ").Value = 1;
-            Nodes(_ui).OfType<CheckBox>().Single(b => b.Text == "Построить в ангар").ButtonPressed = true; await Frames(); Press("ПОСТРОИТЬ В АНГАР"); await Frames();
+            Press("FINISH ORDER"); ApplyCommand(0, new("pass")); SelectUnit("s1-5"); await Frames(); Press("PRODUCTION"); await Frames();
+            var production = Nodes(_ui).OfType<OptionButton>().Single(o => Enumerable.Range(0, o.ItemCount).Any(i => o.GetItemText(i) == "Training wing · 2 ★"));
+            int wing = Enumerable.Range(0, production.ItemCount).Single(i => production.GetItemText(i) == "Training wing · 2 ★"); production.Select(wing); production.EmitSignal(OptionButton.SignalName.ItemSelected, (long)wing); await Frames();
+            Nodes(_ui).OfType<SpinBox>().Single(s => s.Prefix == "From reserve: ").Value = 1;
+            Nodes(_ui).OfType<CheckBox>().Single(b => b.Text == "Build into bay").ButtonPressed = true; await Frames(); Press("BUILD INTO BAY"); await Frames();
             Require(_state!.Reserves!.Any(u => u.Id == "s1-10" && u.Activated && u.Embarked == "s1-5") && _state.Funds1 == 2 && _state.Units.Single(u => u.Id == "s1-5").Cargo == 5, "Factory pays exact cargo/reserve cost and stores the built unit in a bay");
-            SelectUnit("s1-8"); await Frames(); Press("ВВЕСТИ ИЗ РЕЗЕРВА"); await Frames(); Position("Гекс 10, 1"); Press("РАЗМЕСТИТЬ НА ПОЛЕ"); await Frames();
+            SelectUnit("s1-8"); await Frames(); Press("DEPLOY FROM RESERVE"); await Frames(); Position("Hex 10, 1"); Press("PLACE ON FIELD"); await Frames();
             Require(_state!.Units.Any(u => u.Id == "s1-8" && u.Q == 9 && u.R == 0) && _state.Round == 2 && _state.Units.Single(u => u.Id == "s1-5").Launches == 0, "Reserve placement finishes the round and resets the launch limit");
             snapshot = _engine.Save(_state); SaveGame(); LoadGame(false); await Frames(); Require(_engine.Save(_state!) == snapshot, "Off-board units, costs and identities survive save/load");
             StartBattle(BasicCardBattle.LogisticsMapId, false, persist: false); ConfigureLogisticsBattle(); SelectUnit("s1-9"); await Frames();
-            Press("В АНГАР: Учебный носитель №1"); await Frames(); Require(!_state!.Units.Any(u => u.Id == "s1-9") && _state.Reserves!.Any(u => u.Id == "s1-9" && u.Embarked == "s1-5"), "Embark button moves a strike unit into the chosen bay");
+            Press("INTO BAY: Training carrier №1"); await Frames(); Require(!_state!.Units.Any(u => u.Id == "s1-9") && _state.Reserves!.Any(u => u.Id == "s1-9" && u.Embarked == "s1-5"), "Embark button moves a strike unit into the chosen bay");
             GD.Print("LOGISTICS_UI_OK"); GetTree().Quit();
         }
         catch (Exception e) { GD.PushError(e.ToString()); GetTree().Quit(1); }

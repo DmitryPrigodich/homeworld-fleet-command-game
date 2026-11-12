@@ -17,61 +17,61 @@ public static class BasicCardBattle
     public static void Register(ContentCatalog c)
     {
         c.Rules["practice:cards"] = new("practice:cards", "Basic card practice", "cards-basic-v1", OrdersPerSide: 1, RearShots: false);
-        c.Maps[MapId] = c.Maps["core:training"] with { Id = MapId, Name = "Учебный бой с картами", Rules = "practice:cards" };
+        c.Maps[MapId] = c.Maps["core:training"] with { Id = MapId, Name = "Training card battle", Rules = "practice:cards" };
         c.Rules[TabletopMapId] = new(TabletopMapId, "Rulebook mechanics", "cards-basic-v1", OrdersPerSide: 1, Tabletop: true);
-        c.Maps[TabletopMapId] = c.Maps["core:training"] with { Id = TabletopMapId, Name = "Бой по правилам / разработка", Rules = TabletopMapId };
-        c.Objects["practice:mines"] = new("practice:mines", "Минное поле", Kind: "mine", Color: "#9a8782");
-        c.Maps[TerrainMapId] = c.Maps[TabletopMapId] with { Id = TerrainMapId, Name = "Мины и астероиды", Objects = [new("practice:mines", 3, 2), new("core:asteroids", 4, 2), new("core:asteroids", 3, 3), new("core:planet", 5, 3)] };
+        c.Maps[TabletopMapId] = c.Maps["core:training"] with { Id = TabletopMapId, Name = "Rulebook battle / development", Rules = TabletopMapId };
+        c.Objects["practice:mines"] = new("practice:mines", "minefield", Kind: "mine", Color: "#9a8782");
+        c.Maps[TerrainMapId] = c.Maps[TabletopMapId] with { Id = TerrainMapId, Name = "Mines and asteroids", Objects = [new("practice:mines", 3, 2), new("core:asteroids", 4, 2), new("core:asteroids", 3, 3), new("core:planet", 5, 3)] };
         foreach (string faction in new[] { "kushan", "taiidan" })
         {
             string id = "practice:" + faction + "-collector";
-            c.Ships[id] = c.Ships["core:" + faction + "-frigate"] with { Id = id, Name = "Учебный сборщик / " + faction, Label = "Учебный сборщик", Models = 1, Move = 3, Class = "frigate", Harvest = 2, Survey = true, Weapons = [], DicePerModel = 0, Range = 0 };
+            c.Ships[id] = c.Ships["core:" + faction + "-frigate"] with { Id = id, Name = "Training collector / " + faction, Label = "Training collector", Models = 1, Move = 3, Class = "frigate", Harvest = 2, Survey = true, Weapons = [], DicePerModel = 0, Range = 0 };
             var fleet = c.Fleets["core:" + faction + "-patrol"];
             c.Fleets["practice:" + faction + "-economy"] = fleet with { Id = "practice:" + faction + "-economy", Units = fleet.Units.Select((u, i) => i == 0 ? u with { Ship = id } : u).ToArray() };
         }
-        c.Maps[EconomyMapId] = c.Maps[TabletopMapId] with { Id = EconomyMapId, Name = "Разведка и добыча / учебный бой", Fleets = ["practice:kushan-economy", "practice:taiidan-economy"],
+        c.Maps[EconomyMapId] = c.Maps[TabletopMapId] with { Id = EconomyMapId, Name = "Survey and harvest / training battle", Fleets = ["practice:kushan-economy", "practice:taiidan-economy"],
             Objects = [new("core:asteroids", 3, 2), new("core:asteroids", 4, 4), new("core:asteroids", 6, 2)], AsteroidStars = [0, 2, 3] };
         foreach (string faction in new[] { "kushan", "taiidan" })
         {
             string carrier = "practice:" + faction + "-carrier", wing = "practice:" + faction + "-wing", frigate = "practice:" + faction + "-reserve-frigate";
-            c.Ships[carrier] = c.Ships["core:" + faction + "-frigate"] with { Id = carrier, Name = "Учебный носитель", Label = "Учебный носитель", Class = "capital", Models = 1, Stars = 5, Bays = 3, LaunchTubes = 2, Factory = ["fighter", "corvette"] };
-            c.Ships[wing] = c.Ships["core:" + faction + "-interceptor"] with { Id = wing, Name = "Учебное звено", Label = "Учебное звено", Class = "fighter", Models = 3, Stars = 2, Abilities = [], Weapons = [new("gun", "Пушки", 1, 1)] };
-            c.Ships[frigate] = c.Ships["core:" + faction + "-frigate"] with { Id = frigate, Name = "Резервный фрегат", Label = "Резервный фрегат", Models = 1, Stars = 3, Class = "frigate" };
+            c.Ships[carrier] = c.Ships["core:" + faction + "-frigate"] with { Id = carrier, Name = "Training carrier", Label = "Training carrier", Class = "capital", Models = 1, Stars = 5, Bays = 3, LaunchTubes = 2, Factory = ["fighter", "corvette"] };
+            c.Ships[wing] = c.Ships["core:" + faction + "-interceptor"] with { Id = wing, Name = "Training wing", Label = "Training wing", Class = "fighter", Models = 3, Stars = 2, Abilities = [], Weapons = [new("gun", "Cannons", 1, 1)] };
+            c.Ships[frigate] = c.Ships["core:" + faction + "-frigate"] with { Id = frigate, Name = "Reserve frigate", Label = "Reserve frigate", Models = 1, Stars = 3, Class = "frigate" };
             int q = faction == "kushan" ? 1 : 8, facing = faction == "kushan" ? 0 : 3;
             string fleet = "practice:" + faction + "-logistics";
-            c.Fleets[fleet] = new(fleet, "Учебные подкрепления", [new(carrier, q, 3, facing, Cargo: 6), new(wing, -1, -1, EmbarkedOn: 0), new(wing, -1, -1, EmbarkedOn: 0), new(frigate, -1, -1, facing, Reserve: true), new(wing, q + (facing == 0 ? 1 : -1), 3, facing)]);
+            c.Fleets[fleet] = new(fleet, "Training reinforcements", [new(carrier, q, 3, facing, Cargo: 6), new(wing, -1, -1, EmbarkedOn: 0), new(wing, -1, -1, EmbarkedOn: 0), new(frigate, -1, -1, facing, Reserve: true), new(wing, q + (facing == 0 ? 1 : -1), 3, facing)]);
         }
-        c.Maps[LogisticsMapId] = c.Maps[TabletopMapId] with { Id = LogisticsMapId, Name = "Ангары и подкрепления / учебный бой", Fleets = ["practice:kushan-logistics", "practice:taiidan-logistics"], Objects = [new("core:asteroids", 4, 2)], ReserveStars = [3, 3] };
+        c.Maps[LogisticsMapId] = c.Maps[TabletopMapId] with { Id = LogisticsMapId, Name = "Bays and reinforcements / training battle", Fleets = ["practice:kushan-logistics", "practice:taiidan-logistics"], Objects = [new("core:asteroids", 4, 2)], ReserveStars = [3, 3] };
         foreach (string faction in new[] { "kushan", "taiidan" })
         {
             string boarding = "practice:" + faction + "-boarder";
-            c.Ships[boarding] = c.Ships["core:" + faction + "-frigate"] with { Id = boarding, Name = "Учебный абордажник", Label = "Абордажный фрегат", Class = "frigate", Models = 1, Crew = 3, Stars = 3, Success = 4 };
+            c.Ships[boarding] = c.Ships["core:" + faction + "-frigate"] with { Id = boarding, Name = "Training boarding ship", Label = "Boarding frigate", Class = "frigate", Models = 1, Crew = 3, Stars = 3, Success = 4 };
             int q = faction == "kushan" ? 1 : 7, facing = faction == "kushan" ? 0 : 3;
             string fleet = "practice:" + faction + "-objectives";
-            c.Fleets[fleet] = new(fleet, "Учебные цели", [new(boarding, q, 2, facing), new("practice:" + faction + "-collector", q, 4, facing), new("practice:" + faction + "-wing", q + (facing == 0 ? -1 : 1), 3, facing)]);
+            c.Fleets[fleet] = new(fleet, "Training objectives", [new(boarding, q, 2, facing), new("practice:" + faction + "-collector", q, 4, facing), new("practice:" + faction + "-wing", q + (facing == 0 ? -1 : 1), 3, facing)]);
         }
-        c.Ships["practice:station"] = new("practice:station", "Учебная станция", "taiidan", "", 1, 0, 0, 5, 2, 0, Class: "station", Weapons: [], Crew: 2, Stars: 4, VisualSize: 0.8f);
+        c.Ships["practice:station"] = new("practice:station", "Training station", "taiidan", "", 1, 0, 0, 5, 2, 0, Class: "station", Weapons: [], Crew: 2, Stars: 4, VisualSize: 0.8f);
         var defender = c.Fleets["practice:taiidan-objectives"]; c.Fleets[defender.Id] = defender with { Units = defender.Units.Append(new FleetUnit("practice:station", 4, 3, 3)).ToArray() };
-        c.Maps[ObjectivesMapId] = c.Maps[EconomyMapId] with { Id = ObjectivesMapId, Name = "Цели и медали / учебный бой", Fleets = ["practice:kushan-objectives", "practice:taiidan-objectives"], Objectives = [
-            new("harvest", "Собрать 2 звезды ресурсов", 0, "harvest-stars", 1, 2), new("station", "Захватить станцию", 0, "capture", 2, Target: "s1-6", Reversible: true),
-            new("stars", "Уничтожить 3 звезды противника", 1, "destroy-stars", 1, 3), new("boarder", "Уничтожить абордажный фрегат", 1, "destroy-unit", 2, Target: "s0-0") ] };
-        c.Campaigns["practice:objectives"] = new("practice:objectives", "Медали — учебная кампания", "first", [new("first", "Борьба за станцию", ObjectivesMapId, "second"), new("second", "Вторая миссия", ObjectivesMapId)]);
+        c.Maps[ObjectivesMapId] = c.Maps[EconomyMapId] with { Id = ObjectivesMapId, Name = "Objectives and medals / training battle", Fleets = ["practice:kushan-objectives", "practice:taiidan-objectives"], Objectives = [
+            new("harvest", "Harvest 2 resource stars", 0, "harvest-stars", 1, 2), new("station", "Capture the station", 0, "capture", 2, Target: "s1-6", Reversible: true),
+            new("stars", "Destroy 3 enemy stars", 1, "destroy-stars", 1, 3), new("boarder", "Destroy the boarding frigate", 1, "destroy-unit", 2, Target: "s0-0") ] };
+        c.Campaigns["practice:objectives"] = new("practice:objectives", "Medals — training campaign", "first", [new("first", "Battle for the station", ObjectivesMapId, "second"), new("second", "Second mission", ObjectivesMapId)]);
         foreach (string faction in new[] { "kushan", "taiidan" })
         {
             string carrier = "practice:" + faction + "-carrier", wing = "practice:" + faction + "-wing";
             c.Ships[carrier] = c.Ships[carrier] with { Tabs = [new("assigned", "blue", GrantedUnit: wing), new("bay1", "blue"), new("bay2", "blue")] };
-            c.Leaders["practice:" + faction + "-admiral"] = new("practice:" + faction + "-admiral", "Учебный адмирал", faction, ["capital"], Hand: 1, Play: 1, Stars: 2, CoolUnderPressure: 1,
+            c.Leaders["practice:" + faction + "-admiral"] = new("practice:" + faction + "-admiral", "Training admiral", faction, ["capital"], Hand: 1, Play: 1, Stars: 2, CoolUnderPressure: 1,
                 Tabs: [new("command", "yellow", true, ["capital"]), new("frigate", "yellow", Classes: ["frigate"]), new("escort", "blue")]);
-            c.Leaders["practice:" + faction + "-pilot"] = new("practice:" + faction + "-pilot", "Учебный командир звена", faction, ["fighter"], Hand: 1, Stars: 1,
+            c.Leaders["practice:" + faction + "-pilot"] = new("practice:" + faction + "-pilot", "Training squadron commander", faction, ["fighter"], Hand: 1, Stars: 1,
                 Tabs: [new("squadron", "blue", true, ["fighter"]), new("extra", "blue", Classes: ["fighter"])]);
-            c.Leaders["practice:" + faction + "-officer"] = new("practice:" + faction + "-officer", "Учебный офицер", faction, ["capital", "frigate"], Stars: 1, CoolUnderPressure: 1, AttackDice: 1);
+            c.Leaders["practice:" + faction + "-officer"] = new("practice:" + faction + "-officer", "Training officer", faction, ["capital", "frigate"], Stars: 1, CoolUnderPressure: 1, AttackDice: 1);
         }
 
-        c.Ships["practice:large-ship"] = c.Ships["practice:kushan-carrier"] with { Id = "practice:large-ship", Name = "Учебный двухгексный корабль", Label = "Двухгексный корабль", Footprint = 2, Move = 2, Bays = 0, LaunchTubes = 0, Tabs = null, Factory = null };
+        c.Ships["practice:large-ship"] = c.Ships["practice:kushan-carrier"] with { Id = "practice:large-ship", Name = "Training two-hex ship", Label = "Two-hex ship", Footprint = 2, Move = 2, Bays = 0, LaunchTubes = 0, Tabs = null, Factory = null };
         c.Ships["practice:large-taiidan"] = c.Ships["practice:large-ship"] with { Id = "practice:large-taiidan", Faction = "taiidan" };
-        c.Fleets["practice:large-enemy"] = new("practice:large-enemy", "Учебный большой корабль", [new("practice:large-taiidan", 7, 2, 3), new("practice:taiidan-wing", 8, 4, 3)]);
-        c.Fleets["practice:large-fleet"] = new("practice:large-fleet", "Учебный большой корабль", [new("practice:large-ship", 2, 2), new("practice:kushan-wing", 1, 4)]);
-        c.Maps["practice:large"] = c.Maps[TabletopMapId] with { Id = "practice:large", Name = "Двухгексные корабли / учебный бой", Fleets = ["practice:large-fleet", "practice:large-enemy"], Objects = [] };
+        c.Fleets["practice:large-enemy"] = new("practice:large-enemy", "Training large ship", [new("practice:large-taiidan", 7, 2, 3), new("practice:taiidan-wing", 8, 4, 3)]);
+        c.Fleets["practice:large-fleet"] = new("practice:large-fleet", "Training large ship", [new("practice:large-ship", 2, 2), new("practice:kushan-wing", 1, 4)]);
+        c.Maps["practice:large"] = c.Maps[TabletopMapId] with { Id = "practice:large", Name = "Two-hex ships / training battle", Fleets = ["practice:large-fleet", "practice:large-enemy"], Objects = [] };
     }
 }
 
@@ -114,7 +114,7 @@ public sealed class BasicCardRules : IRuleModule
     {
         CommandResult Reject(string text) => new(false, text, state);
         var cards = state.Cards;
-        if (state.Finished || side is < 0 or > 1 || cards == null || cards.IsView) return Reject("Нельзя отдать приказ в этом состоянии.");
+        if (state.Finished || side is < 0 or > 1 || cards == null || cards.IsView) return Reject("You cannot issue an order in this state.");
         if (state.Repairs is { Length: > 0 }) return FleetRepairs.Apply(c, state, side, command);
         if (state.Overrun != null) return FleetClose.Apply(c, state, side, command);
         if (state.Combat != null) return FleetCombat.Apply(c, state, side, command);
@@ -131,25 +131,25 @@ public sealed class BasicCardRules : IRuleModule
         var hand = side == 0 ? cards.Hand0 : cards.Hand1;
         if (cards.Phase == "cleanup")
         {
-            if (command.Kind != "cleanup" || (side == 0 ? cards.Ready0 : cards.Ready1)) return Reject("Подтвердите карты, оставляемые на следующий раунд.");
+            if (command.Kind != "cleanup" || (side == 0 ? cards.Ready0 : cards.Ready1)) return Reject("Confirm the cards you want to retain for the next round.");
             var discards = command.Cards ?? [];
-            if (discards.Distinct().Count() != discards.Length || discards.Any(id => !hand.Contains(id))) return Reject("Можно сбросить только свои карты.");
+            if (discards.Distinct().Count() != discards.Length || discards.Any(id => !hand.Contains(id))) return Reject("You may only discard your own cards.");
             var budgets = FleetRuleTools.Budgets(c, state);
-            if (hand.Length - discards.Length > (side == 0 ? budgets.HandLimit0 : budgets.HandLimit1)) return Reject("Сбросьте лишние карты: уменьшился лимит руки.");
+            if (hand.Length - discards.Length > (side == 0 ? budgets.HandLimit0 : budgets.HandLimit1)) return Reject("Discard excess cards: your hand limit has decreased.");
             cards = cards with { Hand0 = side == 0 ? cards.Hand0.Except(discards).ToArray() : cards.Hand0, Hand1 = side == 1 ? cards.Hand1.Except(discards).ToArray() : cards.Hand1,
                 Ready0 = cards.Ready0 || side == 0, Ready1 = cards.Ready1 || side == 1, Discard = cards.Discard.Concat(discards).ToArray() };
             var next = state with { Cards = cards, Sequence = state.Sequence + 1 };
-            return new(true, "Сохранение руки подтверждено.", cards.Ready0 && cards.Ready1 ? Draw(next, c: c) : next);
+            return new(true, "Hand retention confirmed.", cards.Ready0 && cards.Ready1 ? Draw(next, c: c) : next);
         }
         if (cards.Phase == "initiative")
         {
-            if (command.Kind != "initiative") return Reject("Сначала подтвердите ставку на инициативу.");
-            if (side == 0 ? cards.Ready0 : cards.Ready1) return Reject("Ставка уже подтверждена.");
+            if (command.Kind != "initiative") return Reject("Confirm your initiative bid first.");
+            if (side == 0 ? cards.Ready0 : cards.Ready1) return Reject("Bid already confirmed.");
             var bid = command.Cards ?? (command.Card == "" ? [] : new[] { command.Card });
-            if (bid.Distinct().Count() != bid.Length || bid.Any(id => !hand.Contains(id)) || !FleetRuleTools.Enabled(c, state) && bid.Length > 1) return Reject("Неверная ставка из своей руки.");
+            if (bid.Distinct().Count() != bid.Length || bid.Any(id => !hand.Contains(id)) || !FleetRuleTools.Enabled(c, state) && bid.Length > 1) return Reject("Invalid bid from your hand.");
             cards = side == 0 ? cards with { Ready0 = true, Bid0 = bid.FirstOrDefault() ?? "", Bids0 = bid } : cards with { Ready1 = true, Bid1 = bid.FirstOrDefault() ?? "", Bids1 = bid };
             var next = state with { Cards = cards, Sequence = state.Sequence + 1 };
-            if (!cards.Ready0 || !cards.Ready1) return new(true, "Готовность к инициативе подтверждена.", next);
+            if (!cards.Ready0 || !cards.Ready1) return new(true, "Initiative readiness confirmed.", next);
             var bids0 = cards.Bids0 ?? (cards.Bid0 == "" ? [] : new[] { cards.Bid0 }); var bids1 = cards.Bids1 ?? (cards.Bid1 == "" ? [] : new[] { cards.Bid1 });
             string[] spent = bids0.Concat(bids1).ToArray();
             uint random = state.RandomState;
@@ -157,7 +157,7 @@ public sealed class BasicCardRules : IRuleModule
             int b = Math.Min(6, Roll(ref random) + bids1.Length);
             cards = cards with { Hand0 = cards.Hand0.Except(spent).ToArray(), Hand1 = cards.Hand1.Except(spent).ToArray(),
                 Discard = cards.Discard.Concat(spent).ToArray(), Ready0 = false, Ready1 = false, Bid0 = "", Bid1 = "", Bids0 = null, Bids1 = null, Phase = a == b ? "initiative" : "orders" };
-            return new(true, $"Инициатива: {a} : {b}. " + (a == b ? "Ничья: новые ставки и переброс." : $"Первый приказ у стороны {(a > b ? 1 : 2)}."),
+            return new(true, $"Initiative: {a} : {b}. " + (a == b ? "Tie: fresh bids and reroll." : $"First order goes to side {(a > b ? 1 : 2)}."),
                 next with { Cards = cards, RandomState = random, ActiveSide = a > b ? 0 : 1,
                     ValorOwner = FleetRuleTools.Enabled(c, state) && a != b && state.ValorOwner == -1 ? a > b ? 1 : 0 : state.ValorOwner });
         }
@@ -165,7 +165,7 @@ public sealed class BasicCardRules : IRuleModule
         if (command.Kind == "faction") return FleetRuleTools.FactionRepair(c, state, side, command);
         if (command.Kind == "begin-order") return SpecialOrders.BeginBasic(c, state, side, command);
         if (command.Kind == "special") return SpecialOrders.Start(c, state, side, command);
-        if (command.Kind != "pass" && !hand.Contains(command.Card)) return Reject("Выберите карту из своей руки для базового приказа.");
+        if (command.Kind != "pass" && !hand.Contains(command.Card)) return Reject("Choose a card from your hand for a basic order.");
         if (command.Kind == "transfer-stars") return FleetEconomy.BeginTransfer(c, state, side, command);
         if (command.Kind == "transfer-crew") return FleetTransfers.Apply(c, state, side, command);
         if (command.Kind is "move" or "attack" or "embark") return InterruptRules.Start(c, state, side, command, basic: true);

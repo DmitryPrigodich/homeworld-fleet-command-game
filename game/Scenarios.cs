@@ -5,13 +5,13 @@ public partial class Main
 {
     private void ScenarioMenu()
     {
-        ClearScreen(); Heading("Сценарии из книги"); var box = Panel(70, 180, 700, 620);
+        ClearScreen(); Heading("Rulebook scenarios"); var box = Panel(70, 180, 700, 620);
         var map = _content.Maps["core:first-contact"];
         Text(box, map.Name, 24, _colors.Highlight); Text(box, map.Briefing, 18);
-        Text(box, "Разведданные отмечаются после завершения приказа. Уничтожение носителя данных уничтожает и данные. Красные гексы обозначают зону эвакуации таиидан.", 17, _colors.Muted);
-        Button(box, "ИГРАТЬ ПРОТИВ AI", () => { StartBattle(map.Id, true); QueueBot(); });
-        Button(box, "ИГРАТЬ ВДВОЁМ ЛОКАЛЬНО", () => StartBattle(map.Id, false));
-        Button(box, "НАЗАД", SinglePlayerMenu); MenuScene();
+        Text(box, "Intelligence is marked after the order finishes. Destroying its carrier also destroys the data. Red hexes show the Taiidan escape zone.", 17, _colors.Muted);
+        Button(box, "PLAY AGAINST AI", () => { StartBattle(map.Id, true); QueueBot(); });
+        Button(box, "PLAY LOCAL HOTSEAT", () => StartBattle(map.Id, false));
+        Button(box, "BACK", SinglePlayerMenu); MenuScene();
     }
     private bool TryScenarioBotMove(BattleUnit unit)
     {

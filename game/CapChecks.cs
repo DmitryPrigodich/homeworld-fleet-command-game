@@ -27,26 +27,26 @@ public partial class Main
             void Fixture() { StartBattle(BasicCardBattle.TabletopMapId, false, persist: false); ConfigureCapBattle(); }
             ConfigureCapContent(); Fixture();
             _state = _state! with { ActiveSide = 1, Units = _state.Units.Select(u => u.Id == "s1-3" ? u with { Patrol = "", Q = 2, R = 3 } : u).ToList() };
-            _action = "move"; SelectUnit("s1-3"); await Frames(); Press("▶ ПЕРЕМЕЩЕНИЕ"); await Frames(); Submit(new("move", "s1-3", Q: 3, R: 2)); await Frames();
-            for (int i = 0; _state!.CapEntry == null && i < 10; i++) { Press("ПРОПУСТИТЬ ОКНО"); await Frames(); }
+            _action = "move"; SelectUnit("s1-3"); await Frames(); Press("▶ MOVE"); await Frames(); Submit(new("move", "s1-3", Q: 3, R: 2)); await Frames();
+            for (int i = 0; _state!.CapEntry == null && i < 10; i++) { Press("SKIP WINDOW"); await Frames(); }
             Require(_state!.CapEntry != null, "Movement offers CAP entry through the UI");
             string snapshot = _engine.Save(_state); SaveGame(); LoadGame(false); await Frames(); Require(_engine.Save(_state!) == snapshot, "CAP entry decision survives disk save/load");
             Press(Nodes(_ui).OfType<Button>().Single(b => b.Text.StartsWith("CAP: ")).Text); await Frames();
             Require(_state!.Units.Single(u => u.Id == "s1-3").Patrol == "s1-5", "CAP button attaches the fighter to its host");
             Fixture(); _state = _state! with { ActiveSide = 1 }; _action = "move"; SelectUnit("s1-3"); await Frames();
-            Require(Nodes(_ui).OfType<OptionButton>().Any(d => d.GetItemText(0).StartsWith("Выход:")), "Ready CAP has an exit-hex selector");
-            Press("▶ ПЕРЕМЕЩЕНИЕ"); await Frames(); Require(_state!.Units.Single(u => u.Id == "s1-3").Patrol == "" && _state.Cards!.Pending?.BasicAction == "move", "UI leaves CAP before beginning the paid order");
-            Fixture(); SelectUnit("s0-0"); await Frames(); Press("АТАКА"); await Frames(); Submit(new("attack", "s0-0", "s1-5")); await Frames();
-            if (_state!.Defense == null) { Press("ПРОПУСТИТЬ ОКНО"); await Frames(); }
-            Press("ПЕРЕХВАТ CAP: Fighter guns"); await Frames();
+            Require(Nodes(_ui).OfType<OptionButton>().Any(d => d.GetItemText(0).StartsWith("Exit:")), "Ready CAP has an exit-hex selector");
+            Press("▶ MOVE"); await Frames(); Require(_state!.Units.Single(u => u.Id == "s1-3").Patrol == "" && _state.Cards!.Pending?.BasicAction == "move", "UI leaves CAP before beginning the paid order");
+            Fixture(); SelectUnit("s0-0"); await Frames(); Press("ATTACK"); await Frames(); Submit(new("attack", "s0-0", "s1-5")); await Frames();
+            if (_state!.Defense == null) { Press("SKIP WINDOW"); await Frames(); }
+            Press("CAP INTERCEPTION: Fighter guns"); await Frames();
             Require(_state!.Combat?.Kind == "cap" && _state.Defense?.PreparedIncoming != null && _state.Orders1 == 0, "CAP rolls both dogfight pools before casualties and spends no Play");
             string capDice = string.Join(", ", _state.Combat!.Rolls);
-            Press("ПРИНЯТЬ БРОСОК"); await Frames();
+            Press("ACCEPT ROLL"); await Frames();
             Require(_state!.Combat?.Kind == "dogfight" && _state.Units.Single(u => u.Id == "s0-0").Models == 2, "CAP casualties wait for the incoming fighter's volley");
-            Require(Nodes(_ui).OfType<Label>().Any(l => l.Text == "Одновременный бросок противника: [" + capDice + "]"), "Incoming fighter sees the CAP volley rather than its own dice twice");
+            Require(Nodes(_ui).OfType<Label>().Any(l => l.Text == "Simultaneous enemy roll: [" + capDice + "]"), "Incoming fighter sees the CAP volley rather than its own dice twice");
             snapshot = _engine.Save(_state); SaveGame(); LoadGame(false); await Frames(); Require(_engine.Save(_state!) == snapshot, "Both simultaneous volleys restore from disk");
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "cap-dogfight.png"));
-            Press("ПРИНЯТЬ БРОСОК"); await Frames();
+            Press("ACCEPT ROLL"); await Frames();
             Require(!_state!.Units.Any(u => u.Id is "s0-0" or "s1-3") && _state.Cards!.Response == null && _state.Defense == null, "Mutual dogfight kills cancel the original attack and finish its order");
             GD.Print("CAP_UI_OK"); GetTree().Quit();
         }

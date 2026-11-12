@@ -26,18 +26,18 @@ public partial class Main
             IEnumerable<Node> Nodes(Node root) => root.GetChildren().SelectMany(child => new[] { child }.Concat(Nodes(child))).Where(n => !n.IsQueuedForDeletion());
             void Press(string text) { var b = Nodes(_ui).OfType<Button>().Single(b => b.Text == text); Require(!b.Disabled, "Enabled: " + text); b.EmitSignal(BaseButton.SignalName.Pressed); }
             ConfigureDefenseContent(); StartBattle(BasicCardBattle.TabletopMapId, false, persist: false); ConfigureDefenseBattle();
-            SelectUnit("s0-0"); await Frames(); Press("АТАКА"); await Frames(); Submit(new("attack", "s0-0", "s1-3")); await Frames();
-            if (_state!.Defense == null) { Press("ПРОПУСТИТЬ ОКНО"); await Frames(); }
+            SelectUnit("s0-0"); await Frames(); Press("ATTACK"); await Frames(); Submit(new("attack", "s0-0", "s1-3")); await Frames();
+            if (_state!.Defense == null) { Press("SKIP WINDOW"); await Frames(); }
             Require(_state.Defense != null && _state.Combat == null && LocalCommandSide == 1, "UI gives defense to the defender before any attack rolls");
             string snapshot = _engine.Save(_state); SaveGame(); LoadGame(false); await Frames(); Require(_engine.Save(_state!) == snapshot, "Unrolled defense window survives disk save/load");
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "defense-choice.png"));
-            Press("ЗАЩИТА: Flak · 3D"); await Frames();
+            Press("DEFENSE: Flak · 3D"); await Frames();
             Require(_state!.Combat is { Kind: "defense", Side: 1 } && _state.Orders1 == 0 && _state.Cards!.Hand1.Length == 2, "Defense rolls without a card or Play");
             snapshot = _engine.Save(_state); SaveGame(); LoadGame(false); await Frames(); Require(_engine.Save(_state!) == snapshot, "Rolled defense restores without rolling again");
-            Require(!Nodes(_ui).OfType<Button>().Any(b => b.Text == "ПЕРЕБРОС: ТАИИДАН"), "Taiidan ability is unavailable for defensive fire");
-            Press("ПРИНЯТЬ БРОСОК"); await Frames();
+            Require(!Nodes(_ui).OfType<Button>().Any(b => b.Text == "REROLL: TAIIDAN"), "Taiidan ability is unavailable for defensive fire");
+            Press("ACCEPT ROLL"); await Frames();
             Require(_state!.Defense == null && _state.Combat is { Kind: "ranged", Rolls.Length: 3 } && LocalCommandSide == 0, "Defense reduces the incoming missiles and returns the decision to the attacker");
-            Press("ПРИНЯТЬ БРОСОК"); await Frames();
+            Press("ACCEPT ROLL"); await Frames();
             Require(_state!.Cards!.Response == null && _state.Combat == null && _state.Orders0 == 1, "Original order finishes exactly once");
             GD.Print("DEFENSE_UI_OK"); GetTree().Quit();
         }

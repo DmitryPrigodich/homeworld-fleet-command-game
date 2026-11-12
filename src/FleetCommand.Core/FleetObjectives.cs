@@ -52,12 +52,12 @@ public static class FleetObjectives
             losses.TryAdd(lost.Id, new(lost.Definition, credit, c.Ships[lost.Definition].Stars + FleetRuleTools.AssignedLeaders(c, lost).Sum(l => l.Stars)));
         return s with { Losses = losses };
     }
-    public static string Changes(BattleState before, BattleState after) => before.Medals0 == after.Medals0 && before.Medals1 == after.Medals1 ? "" : $" Медали: {before.Medals0}:{before.Medals1} → {after.Medals0}:{after.Medals1}.";
+    public static string Changes(BattleState before, BattleState after) => before.Medals0 == after.Medals0 && before.Medals1 == after.Medals1 ? "" : $" Medals: {before.Medals0}:{before.Medals1} → {after.Medals0}:{after.Medals1}.";
     public static string ResultText(BattleState s) => s.EndReason switch
     {
-        "medals" => $"Достигнут порог медалей. Счёт {s.Medals0}:{s.Medals1}.",
-        "round-limit" => $"Лимит раундов. Медали {s.Medals0}:{s.Medals1}, уничтожено ★ {s.Stars0}:{s.Stars1}.",
-        _ => s.Winner == null ? "Лимит раундов. Ничья." : "Бой завершён."
+        "medals" => $"Medal threshold reached. Score {s.Medals0}:{s.Medals1}.",
+        "round-limit" => $"Round limit. Medals {s.Medals0}:{s.Medals1}, destroyed stars ★ {s.Stars0}:{s.Stars1}.",
+        _ => s.Winner == null ? "Round limit. Draw." : "Battle complete."
     };
     internal static void ValidateDefinitions(ContentCatalog c, MapDefinition map)
     {

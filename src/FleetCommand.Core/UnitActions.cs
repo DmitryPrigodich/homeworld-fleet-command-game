@@ -62,14 +62,14 @@ internal static class SkirmishGeometry
     {
         var pairs = target == null ? [] : FleetFootprint.Nearest(content, unit, target);
         var results = pairs.Select(p => CoverBetween(content, state, unit, target!, p.From, p.To, range, ignoreNebula)).ToArray();
-        return results.Where(r => r.Allowed).OrderBy(r => r.Cover).FirstOrDefault(results.FirstOrDefault((false, 0, "Выберите противника.")));
+        return results.Where(r => r.Allowed).OrderBy(r => r.Cover).FirstOrDefault(results.FirstOrDefault((false, 0, "Select an enemy.")));
     }
     internal static (bool Allowed, int Cover, string Error) CoverBetween(ContentCatalog content, BattleState state, BattleUnit unit, BattleUnit target, Hex start, Hex end, int? range, bool ignoreNebula)
     {
         var ship = content.Ships[unit.Definition];
-        if (ship.DicePerModel == 0 && range == null) return (false, 0, "У этого подразделения нет оружия для стрельбы.");
+        if (ship.DicePerModel == 0 && range == null) return (false, 0, "This unit has no ranged weapons.");
         if (target.Side == unit.Side || start.Distance(end) > (range ?? ship.Range))
-            return (false, 0, "Выбери противника в пределах дальности стрельбы.");
+            return (false, 0, "Select an enemy within firing range.");
         var map = content.Maps[state.Map];
         bool Inside(Hex h) => FleetFootprint.Inside(map, h);
         var memo = new Dictionary<Hex, int>();
@@ -91,6 +91,6 @@ internal static class SkirmishGeometry
             return memo[h] = worst;
         }
         int cover = Cover(start);
-        return cover >= 100000 ? (false, 0, "Объект перекрывает линию огня.") : (true, cover, "");
+        return cover >= 100000 ? (false, 0, "An object blocks the firing line.") : (true, cover, "");
     }
 }

@@ -9,11 +9,11 @@ public static class FleetTransfers
         var cards = s.Cards!;
         if (!FleetRuleTools.Enabled(c, s) || unit == null || target == null || unit.Patrol != "" || target.Patrol != "" || target.Side != side && (FleetCap.Patrol(s, target.Id) != null || FleetLogistics.Children(s, target.Id).Length > 0) || side != s.ActiveSide || FleetFootprint.Distance(c, unit, target) != 1
             || target.Side != side && !target.Hulk || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(cmd.Card)
-            || (side == 0 ? s.Orders0 : s.Orders1) >= FleetRuleTools.PlayLimit(c, s, side)) return Reject("Передача экипажа требует готовый отряд и соседнюю цель.");
+            || (side == 0 ? s.Orders0 : s.Orders1) >= FleetRuleTools.PlayLimit(c, s, side)) return Reject("Crew transfer requires a ready unit and an adjacent target.");
         if (cmd.Amount < 0 || cmd.Amount > target.CrewDamage || cmd.Amount == 0 && !cmd.TransferLeader || cmd.Amount > 0 && c.Ships[unit.Definition].Crew <= 0
             || unit.CrewDamage + cmd.Amount > c.Ships[unit.Definition].Armor || target.CrewDamage - cmd.Amount > c.Ships[target.Definition].Armor)
-            return Reject("После передачи Crew Damage обеих сторон должен быть не выше брони.");
-        if (cmd.TransferLeader && (FleetRuleTools.LeaderIds(unit).Length == 0 || !FleetRuleTools.ValidLeader(c, FleetRuleTools.WithLeaders(target, FleetRuleTools.LeaderIds(target).Append(FleetRuleTools.LeaderIds(unit)[0]))))) return Reject("Лидера нельзя назначить этой цели.");
+            return Reject("After transfer, Crew Damage on both units must not exceed their armor.");
+        if (cmd.TransferLeader && (FleetRuleTools.LeaderIds(unit).Length == 0 || !FleetRuleTools.ValidLeader(c, FleetRuleTools.WithLeaders(target, FleetRuleTools.LeaderIds(target).Append(FleetRuleTools.LeaderIds(unit)[0]))))) return Reject("The leader cannot be assigned to this target.");
         var next = s with { Sequence = s.Sequence + 1, Units = s.Units.Select(u => u.Id == unit.Id ? FleetRuleTools.NewOrder(u) with { Activated = true } : u).ToList(),
             Orders0 = s.Orders0 + (side == 0 ? 1 : 0), Orders1 = s.Orders1 + (side == 1 ? 1 : 0),
             Cards = cards with { Hand0 = cards.Hand0.Where(id => id != cmd.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != cmd.Card).ToArray(),
@@ -32,6 +32,6 @@ public static class FleetTransfers
         var updatedTarget = target with { CrewDamage = target.CrewDamage - cmd.Amount, Side = target.Hulk ? side : target.Side };
         if (cmd.TransferLeader) { updatedSender = FleetRuleTools.WithLeaders(updatedSender, FleetRuleTools.LeaderIds(sender).Skip(1)); updatedTarget = FleetRuleTools.WithLeaders(updatedTarget, FleetRuleTools.LeaderIds(target).Append(moving)); }
         next = next with { Cards = next.Cards with { Pending = next.Cards.Pending with { Deferred = null } }, Units = next.Units.Select(u => u.Id == sender.Id ? updatedSender : u.Id == target.Id ? FleetClose.CheckHulk(c, updatedTarget) : u).ToList() };
-        return SpecialOrders.Advance(c, before, next, side, message + $" Экипаж передан: Crew Damage цели -{cmd.Amount}, передающего отряда +{cmd.Amount}.");
+        return SpecialOrders.Advance(c, before, next, side, message + $" Crew transferred: target Crew Damage -{cmd.Amount}, sender +{cmd.Amount}.");
     }
 }

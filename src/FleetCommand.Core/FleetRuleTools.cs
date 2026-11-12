@@ -47,12 +47,12 @@ public static class FleetRuleTools
         int successes = rolls.Count(d => d >= ship.Success);
         if (choice == "ask")
         {
-            message = $"Damage Control [{string.Join(", ", rolls)}]: успехов {successes}. ";
+            message = $"Damage Control [{string.Join(", ", rolls)}]: successes {successes}. ";
             return s with { RandomState = random, Repairs = successes == 0 ? s.Repairs : (s.Repairs ?? []).Append(new(id, unit.Side, successes, rolls, advance)).ToArray() };
         }
         unit = choice == "focus" ? unit with { FocusFire = Math.Max(0, unit.FocusFire - successes) }
             : successes > 0 ? unit with { Effects = (unit.Effects ?? []).Where(e => e != choice).ToArray() } : unit;
-        message = $"Damage Control [{string.Join(", ", rolls)}]: успехов {successes}. ";
+        message = $"Damage Control [{string.Join(", ", rolls)}]: successes {successes}. ";
         return s with { RandomState = random, Units = s.Units.Select(u => u.Id == id ? unit : u).ToList() };
     }
     public static CommandResult FactionRepair(ContentCatalog c, BattleState s, int side, BattleCommand command)
@@ -61,11 +61,11 @@ public static class FleetRuleTools
         if (!Enabled(c, s) || s.ActiveSide != side || s.Cards is not { Phase: "orders", Pending: null, Response: null }
             || (side == 0 ? s.FactionUsed0 : s.FactionUsed1) || unit == null || Faction(c, s, side) != "kushan"
             || (command.Repair == "focus" ? unit.FocusFire == 0 : !Debuffs.Contains(command.Repair) || !Has(unit, command.Repair)))
-            return new(false, "Способность фракции сейчас недоступна.", s);
+            return new(false, "Faction ability unavailable right now.", s);
         // Focus is stored as a total and represented canonically with double-sided 2/1 tokens.
         // Errata 1.7 removes the whole selected token, including its -2 face.
         unit = command.Repair == "focus" ? unit with { FocusFire = Math.Max(0, unit.FocusFire - 2) } : unit with { Effects = (unit.Effects ?? []).Where(e => e != command.Repair).ToArray() };
-        return new(true, "Kushan: Redundant Systems — эффект снят.", s with { Sequence = s.Sequence + 1,
+        return new(true, "Kushan: Redundant Systems — effect removed.", s with { Sequence = s.Sequence + 1,
             FactionUsed0 = s.FactionUsed0 || side == 0, FactionUsed1 = s.FactionUsed1 || side == 1, Units = s.Units.Select(u => u.Id == unit.Id ? unit : u).ToList() });
     }
 }
