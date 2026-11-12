@@ -70,6 +70,7 @@ public partial class Main : Node3D
                 if (_args.Contains("--smoke-forces")) StartPrepared(new([ForceBattle.PracticeForce("kushan"), ForceBattle.PracticeForce("taiidan")]), false);
                 if (_args.Contains("--smoke-scenario")) { _settings = _settings with { Language = "ru" }; _locale.SetLanguage("ru"); StartBattle("core:first-contact", false); ConfigureFeatureBattle(false); }
                 if (_args.Contains("--smoke-large")) { StartBattle("practice:large", false); ConfigureFeatureBattle(true); }
+                if (_args.Contains("--smoke-data-cards")) { StartBattle("cardtest:sector", false); ConfigureDataCardBattle(1); }
                 if (_args.Contains("--smoke-defense")) ConfigureDefenseBattle();
                 if (_args.Contains("--smoke-cap")) ConfigureCapBattle();
                 if (_args.Contains("--smoke-terrain")) ConfigureTerrainBattle();
@@ -113,6 +114,7 @@ public partial class Main : Node3D
     {
         var dirs = new List<string> { System.IO.Path.Combine(_root, "content", "base") };
         dirs.AddRange(ModDirectories().Where(d => (_settings.EnabledMods ?? []).Contains(JsonData.Read<ModManifest>(System.IO.Path.Combine(d, "mod.json")).Id)));
+        if (_args.Contains("--check-data-cards") || _args.Contains("--smoke-data-cards")) dirs.Add(System.IO.Path.Combine(_root, "tests", "fixtures", "card-mod"));
         var content = ContentCatalog.Load(dirs);
         _content = content; BasicCardBattle.Register(_content); _engine = new(content);
         _colors = _content.Themes.GetValueOrDefault(_settings.Theme) ?? _content.Themes["core:hw1"];
@@ -201,6 +203,7 @@ public partial class Main : Node3D
         if (_frames == 5 && _args.Contains("--check-presentation")) _ = CheckPresentation();
         if (_frames == 5 && _args.Contains("--check-actions")) _ = CheckActionHighlights();
         if (_frames == 5 && _args.Contains("--check-cards")) _ = CheckCards();
+        if (_frames == 5 && _args.Contains("--check-data-cards")) _ = CheckDataCards();
         if (_frames == 5 && _args.Contains("--check-special")) _ = CheckSpecialCards();
         if (_frames == 5 && _args.Contains("--check-interrupt")) _ = CheckInterrupts();
         if (_frames == 5 && _args.Contains("--check-tabletop")) _ = CheckTabletop();

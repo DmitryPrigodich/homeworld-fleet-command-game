@@ -28,15 +28,15 @@ public partial class Main
     {
         if (_state?.Cards?.Pending is not { BasicAction: "harvest", Step: 1 } order) return false;
         int index = Array.IndexOf(_content.Maps[_state.Map].Objects, placement);
-        if (!FleetEconomy.Targets(_content, _state, LocalCommandSide, SpecialOrders.Actor(order)).Contains(index)) return false;
-        Submit(new("harvest", SpecialOrders.Actor(order), Object: index)); return true;
+        if (!FleetEconomy.Targets(_content, _state, LocalCommandSide, SpecialOrders.Actor(_content, _state!, order)).Contains(index)) return false;
+        Submit(new("harvest", SpecialOrders.Actor(_content, _state!, order), Object: index)); return true;
     }
     private void DrawEconomy(Control parent, BattleUnit? unit)
     {
         if (!FleetBattle || unit == null) return;
         var ship = _content.Ships[unit.Definition];
         if (unit.Cargo > 0 || ship.Harvest >= 0) Text(parent, $"Resource cargo: {unit.Cargo} ★" + (ship.Harvest >= 0 ? $"\nHarvest {ship.Harvest}" : "") + (ship.Survey ? " · Survey" : ""), 14);
-        if (_state!.Cards?.Pending is { BasicAction: "harvest" } order && order.Side == LocalCommandSide && SpecialOrders.Actor(order) == unit.Id && !FleetDecision && _state.Cards.Response == null)
+        if (_state!.Cards?.Pending is { BasicAction: "harvest" } order && order.Side == LocalCommandSide && SpecialOrders.Actor(_content, _state!, order) == unit.Id && !FleetDecision && _state.Cards.Response == null)
         {
             if (order.Step == 0) Text(parent, "You may first move for free. To harvest in place, skip this action on the left.", 14);
             else

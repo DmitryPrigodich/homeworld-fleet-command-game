@@ -29,7 +29,7 @@ The supplied `Compete-Component-Catalogue-for-Homeworld.pdf`, command-card secti
 | Interrupt Repairs | 3 | Pending |
 | Interrupt Counterintelligence | 2 | Pending |
 
-The playable training deck still has 24 instances. The inventory above is not a claim that the full 54-card deck or its effects already works. `SpecialOrders` and `InterruptRules` currently recognize training instance ranges; replace this coupling with explicit card definitions and known action/effect handlers before populating the full published deck. Artwork remains optional and independent of mechanics.
+The playable training deck still has 24 instances. The inventory above is not a claim that the full 54-card deck or its effects already works. Card types, deck copies, action rows and explicit constraints now come from `content/base/content.json`; neither `SpecialOrders` nor `InterruptRules` interprets instance number ranges. Additional effect handlers and verified faces are still needed before populating the full published deck. Artwork remains optional and independent of mechanics.
 
 ## Useful photo batches
 
@@ -42,7 +42,7 @@ Full faces with legible text and symbols are more useful than cropped prose alon
 
 ## Work that can continue from the books
 
-- Replace hard-coded training card ID ranges with data-defined card types, deck counts, action rows and explicit supported effect handlers. Build on the already supported actions rather than a speculative general scripting system.
+- Completed: data-defined card types, deck counts, action rows and explicit supported effect handlers. Extend the existing actions when verified texts require it, without a speculative general scripting system.
 - Complete shared timing and continuation: multiple order lines, optional actions, self/enemy-turn interrupt opportunities, per-type limits and saved response state. Full card-specific triggers still require their actual wording.
 - Audit and implement neutral-unit/object interactions and artifact/objective handling as shared mechanics, independently of published map layouts.
 - Implement Campaign Expansion Cloaking/Scanning, planets/facilities/orbital attacks and campaign purchasing/attachment lifecycles from the supplied rules, then attach verified card profiles. Individual hero/upgrade effects require card text.

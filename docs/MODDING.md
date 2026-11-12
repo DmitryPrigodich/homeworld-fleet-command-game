@@ -25,7 +25,9 @@ Definitions have namespaced IDs: `myfleet:ship-name`. A new definition must use 
 | `fleets` | id, name, units: ship, q, r, facing, leader, cargo, reserve, embarkedOn |
 | `objects` | id, name, model, blocksMovement, attackPenalty, moveCost, color, label, kind, hazard |
 | `maps` | id, name, width, height, background, objects, fleets, rules, captureTargets, asteroidStars, reserveStars, setupZones, reserveFromRound, objectives, victoryMedals |
-| `rules` | id, name, handler, roundLimit, ordersPerSide, alternatingOrders, friendlyPassThrough, rearShots, focusFire, tabletop |
+| `rules` | id, name, handler, roundLimit, ordersPerSide, alternatingOrders, friendlyPassThrough, rearShots, focusFire, tabletop, deck |
+| `cards` | id, name, kind, description, lines, straightCourse, adjacentOnLightning, interrupt |
+| `decks` | id, name, entries: card, copies, instances |
 | `leaders` | id, name, faction, classes, hand, play, stars, coolUnderPressure, attackDice |
 | `themes` | id, name, background, panel, text, muted, accent, highlight, enemy, grid |
 | `campaigns` | id, name, start, missions: id, name, map, onVictory, onDefeat, onDraw |
@@ -41,6 +43,39 @@ Map `captureTargets` is an optional list of battle unit IDs or ship definition I
 CAP applies to `fighter` units and hosts of class `frigate` or `capital`, with one patrol per host. Patrols stay in saved `units` with a `patrol` host ID but do not occupy a second board cell or provide adjacent defensive support. `capSuccess` (2–6, default zero) overrides the fighter's ordinary success after CAP activation while it remains on patrol; it is available for the Defence Fighter erratum. Barrage retains its own threshold. No guessed special ability is assigned to the base roster.
 
 Terrain `kind` can identify `asteroid` or `planet` for rulebook movement costs. Gravity costs extra when leaving the well; an asteroid costs one move in tabletop mode. Entry/activation attacks and minefields are described below.
+
+## Command cards and decks
+
+Gameplay mods may add or explicitly override `cards`, `decks` and `rules[].deck`. The default deck is `core:training-deck`. For example:
+
+```json
+{
+  "cards": [{
+    "id": "myfleet:maneuver", "name": "Coordinated maneuver", "kind": "order",
+    "description": "First unit moves; second unit attacks, then moves.",
+    "lines": [{ "actions": ["move"] }, { "actions": ["attack", "move"] }]
+  }],
+  "decks": [{
+    "id": "myfleet:commands", "name": "My commands",
+    "entries": [
+      { "card": "myfleet:maneuver", "copies": 4 },
+      { "card": "core:interrupt-attack", "copies": 3 }
+    ]
+  }],
+  "rules": [{
+    "id": "myfleet:rules", "name": "My battle rules",
+    "handler": "cards-basic-v1", "tabletop": true, "deck": "myfleet:commands"
+  }]
+}
+```
+
+Point a map's `rules` at `myfleet:rules` to use this deck. Entries refer to card *types*. Each copy receives a stable instance ID (`myfleet:maneuver#1`, etc.); optional `instances` explicitly supplies one unique nonempty ID per copy. IDs are unique across the whole deck, at most 160 characters. Explicit IDs support migrated or specially named copies; the training deck retains `order-01` through `order-24`. Do not repeat an entry with automatically generated IDs for the same type; combine its counts or provide distinct explicit IDs. Deck size is 1-512 copies. Drawing handles smaller-than-hand-capacity decks without creating cards; the rulebook draw/recycle policy is unchanged.
+
+Supported `kind` values are `order`, `interrupt` and `basic`. Orders currently accept one or two unit lines, each with 1-8 actions selected from `move`, `attack`, `lightning`. Actors are assigned before starting; tabletop mode may omit one of two lines. Any action may be skipped, and the sequence spends one card/Play in total. A `basic` definition has no special action but remains usable as payment for a basic order, bid or other card cost.
+
+`straightCourse: true` constrains a single line of Moves to one continuous direction, as on All Ahead Full. `adjacentOnLightning: true` constrains the second line's Lightning Move to end beside the first actor, as on Stay in Formation. These flags are explicit; the number of rows or instance ID does not imply a restriction. Lightning still uses the ship's Afterburners, including engine damage restrictions. Interrupts currently accept only `interrupt: "attack"`; they share the once-per-type-per-round attack limit even if differently named. Other action/effect strings are rejected rather than silently ignored. New printed orders, buffs and interrupts need their verified timing and corresponding engine handlers.
+
+Names and descriptions are English source text, translated/overridden through the same language packs as other content. Card appearance packs remain independent. Gameplay JSON changes affect save compatibility and the multiplayer fingerprint; cosmetic frames do not. The synthetic ten-card pack in `tests/fixtures/card-mod` demonstrates alternate IDs, counts, unequal action lines and unrestricted movement; it is only loaded by dedicated checks, never enabled automatically for play.
 
 ## Independent card artwork
 
@@ -58,7 +93,7 @@ Local player profiles support faction defaults (`auto`, Kushan/Taiidan) and buil
 
 Initial ability handlers are `penetrating`, `rapid-fire`, and `move-bonus`. Combine abilities on a ship to reuse these mechanics. A wholly new ability mechanic needs a small code change; arbitrary strings are not executed.
 
-`afterburners` supplies the distance for Lightning Move in Stay in Formation: `0` disables it, `1`–`50` gives the movement allowance without ordinary move bonuses. Its default `-1` preserves legacy definitions: the two core interceptor IDs receive 2; other ships receive 0. New mod ships should set the value explicitly. The training card distribution and action sequences currently live in `BasicCardRules.cs`, `SpecialOrders.cs` and `InterruptRules.cs`; adding new card mechanics requires C#, rather than a separate rules scripting language. Interrupt Attack reuses each ship's existing attack stats/abilities and geometry, including modded definitions.
+`afterburners` supplies the distance for Lightning Move in Stay in Formation: `0` disables it, `1`–`50` gives the movement allowance without ordinary move bonuses. Its default `-1` preserves legacy definitions: the two core interceptor IDs receive 2; other ships receive 0. New mod ships should set the value explicitly. Card definitions and deck composition live in JSON as documented below. New mechanics beyond supported action/effect handlers still require C#. Interrupt Attack reuses each ship's existing attack stats/abilities and geometry, including modded definitions.
 
 Maps use axial `(q,r)` hex coordinates inside a rectangular coordinate domain. `facing` is 0-5. Map objects may block movement, increase movement cost and penalize attacks. A blocking object also blocks line of sight in `skirmish-v1`. A background hex color changes the procedural sector palette. Texture/scene backgrounds are deferred.
 

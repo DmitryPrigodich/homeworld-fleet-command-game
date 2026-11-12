@@ -1,0 +1,60 @@
+{
+  "cards": [
+    {
+      "id": "cardtest:maneuver",
+      "name": "Test coordinated maneuver",
+      "kind": "order",
+      "description": "First unit: Move. Second unit: Attack, then Move. Synthetic test card.",
+      "lines": [{ "actions": ["move"] }, { "actions": ["attack", "move"] }]
+    },
+    {
+      "id": "cardtest:free-course",
+      "name": "Test free course",
+      "kind": "order",
+      "description": "Three Moves with no straight-course constraint. Synthetic test card.",
+      "lines": [{ "actions": ["move", "move", "move"] }]
+    },
+    {
+      "id": "cardtest:reaction",
+      "name": "Test reaction",
+      "kind": "interrupt",
+      "description": "Synthetic response-fire card.",
+      "interrupt": "attack"
+    },
+    { "id": "cardtest:basic", "name": "Test basic order", "kind": "basic" }
+  ],
+  "decks": [
+    {
+      "id": "cardtest:deck",
+      "name": "Synthetic ten-card deck",
+      "entries": [
+        { "card": "cardtest:maneuver", "copies": 2 },
+        { "card": "cardtest:free-course", "copies": 3 },
+        { "card": "cardtest:reaction", "copies": 2 },
+        { "card": "cardtest:basic", "copies": 3 }
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "id": "cardtest:rules",
+      "name": "Synthetic card rules",
+      "handler": "cards-basic-v1",
+      "tabletop": true,
+      "roundLimit": 30,
+      "deck": "cardtest:deck"
+    }
+  ],
+  "maps": [
+    {
+      "id": "cardtest:sector",
+      "name": "Synthetic card test sector",
+      "width": 10,
+      "height": 7,
+      "background": "#122033",
+      "objects": [],
+      "fleets": ["core:kushan-patrol", "core:taiidan-patrol"],
+      "rules": "cardtest:rules"
+    }
+  ]
+}

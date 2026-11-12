@@ -1039,5 +1039,112 @@
       "stars": 1,
       "closeDice": 1
     }
+  ],
+  "cards": [
+    {
+      "id": "core:all-ahead-full",
+      "name": "All Ahead Full",
+      "kind": "order",
+      "description": "Two Moves in the same direction.\nEither action may be skipped.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "move"
+          ]
+        }
+      ],
+      "straightCourse": true
+    },
+    {
+      "id": "core:stay-in-formation",
+      "name": "Stay in Formation",
+      "kind": "order",
+      "description": "Move → Attack / Afterburners → Attack\nLightning Move: end adjacent to the first unit.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "attack"
+          ]
+        },
+        {
+          "actions": [
+            "lightning",
+            "attack"
+          ]
+        }
+      ],
+      "adjacentOnLightning": true
+    },
+    {
+      "id": "core:interrupt-attack",
+      "name": "Interrupt Attack",
+      "kind": "interrupt",
+      "description": "Response fire at the acting enemy.",
+      "interrupt": "attack"
+    },
+    {
+      "id": "core:training-basic",
+      "name": "Basic order",
+      "kind": "basic",
+      "description": "Move / Attack"
+    }
+  ],
+  "decks": [
+    {
+      "id": "core:training-deck",
+      "name": "Training command deck (24 cards)",
+      "entries": [
+        {
+          "card": "core:all-ahead-full",
+          "copies": 8,
+          "instances": [
+            "order-01",
+            "order-02",
+            "order-03",
+            "order-04",
+            "order-05",
+            "order-06",
+            "order-07",
+            "order-08"
+          ]
+        },
+        {
+          "card": "core:stay-in-formation",
+          "copies": 8,
+          "instances": [
+            "order-09",
+            "order-10",
+            "order-11",
+            "order-12",
+            "order-13",
+            "order-14",
+            "order-15",
+            "order-16"
+          ]
+        },
+        {
+          "card": "core:interrupt-attack",
+          "copies": 4,
+          "instances": [
+            "order-17",
+            "order-18",
+            "order-19",
+            "order-20"
+          ]
+        },
+        {
+          "card": "core:training-basic",
+          "copies": 4,
+          "instances": [
+            "order-21",
+            "order-22",
+            "order-23",
+            "order-24"
+          ]
+        }
+      ]
+    }
   ]
 }

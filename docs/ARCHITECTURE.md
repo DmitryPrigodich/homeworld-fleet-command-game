@@ -11,6 +11,8 @@
 - `mods/example`: optional data-only example theme.
 - `.local`: user saves, settings, additional mods, private imported assets and development packages. Always ignored by Git.
 
+Future tablet/web clients should reuse the rule state, JSON content and command protocol. Core must remain independent of Godot nodes, input devices, UI text layout and ENet. Current filesystem helpers are replaceable loading/storage boundaries; a browser client would also need browser-compatible rendering and transport. Do not start a port or assume the current .NET Godot executable can be exported unchanged. Completing PC mechanics, campaigns and the three content editors takes priority.
+
 ## Menu outline
 
 ```text
@@ -39,6 +41,8 @@ Presentation submits commands to `BattleEngine`. The selected `IRuleModule` retu
 During multiplayer, only the host executes commands. Remote requests include an expected sequence number; stale requests trigger resynchronization. A peer must register matching content before sending commands. `BasicCardRules.View` removes the opponent's hand/bid, deck order and private RNG from remote snapshots, including the battle nested in campaign progress. Views cannot execute authoritative commands. Host saves retain the complete state.
 
 `CardRound.Pending` stores a played special card, its side, preassigned actors, action index and optional straight-movement direction. Starting an order atomically spends one card and one Play and activates all assigned actors. `SkirmishRules.FinishOrder` shares end-of-order cleanup between basic and special orders. Cleanup/draw waits until the final step or early completion; battle victory clears the sequence immediately. Skipped actions also advance sequence numbers and synchronize normally. Pending order data is public, while the remaining hands stay private.
+
+`CommandCards` resolves an instance through the current map's rules/deck into a catalog definition. `CardDefinition` owns name/description, typed action lines and explicit straight-course/Lightning adjacency constraints. `DeckDefinition` owns copies and stable instance IDs; conservation is checked against that deck rather than 24 fixed IDs. The unchanged training IDs preserve deterministic fixture ordering. Variable action-line lengths determine actor/step boundaries, including omitted lines. There is no global active-card registry, so catalogs and battles can coexist. Cards/decks participate in mod overrides, runtime catalog copies and content fingerprints. Saves require the same content fingerprint; changing gameplay JSON invalidates earlier saves under the existing policy. Network protocol `fleet-cards-v2` rejects older binaries.
 
 `CardRound.Response` is a separate suspended action: original command, owning side, basic/special origin and remaining hex path. `ActiveSide` retains the original order owner; only `InterruptRules.Responder` may answer. Basic orders reserve their card, activation and Play before pausing. Movement traverses a deterministic minimum-cost route, offering public response windows at empty hexes; attack pauses before dice. Window eligibility ignores hidden hands. Intermediate attacks reuse skirmish resolution in an isolated snapshot and copy only combat changes/RNG back, preserving real activation flags, budgets and turn ownership. A dead actor cancels its remaining actions; a surviving second formation actor continues. A dead primary provides no adjacency anchor for Lightning Move.
 

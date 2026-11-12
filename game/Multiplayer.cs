@@ -57,7 +57,7 @@ public partial class Main
         if (host) InitializeCommanders();
         if (!_networkSignalsBound)
         {
-            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-scenarios-v1:" + _content.Fingerprint,
+            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-cards-v2:" + _content.Fingerprint,
                 JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
             Multiplayer.ConnectionFailed += () => { _status = "Failed to connect."; StopNetwork(); DrawBattle(); };
             Multiplayer.ServerDisconnected += () => { _status = "Host disconnected. Resume from the host's save."; StopNetwork(); DrawBattle(); };
@@ -78,7 +78,7 @@ public partial class Main
     {
         if (!_networkActive || !_isHost) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (fingerprint != "fleet-scenarios-v1:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        if (fingerprint != "fleet-cards-v2:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
         PlayerProfile profile;
         try { profile = FleetPresentation.Normalize(JsonSerializer.Deserialize<PlayerProfile>(profileJson, JsonData.Options)); }
         catch (JsonException) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
@@ -92,6 +92,7 @@ public partial class Main
         }
         if (_campaign != null) _campaign = _campaign with { Participants = (_campaign.Participants ?? []).Append("peer-" + sender).Distinct().ToArray() };
         DrawBattle(); Broadcast(); SaveGame();
+        if (_args.Contains("--smoke-data-cards")) return;
         if (_args.Contains("--smoke-scenario") || _args.Contains("--smoke-large") || _args.Contains("--smoke-terrain") || _args.Contains("--smoke-economy") || _args.Contains("--smoke-logistics") || _args.Contains("--smoke-objectives")) return;
         if (_args.Contains("--smoke-cap"))
         {
@@ -135,6 +136,7 @@ public partial class Main
         {
             var command = JsonSerializer.Deserialize<BattleCommand>(json, JsonData.Options);
             if (command != null && !ApplyCommand(side, command)) { RpcId(Multiplayer.GetRemoteSenderId(), nameof(ReceiveCommandFeedback), _status); return; }
+            if (_args.Contains("--smoke-data-cards")) { DataCardsNetworkHost(command); return; }
             if (_args.Contains("--smoke-objectives"))
             {
                 if (command?.Kind == "attack")
@@ -337,6 +339,7 @@ public partial class Main
             {
                 if (_state.Cards is not { IsView: true } cards || cards.Deck.Length != 0 || cards.Hand0.Length != 0 || _state.RandomState != 1)
                     throw new InvalidDataException("Private card state leaked over ENet.");
+                if (_args.Contains("--smoke-data-cards")) { DataCardsNetworkClient(); return; }
                 if (_args.Contains("--smoke-scenario") || _args.Contains("--smoke-large")) { FeatureNetworkClient(); return; }
                 if (_args.Contains("--smoke-objectives"))
                 {
@@ -427,8 +430,8 @@ public partial class Main
                         _specialNetworkStep = pending.Step;
                         if (pending.Step == 0)
                         {
-                            var h = _engine.GetActions(_state, 1, SpecialOrders.Actor(pending)).MoveCells.First();
-                            Submit(new("move", SpecialOrders.Actor(pending), Q: h.Q, R: h.R));
+                            var h = _engine.GetActions(_state, 1, SpecialOrders.Actor(_content, _state!, pending)).MoveCells.First();
+                            Submit(new("move", SpecialOrders.Actor(_content, _state!, pending), Q: h.Q, R: h.R));
                         }
                         else Submit(new("finish-order"));
                         return;

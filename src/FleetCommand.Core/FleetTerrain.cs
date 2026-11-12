@@ -96,7 +96,7 @@ public static class FleetTerrain
         var order = next.Cards?.Pending;
         if (order == null) return new(true, message, next with { Sequence = before.Sequence + 1 });
         if (order.Deferred != null && !next.Finished && next.Units.Any(u => u.Id == order.Deferred.Unit)) return FleetTransfers.Complete(c, before, next, message);
-        if (next.Finished || !next.Units.Any(u => u.Id == SpecialOrders.Actor(order))) return SpecialOrders.Advance(c, before, next, order.Side, message, next.Finished);
+        if (next.Finished || !next.Units.Any(u => u.Id == SpecialOrders.Actor(c, next, order))) return SpecialOrders.Advance(c, before, next, order.Side, message, next.Finished);
         return new(true, message, next with { Sequence = before.Sequence + 1 });
     }
     internal static CommandResult Defended(BattleState s, int successes)

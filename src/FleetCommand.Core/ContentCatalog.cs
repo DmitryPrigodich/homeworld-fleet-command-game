@@ -14,6 +14,8 @@ public sealed class ContentCatalog
     public Dictionary<string, ThemeDefinition> Themes { get; } = new(StringComparer.Ordinal);
     public Dictionary<string, CampaignDefinition> Campaigns { get; } = new(StringComparer.Ordinal);
     public Dictionary<string, LeaderDefinition> Leaders { get; } = new(StringComparer.Ordinal);
+    public Dictionary<string, CardDefinition> Cards { get; } = new(StringComparer.Ordinal);
+    public Dictionary<string, DeckDefinition> Decks { get; } = new(StringComparer.Ordinal);
     public List<ModManifest> Mods { get; } = [];
     public string Fingerprint { get; private set; } = "";
 
@@ -29,6 +31,7 @@ public sealed class ContentCatalog
         Copy(Objects, copy.Objects); Copy(Maps, copy.Maps); Copy(Rules, copy.Rules);
         Copy(Themes, copy.Themes); Copy(Campaigns, copy.Campaigns);
         Copy(Leaders, copy.Leaders);
+        Copy(Cards, copy.Cards); Copy(Decks, copy.Decks);
         copy.Mods.AddRange(Mods);
         return copy;
     }
@@ -74,6 +77,8 @@ public sealed class ContentCatalog
             Add(catalog.Themes, data.Themes, v => v.Id);
             Add(catalog.Campaigns, data.Campaigns, v => v.Id);
             Add(catalog.Leaders, data.Leaders, v => v.Id);
+            Add(catalog.Cards, data.Cards, v => v.Id);
+            Add(catalog.Decks, data.Decks, v => v.Id);
             catalog.Mods.Add(mod);
             digest.Append(mod.Id).Append('\n').Append(File.ReadAllText(Path.Combine(path, "mod.json")))
                 .Append('\n').Append(File.ReadAllText(contentPath)).Append('\n');
@@ -85,6 +90,7 @@ public sealed class ContentCatalog
 
     public void Validate()
     {
+        CommandCards.ValidateDefinitions(this);
         foreach (var t in Themes.Values)
             foreach (var color in new[] { t.Background, t.Panel, t.Text, t.Muted, t.Accent, t.Highlight, t.Enemy, t.Grid, t.TabBlue, t.TabYellow, t.TabGrey })
                 if (!System.Text.RegularExpressions.Regex.IsMatch(color, "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"))

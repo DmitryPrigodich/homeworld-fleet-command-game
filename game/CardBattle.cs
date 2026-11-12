@@ -43,7 +43,7 @@ public partial class Main
         {
             if (command.Kind is "begin-order" or "special" or "move" or "attack")
             {
-                var actors = command.Kind == "special" && SpecialOrders.Formation(command.Card) ? new[] { command.Unit, command.OtherUnit } : new[] { command.Unit };
+                var actors = command.Kind == "special" && SpecialOrders.Formation(_content, _state!, command.Card) ? new[] { command.Unit, command.OtherUnit } : new[] { command.Unit };
                 var deployments = new List<UnitDeployment>();
                 foreach (var unit in _state!.Units.Where(u => actors.Contains(u.Id) && u.Patrol != ""))
                 {
@@ -60,7 +60,7 @@ public partial class Main
         if (_state?.Cards?.Response != null && command.Kind == "attack")
         {
             var responseHand = LocalCommandSide == 0 ? _state.Cards.Hand0 : _state.Cards.Hand1;
-            return command with { Kind = "interrupt", Card = responseHand.Contains(_selectedCard) && InterruptRules.IsAttack(_selectedCard) ? _selectedCard : responseHand.FirstOrDefault(InterruptRules.IsAttack) ?? "" };
+            return command with { Kind = "interrupt", Card = responseHand.Contains(_selectedCard) && InterruptRules.IsAttack(_content, _state, _selectedCard) ? _selectedCard : responseHand.FirstOrDefault(id => InterruptRules.IsAttack(_content, _state, id)) ?? "" };
         }
         if (_state?.Cards is not { Phase: "orders", Pending: null, Response: null } cards || command.Kind is "pass" or "special" or "faction") return command;
         var hand = LocalCommandSide == 0 ? cards.Hand0 : cards.Hand1;
@@ -76,13 +76,13 @@ public partial class Main
             Text(parent, "RETURN FIRE", 15, _colors.Highlight);
             Text(parent, "Target: " + FleetPresentation.UnitName(_content, _state, _state.Units.Single(u => u.Id == pause.Command.Unit)), 13);
             if (LocalCommandSide != responder) { Text(parent, "Waiting for response: " + SideName(responder), 14); return; }
-            var responseHand = (responder == 0 ? cards.Hand0 : cards.Hand1).Where(InterruptRules.IsAttack).ToArray();
+            var responseHand = (responder == 0 ? cards.Hand0 : cards.Hand1).Where(id => InterruptRules.IsAttack(_content, _state, id)).ToArray();
             if (!responseHand.Contains(_selectedCard)) _selectedCard = responseHand.FirstOrDefault() ?? "";
             Text(parent, responseHand.Length == 0 ? "No Interrupt Attack card. Skip the response window." : "Select your unit and click the red target. Activated units may also respond. No Play is spent.", 13);
             foreach (var id in responseHand)
             {
                 string card = id;
-                var b = Button(parent, (_selectedCard == card ? "▶ " : "") + "Interrupt Attack", () => { _selectedCard = card; DrawBattle(); });
+                var b = Button(parent, (_selectedCard == card ? "▶ " : "") + SpecialOrders.Name(_content, _state, card), () => { _selectedCard = card; DrawBattle(); });
                 b.CustomMinimumSize = new(0, 30); b.AddThemeFontSizeOverride("font_size", 13);
             }
             Button(parent, "SKIP WINDOW", () => Submit(new("decline")));
@@ -92,10 +92,10 @@ public partial class Main
         }
         if (cards.Pending is { } pending)
         {
-            Text(parent, pending.BasicAction == "" ? SpecialOrders.Name(pending.Card) : "BASIC ORDER", 15, _colors.Highlight);
-            Text(parent, $"Action {pending.Step + 1}/{SpecialOrders.Steps(pending)}: " + SpecialOrders.ActionName(pending) + "\n" +
-                FleetPresentation.UnitName(_content, _state, _state.Units.Single(u => u.Id == SpecialOrders.Actor(pending))), 13);
-            Text(parent, pending.BasicAction == "harvest" ? "Free movement → harvest. Both steps may be skipped." : pending.BasicAction != "" ? "Card and Play already spent. Choose an action target or skip the action." : SpecialOrders.Formation(pending.Card) ? "Move → Attack / Afterburners → Attack\nLightning Move: end adjacent to the first unit." : "Two Moves in the same direction.\nEither action may be skipped.", 12, _colors.Muted);
+            Text(parent, pending.BasicAction == "" ? SpecialOrders.Name(_content, _state!, pending.Card) : "BASIC ORDER", 15, _colors.Highlight);
+            Text(parent, $"Action {pending.Step + 1}/{SpecialOrders.Steps(_content, _state!, pending)}: " + SpecialOrders.ActionName(_content, _state!, pending) + "\n" +
+                FleetPresentation.UnitName(_content, _state, _state.Units.Single(u => u.Id == SpecialOrders.Actor(_content, _state!, pending))), 13);
+            Text(parent, pending.BasicAction == "harvest" ? "Free movement → harvest. Both steps may be skipped." : pending.BasicAction != "" ? "Card and Play already spent. Choose an action target or skip the action." : CommandCards.Description(_content, _state, pending.Card), 12, _colors.Muted);
             Button(parent, "SKIP ACTION", () => Submit(new("skip")), LocalCommandSide != pending.Side);
             Button(parent, "FINISH ORDER", () => Submit(new("finish-order")), LocalCommandSide != pending.Side);
             DrawCardPreview(parent, pending.Card);
@@ -110,20 +110,20 @@ public partial class Main
             Button(parent, ready ? "BID CONFIRMED" : "READY / NO BID", () => Submit(new("initiative")), ready);
         foreach (string id in hand)
         {
-            string title = SpecialOrders.Name(id);
+            string title = SpecialOrders.Name(_content, _state!, id);
             var button = Button(parent, cards.Phase == "initiative" ? "BID: " + title : (_selectedCard == id ? "▶ " : "") + title,
                 () => { if (cards.Phase == "initiative") Submit(new("initiative", Card: id)); else { _selectedCard = id; DrawBattle(); } }, cards.Phase == "initiative" && ready);
             button.CustomMinimumSize = new(0, 30); button.AddThemeFontSizeOverride("font_size", 13);
         }
-        if (cards.Phase == "orders" && SpecialOrders.Supported(_selectedCard))
+        if (cards.Phase == "orders" && SpecialOrders.Supported(_content, _state!, _selectedCard))
         {
             var selected = _state.Units.Find(u => u.Id == _selected && u.Side == side && !u.Activated && !u.Hulk);
-            if (FleetBattle && SpecialOrders.Formation(_selectedCard))
+            if (FleetBattle && SpecialOrders.Formation(_content, _state!, _selectedCard))
             {
                 string[] modes = ["both", "first", "second"]; var lines = new OptionButton(); lines.AddItem("Both order lines"); lines.AddItem("First line only"); lines.AddItem("Second line only");
                 lines.Select(Array.IndexOf(modes, _formationLines)); lines.ItemSelected += i => { _formationLines = modes[(int)i]; DrawBattle(); }; parent.AddChild(lines);
             }
-            if (SpecialOrders.Formation(_selectedCard) && selected != null && (!FleetBattle || _formationLines == "both"))
+            if (SpecialOrders.Formation(_content, _state!, _selectedCard) && selected != null && (!FleetBattle || _formationLines == "both"))
             {
                 var others = _state.Units.Where(u => u.Side == side && !u.Activated && !u.Hulk && u.Id != selected.Id).ToArray();
                 if (!others.Any(u => u.Id == _secondOrderUnit)) _secondOrderUnit = others.FirstOrDefault()?.Id ?? "";
@@ -132,8 +132,8 @@ public partial class Main
                 if (others.Length > 0) other.Select(Array.FindIndex(others, u => u.Id == _secondOrderUnit));
                 other.ItemSelected += index => _secondOrderUnit = others[(int)index].Id; parent.AddChild(other);
             }
-            var play = Button(parent, "SPECIAL ORDER", () => Submit(new("special", FleetBattle && SpecialOrders.Formation(_selectedCard) && _formationLines == "second" ? "" : _selected,
-                Card: _selectedCard, OtherUnit: FleetBattle && SpecialOrders.Formation(_selectedCard) && _formationLines == "first" ? "" : FleetBattle && SpecialOrders.Formation(_selectedCard) && _formationLines == "second" ? _selected : _secondOrderUnit,
+            var play = Button(parent, "SPECIAL ORDER", () => Submit(new("special", FleetBattle && SpecialOrders.Formation(_content, _state!, _selectedCard) && _formationLines == "second" ? "" : _selected,
+                Card: _selectedCard, OtherUnit: FleetBattle && SpecialOrders.Formation(_content, _state!, _selectedCard) && _formationLines == "first" ? "" : FleetBattle && SpecialOrders.Formation(_content, _state!, _selectedCard) && _formationLines == "second" ? _selected : _secondOrderUnit,
                 Repair: _repairChoice, OtherRepair: _repairOtherChoice)), selected == null || side != _state.ActiveSide);
             play.CustomMinimumSize = new(0, 32);
         }

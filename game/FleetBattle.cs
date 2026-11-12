@@ -15,7 +15,7 @@ public partial class Main
     private bool FleetDecision => _state?.Reinforce != null || _state?.Hazard != null || _state?.Combat != null || _state?.Defense != null || _state?.CapEntry != null || _state?.Overrun != null || _state?.Repairs is { Length: > 0 };
     private BattleCommand? BotAttack(BattleUnit unit, string target, bool interrupt = false)
     {
-        string card = interrupt ? _state!.Cards!.Hand1.FirstOrDefault(InterruptRules.IsAttack) ?? "" : _state?.Cards?.Hand1.FirstOrDefault() ?? "";
+        string card = interrupt ? _state!.Cards!.Hand1.FirstOrDefault(id => InterruptRules.IsAttack(_content, _state, id)) ?? "" : _state?.Cards?.Hand1.FirstOrDefault() ?? "";
         if (!FleetBattle) return new(interrupt ? "interrupt" : "attack", unit.Id, target, Card: card);
         foreach (string kind in new[] { "ranged", "board", "ram" })
         {
@@ -121,7 +121,7 @@ public partial class Main
                     if (defenseHand.Length > 0)
                     {
                         if (!defenseHand.Contains(_selectedCard)) _selectedCard = defenseHand[0];
-                        var card = new OptionButton(); foreach (string id in defenseHand) card.AddItem("CAP: " + SpecialOrders.Name(id));
+                        var card = new OptionButton(); foreach (string id in defenseHand) card.AddItem("CAP: " + SpecialOrders.Name(_content, _state!, id));
                         card.Select(Array.IndexOf(defenseHand, _selectedCard)); card.ItemSelected += i => _selectedCard = defenseHand[(int)i]; parent.AddChild(card);
                     }
                     foreach (var weapon in FleetCap.Weapons(_content, patrol))
@@ -146,7 +146,7 @@ public partial class Main
         Text(parent, cards.Phase == "initiative" ? "Select cards: +1 each, total capped at 6." : "Select cards to discard. Your hand will then replenish to the new limit.", 13);
         foreach (var card in hand)
         {
-            string id = card; var check = new CheckBox { Text = SpecialOrders.Name(id), ButtonPressed = _phaseCards.Contains(id), Disabled = ready };
+            string id = card; var check = new CheckBox { Text = SpecialOrders.Name(_content, _state!, id), ButtonPressed = _phaseCards.Contains(id), Disabled = ready };
             check.AddThemeFontSizeOverride("font_size", 13); parent.AddChild(check);
             check.Toggled += on => { if (on) _phaseCards.Add(id); else _phaseCards.Remove(id); };
         }
@@ -184,12 +184,12 @@ public partial class Main
         string[] repairs = ["ask", "", "focus", "engines", "weapons", "bays"];
         var repair = new OptionButton(); foreach (string r in repairs) repair.AddItem(r == "ask" ? "Repair: choose after rolling" : r == "" ? "Damage Control: skip" : "Damage Control: " + r);
         repair.Select(Math.Max(0, Array.IndexOf(repairs, _repairChoice))); repair.ItemSelected += i => { _repairChoice = repairs[(int)i]; DrawBattle(); }; parent.AddChild(repair);
-        if (_state.Cards is { Pending: null, Response: null } && SpecialOrders.Formation(_selectedCard))
+        if (_state.Cards is { Pending: null, Response: null } && SpecialOrders.Formation(_content, _state!, _selectedCard))
         {
             var other = new OptionButton(); foreach (string r in repairs) other.AddItem(r == "" ? "Second: no Damage Control" : "Second repair: " + r);
             other.Select(Math.Max(0, Array.IndexOf(repairs, _repairOtherChoice))); other.ItemSelected += i => _repairOtherChoice = repairs[(int)i]; parent.AddChild(other);
         }
-        if (_state.Cards?.Pending is { } order && SpecialOrders.Action(order) == "attack" && FleetRuleTools.Has(unit, "weapons"))
+        if (_state.Cards?.Pending is { } order && SpecialOrders.Action(_content, _state!, order) == "attack" && FleetRuleTools.Has(unit, "weapons"))
             Button(parent, "REPAIR INSTEAD OF ATTACK", () => Submit(new("damage-control", Repair: _repairChoice)), _repairChoice == "");
         if (_content.Ships[unit.Definition].Faction == "kushan")
             Button(parent, "KUSHAN ABILITY", () => Submit(new("faction", unit.Id, Repair: _repairChoice)), _repairChoice is "" or "ask" || _state.Cards?.Pending != null || _state.Cards?.Response != null || (unit.Side == 0 ? _state.FactionUsed0 : _state.FactionUsed1));

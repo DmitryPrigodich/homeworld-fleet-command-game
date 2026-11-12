@@ -91,7 +91,7 @@ public static class FleetCap
     internal static CommandResult? Expand(ContentCatalog c, BattleState s, int side, BattleCommand command)
     {
         if (!FleetRuleTools.Enabled(c, s)) return null;
-        string[] actors = command.Kind == "special" && SpecialOrders.Formation(command.Card) ? [command.Unit, command.OtherUnit] : [command.Unit];
+        string[] actors = command.Kind == "special" && SpecialOrders.Formation(c, s, command.Card) ? [command.Unit, command.OtherUnit] : [command.Unit];
         var patrols = s.Units.Where(u => actors.Contains(u.Id) && u.Patrol != "").ToArray(); if (patrols.Length == 0) return null;
         var placements = command.Deployments ?? [];
         if (patrols.Any(u => u.Side != side) || placements.Length != patrols.Length || placements.Select(p => p.Unit).Distinct().Count() != placements.Length

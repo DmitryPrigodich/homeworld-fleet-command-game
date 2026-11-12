@@ -95,7 +95,7 @@ public sealed class BattleEngine(ContentCatalog content, IEnumerable<IRuleModule
         FleetEconomy.Validate(content, s);
         FleetTerrain.Validate(content, s);
         FleetCap.Validate(content, s);
-        if (content.Rules[map.Rules].Handler == "cards-basic-v1") { BasicCardRules.Validate(s); InterruptRules.ValidateGeometry(content, s); FleetDefense.Validate(content, s); FleetCombat.Validate(content, s); FleetRepairs.Validate(s); FleetClose.Validate(content, s); }
+        if (content.Rules[map.Rules].Handler == "cards-basic-v1") { BasicCardRules.Validate(content, s); InterruptRules.ValidateGeometry(content, s); FleetDefense.Validate(content, s); FleetCombat.Validate(content, s); FleetRepairs.Validate(s); FleetClose.Validate(content, s); }
         return s;
     }
 }

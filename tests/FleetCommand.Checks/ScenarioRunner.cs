@@ -72,6 +72,7 @@ internal static class ScenarioRunner
         ObjectiveScenarios.Run(root);
         ForceScenarios.Run(root);
         ScenarioFeatureChecks.Run(root);
+        CommandCardScenarios.Run(root);
         File.WriteAllText(Path.Combine(output, "scenarios.json"), JsonSerializer.Serialize(reports, JsonData.Options));
     }
     private static BattleCommand Plan(BattleEngine engine, ContentCatalog content, BattleState state, int side, bool specials)
@@ -87,21 +88,21 @@ internal static class ScenarioRunner
         {
             var shooter = state.Units.FirstOrDefault(u => engine.GetActions(state, side, u.Id).AttackTargets.Length > 0);
             return shooter == null ? new("decline") : new("interrupt", shooter.Id, response.Command.Unit,
-                Card: (side == 0 ? state.Cards.Hand0 : state.Cards.Hand1).First(InterruptRules.IsAttack));
+                Card: (side == 0 ? state.Cards.Hand0 : state.Cards.Hand1).First(id => InterruptRules.IsAttack(content, state, id)));
         }
         if (state.Cards?.Phase == "initiative") return new("initiative");
         if (state.Cards?.Pending is { } pending)
         {
-            string actor = SpecialOrders.Actor(pending); var options = engine.GetActions(state, side, actor);
+            string actor = SpecialOrders.Actor(content, state, pending); var options = engine.GetActions(state, side, actor);
             if (options.AttackTargets.Length > 0) return new("attack", actor, options.AttackTargets[0]);
             if (options.MoveCells.Length > 0) { var h = options.MoveCells[0]; return new("move", actor, Q: h.Q, R: h.R); }
             return new("skip");
         }
         string card = (side == 0 ? state.Cards?.Hand0 : state.Cards?.Hand1)?.FirstOrDefault() ?? "";
-        if (specials && SpecialOrders.Supported(card))
+        if (specials && SpecialOrders.Supported(content, state, card))
         {
             var ready = state.Units.Where(u => u.Side == side && !u.Activated).OrderBy(u => u.Id).ToArray();
-            if (ready.Length > 0 && (!SpecialOrders.Formation(card) || ready.Length > 1))
+            if (ready.Length > 0 && (!SpecialOrders.Formation(content, state, card) || ready.Length > 1))
                 return new("special", ready[0].Id, Card: card, OtherUnit: ready.Length > 1 ? ready[1].Id : "");
         }
         var enemies = state.Units.Where(u => u.Side != side).ToArray();

@@ -39,11 +39,13 @@ public sealed record MapDefinition(string Id, string Name, int Width, int Height
 public sealed record ObjectiveDefinition(string Id, string Name, int Side, string Kind, int Medals, int Threshold = 1, string Target = "", bool Reversible = false, string[]? Classes = null);
 public sealed record RulesDefinition(string Id, string Name, string Handler = "skirmish-v1",
     int RoundLimit = 12, int OrdersPerSide = 3, bool AlternatingOrders = true,
-    bool FriendlyPassThrough = true, bool RearShots = true, bool FocusFire = true, bool Tabletop = false);
+    bool FriendlyPassThrough = true, bool RearShots = true, bool FocusFire = true, bool Tabletop = false,
+    string Deck = "core:training-deck");
 public sealed record ContentPack(ShipDefinition[]? Ships = null, AbilityDefinition[]? Abilities = null,
     FleetDefinition[]? Fleets = null, ObjectDefinition[]? Objects = null,
     MapDefinition[]? Maps = null, RulesDefinition[]? Rules = null, ThemeDefinition[]? Themes = null,
-    CampaignDefinition[]? Campaigns = null, LeaderDefinition[]? Leaders = null);
+    CampaignDefinition[]? Campaigns = null, LeaderDefinition[]? Leaders = null,
+    CardDefinition[]? Cards = null, DeckDefinition[]? Decks = null);
 public sealed record ThemeDefinition(string Id, string Name, string Background, string Panel,
     string Text, string Muted, string Accent, string Highlight, string Enemy, string Grid, string TabBlue = "#36a9de", string TabYellow = "#d8ad37", string TabGrey = "#87929c");
 public sealed record CampaignMission(string Id, string Name, string Map, string? OnVictory = null, string? OnDefeat = null, string? OnDraw = null);

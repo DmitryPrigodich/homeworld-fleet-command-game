@@ -78,8 +78,8 @@ public static class BasicCardBattle
 public sealed class BasicCardRules : IRuleModule
 {
     public string Id => "cards-basic-v1";
-    public static BattleState Initialize(BattleState state, ContentCatalog? c = null) => Draw(state with
-    { Cards = new(Enumerable.Range(1, 24).Select(i => $"order-{i:00}").ToArray(), [], [], []) }, true, c);
+    public static BattleState Initialize(BattleState state, ContentCatalog c) => Draw(state with
+    { Cards = new(CommandCards.Instances(CommandCards.Deck(c, state)).Keys.ToArray(), [], [], []) }, true, c);
     private static int Roll(ref uint random) { random ^= random << 13; random ^= random >> 17; random ^= random << 5; return (int)(random % 6) + 1; }
     internal static BattleState Draw(BattleState state, bool shuffle = false, ContentCatalog? c = null)
     {
@@ -188,21 +188,22 @@ public sealed class BasicCardRules : IRuleModule
     }
     internal static BattleState NextRound(ContentCatalog c, BattleState s) => FleetRuleTools.Enabled(c, s)
         ? s with { ValorUsedMask = 0, Cards = FleetRuleTools.Budgets(c, s) with { Phase = "cleanup", Ready0 = false, Ready1 = false, Pending = null, Response = null } } : Draw(s, c: c);
-    public static void Validate(BattleState state)
+    public static void Validate(ContentCatalog c, BattleState state)
     {
         var cards = state.Cards ?? throw new InvalidDataException("Card round is missing.");
         if (cards.Phase is not ("initiative" or "orders" or "cleanup") || cards.Deck == null || cards.Hand0 == null || cards.Hand1 == null || cards.Discard == null
             || cards.HandLimit0 is < 1 or > 100 || cards.HandLimit1 is < 1 or > 100 || cards.PlayLimit0 is < 1 or > 100 || cards.PlayLimit1 is < 1 or > 100)
             throw new InvalidDataException("Invalid card round.");
+        var instances = CommandCards.Instances(CommandCards.Deck(c, state));
         var all = cards.Deck.Concat(cards.Hand0).Concat(cards.Hand1).Concat(cards.Discard).Concat(cards.Interrupts0 ?? []).Concat(cards.Interrupts1 ?? []).ToArray();
-        if (all.Distinct().Count() != all.Length || all.Any(id => !Enumerable.Range(1, 24).Select(i => $"order-{i:00}").Contains(id))
-            || (!cards.IsView && all.Length != 24) || cards.Phase != "cleanup" && (cards.Hand0.Length > cards.HandLimit0 || cards.Hand1.Length > cards.HandLimit1)
+        if (all.Distinct().Count() != all.Length || all.Any(id => !instances.ContainsKey(id))
+            || (!cards.IsView && all.Length != instances.Count) || cards.Phase != "cleanup" && (cards.Hand0.Length > cards.HandLimit0 || cards.Hand1.Length > cards.HandLimit1)
             || (cards.Bid0 != "" && !cards.Hand0.Contains(cards.Bid0)) || (cards.Bid1 != "" && !cards.Hand1.Contains(cards.Bid1)))
             throw new InvalidDataException("Invalid card ownership or deck conservation.");
         if ((cards.Bids0 ?? []).Any(id => !cards.Hand0.Contains(id)) || (cards.Bids1 ?? []).Any(id => !cards.Hand1.Contains(id))
             || (cards.Bids0 ?? []).Distinct().Count() != (cards.Bids0 ?? []).Length || (cards.Bids1 ?? []).Distinct().Count() != (cards.Bids1 ?? []).Length)
             throw new InvalidDataException("Invalid initiative commitments.");
-        SpecialOrders.Validate(state);
-        InterruptRules.Validate(state);
+        SpecialOrders.Validate(c, state);
+        InterruptRules.Validate(c, state);
     }
 }

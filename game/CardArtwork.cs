@@ -20,7 +20,7 @@ public partial class Main
     {
         var pack = _cardStyles.FirstOrDefault(p => p.Definition.Id == _settings.CardStyle); if (pack == null || card == "") return;
         var def = pack.Definition; var preview = new PanelContainer { CustomMinimumSize = new(0, 210) };
-        string frame = pack.Frame(InterruptRules.IsAttack(card));
+        string frame = pack.Frame(InterruptRules.IsAttack(_content, _state, card));
         if (frame == "") preview.AddThemeStyleboxOverride("panel", Box(def.Background, def.Accent));
         else
         {
@@ -30,8 +30,8 @@ public partial class Main
         }
         parent.AddChild(preview); var margin = new MarginContainer(); foreach (string edge in new[] { "left", "right", "top", "bottom" }) margin.AddThemeConstantOverride("margin_" + edge, 16); preview.AddChild(margin);
         var body = new VBoxContainer(); body.AddThemeConstantOverride("separation", 12); margin.AddChild(body);
-        Text(body, SpecialOrders.Name(card), 16, def.Accent);
-        Text(body, InterruptRules.IsAttack(card) ? "INTERRUPT" : "ORDER", 13, def.Text);
-        Text(body, InterruptRules.IsAttack(card) ? "Response fire at the acting enemy." : SpecialOrders.Formation(card) ? "Move → Attack\nLightning Move → Attack" : SpecialOrders.Supported(card) ? "Move → Move\nAlong one straight line." : "Move / Attack", 14, def.Text);
+        Text(body, SpecialOrders.Name(_content, _state!, card), 16, def.Accent);
+        Text(body, InterruptRules.IsAttack(_content, _state, card) ? "INTERRUPT" : "ORDER", 13, def.Text);
+        Text(body, CommandCards.Description(_content, _state, card), 14, def.Text);
     }
 }

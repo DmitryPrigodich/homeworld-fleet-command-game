@@ -33,7 +33,7 @@ public static class FleetEconomy
     public static int[] Targets(ContentCatalog c, BattleState s, int side, string id)
     {
         if (s.Finished || s.Repairs is { Length: > 0 } || s.Hazard != null || s.Combat != null || s.Defense != null || s.CapEntry != null || s.Cards?.Response != null
-            || s.Cards?.Pending is not { BasicAction: "harvest", Step: 1 } order || order.Side != side || SpecialOrders.Actor(order) != id || s.Deposits == null) return [];
+            || s.Cards?.Pending is not { BasicAction: "harvest", Step: 1 } order || order.Side != side || SpecialOrders.Actor(c, s, order) != id || s.Deposits == null) return [];
         var unit = s.Units.Find(u => u.Id == id && u.Side == side && !u.Hulk && u.Patrol == "");
         if (unit == null || c.Ships[unit.Definition].Harvest < 0) return [];
         var map = c.Maps[s.Map];

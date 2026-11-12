@@ -2,7 +2,9 @@
 
 ## Current priority: mechanics before scenario content
 
-Finish shared rule mechanics before importing more published scenarios or building a map editor. Scenario-specific content should consume the shared mechanisms. The next mechanics work is a data-defined command-card/deck layer, remaining order/interrupt effects, neutral objective interactions and the expansion systems documented below. Do not treat all of this as blocked by missing photographs: implement sufficiently specified book rules, and request exact card faces for card-specific timing, conditions and profiles. See [CARD_INPUTS.md](CARD_INPUTS.md) for the card audit and minimal photo list.
+Finish the PC game in this order: shared mechanics, campaign systems/content, then map, scenario and campaign editors. Scenario-specific content and editors should consume the shared mechanisms. The next mechanics work is remaining order/interrupt effects, neutral objective interactions and the expansion systems documented below. Do not treat all of this as blocked by missing photographs: implement sufficiently specified book rules, and use exact card faces for card-specific timing, conditions and profiles. See [CARD_INPUTS.md](CARD_INPUTS.md) for the card audit and minimal photo list.
+
+Keep future native tablet and browser clients possible through plain rule/data/command boundaries. No engine migration, tablet export or web client is part of the current implementation stage. Touch interaction, platform storage/import and browser transport belong to client adapters. Ship editing/addition UX is deferred for a separate discussion; existing data mods remain supported.
 
 ## Working prototype
 
@@ -26,6 +28,7 @@ Finish shared rule mechanics before importing more published scenarios or buildi
 - [x] Separate basic-card practice mode, private views and deterministic whole-battle replay checks.
 - [x] First two special orders, preassigned actors, skippable action sequences, mid-order saves, UI guide and network regression scenarios.
 - [x] Interrupt Attack, per-hex movement pauses, response before attack dice, per-round reaction limits and a repeatable lesson.
+- [x] Data-defined command card types, action lines, explicit movement restrictions and per-ruleset decks; custom deck save/replay, UI and network checks.
 - [ ] Remaining special orders, full initiative options, leader budgets and interrupts (see TESTING.md for current limits).
 
 - [x] Freeze US Digital + Errata 1.7 reference priority and record timing interpretations in RULES_COVERAGE.md.
@@ -56,6 +59,14 @@ Finish shared rule mechanics before importing more published scenarios or buildi
 - [ ] More capable objective-aware AI.
 - [ ] Mod packaging, asset validation, content-hash distinction for cosmetic mods.
 - [ ] Release exports and distributable desktop packages.
+
+## Editors after shared mechanics and campaigns
+
+- [ ] Map editor: playable cells/dimensions, background, objects/ownership/effects and deployment zones, plus seeded random generation as a starting point.
+- [ ] Scenario editor: fleets/reserves, rules/deck selection, objectives, medals, events, briefing and timing conditions using existing validated definitions.
+- [ ] Campaign editor: mission graph, victory/defeat/draw branches, progression/rewards/purchases and persistent fleet settings once those campaign mechanics exist.
+- [ ] Shared editor workflow: new/open/save, validation with actionable errors, undo/redo, playtest and export as a self-contained data mod. Do not overwrite base content.
+- [ ] Playtest the same exported data in single player, PvP and cooperative campaigns; save progress on the host.
 
 ## Deferred art import
 
