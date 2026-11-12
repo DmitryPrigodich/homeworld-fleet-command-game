@@ -1,5 +1,9 @@
 # Delivery stages
 
+## Current priority: mechanics before scenario content
+
+Finish shared rule mechanics before importing more published scenarios or building a map editor. Scenario-specific content should consume the shared mechanisms. The next mechanics work is a data-defined command-card/deck layer, remaining order/interrupt effects, neutral objective interactions and the expansion systems documented below. Do not treat all of this as blocked by missing photographs: implement sufficiently specified book rules, and request exact card faces for card-specific timing, conditions and profiles. See [CARD_INPUTS.md](CARD_INPUTS.md) for the card audit and minimal photo list.
+
 ## Working prototype
 
 - [x] Independent core, JSON content and checks.
