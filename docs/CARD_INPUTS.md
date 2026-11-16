@@ -4,7 +4,7 @@ Priority agreed on 2026-11-12: finish shared mechanics before additional publish
 
 ## Confirmed base-deck inventory
 
-The supplied `Compete-Component-Catalogue-for-Homeworld.pdf`, command-card section, lists **20 unique types / 54 physical cards**. These counts are already available; photographs are needed for full face text and action icons, not to guess deck quantities. Replacement catalogues describe corrections rather than a complete rules face for every card.
+The supplied `Compete-Component-Catalogue-for-Homeworld.pdf`, command-card section, lists **20 unique types / 54 physical cards**. As of the final command-sheet submission on 2026-11-16, all 20 types have photographed faces. Copy counts come from the catalogue, not photographed stack thickness. The table below tracks implementation, separately from source availability. Replacement catalogues and previously supplied corrected faces still determine applicable revisions.
 
 | Type | Copies | Implementation |
 | --- | ---: | --- |
@@ -29,7 +29,7 @@ The supplied `Compete-Component-Catalogue-for-Homeworld.pdf`, command-card secti
 | Interrupt Repairs | 3 | Pending |
 | Interrupt Counterintelligence | 2 | Pending |
 
-The playable training deck still has 24 instances. The inventory above is not a claim that the full 54-card deck or its effects already works. Card types, deck copies, action rows and explicit constraints now come from `content/base/content.json`; neither `SpecialOrders` nor `InterruptRules` interprets instance number ranges. Additional effect handlers and verified faces are still needed before populating the full published deck. Artwork remains optional and independent of mechanics.
+The playable training deck still has 24 instances. The inventory above is not a claim that the full 54-card deck or its effects already works. Card types, deck copies, action rows and explicit constraints now come from `content/base/content.json`; neither `SpecialOrders` nor `InterruptRules` interprets instance number ranges. Exact transcription, revision reconciliation and additional effect handlers are still needed before populating the full published deck. Artwork remains optional and independent of mechanics.
 
 ## Corrected-card photos received on 2026-11-12
 
@@ -43,7 +43,7 @@ Readability: titles, main prose, costs, Hand/Play and colored assignment tabs ar
 - Visible upgrades include Advanced Point Defense, Upgraded Thrusters, Thicker Armor, Hangar Bay, Large Hangar Bay, Hull Defense Guns, Raiders and Beast Mode (with an Exhausted section).
 - Planet modules: Orbital Defense Control, Star Port, Ion Batteries and Missile Defense.
 
-Still needed for pending base command mechanics: **Interrupt Move, Interrupt Repairs, Interrupt Counterintelligence**, plus **Pincer Attack, Intercept, Hit and Run, Ship Assault, Ready to Launch, Weapons to Maximum, Hammer and Anvil, Brace For Impact, Evasive Pattern Delta, Repel Boarders, Target Engines, Target Bays**. All Ahead Full, Stay In Formation and Interrupt Attack already have book references; request new faces only if those cards were also revised. Full ship unit profiles and unpictured leaders/expansion cards remain separate inputs.
+At this point in intake, faces were still missing for **Interrupt Move, Interrupt Repairs, Interrupt Counterintelligence**, plus **Pincer Attack, Intercept, Hit and Run, Ship Assault, Ready to Launch, Weapons to Maximum, Hammer and Anvil, Brace For Impact, Evasive Pattern Delta, Repel Boarders, Target Engines, Target Bays**. The final command sheet below supplies all of these; their implementations remain pending. Full ship unit profiles and unpictured leaders/expansion cards remain separate inputs.
 
 ## Second small-card photo batch received on 2026-11-16
 
@@ -62,7 +62,7 @@ The category labels follow the user's grouping. They do not establish extra mech
 
 Main prose, leader cost/Hand/Play, tabs, action rows and restrictions are usable references. Small inline icons and weapon rows remain subject to close inspection and the expected originals. Preserve the blue/red distinctions, Staff assignment prerequisites, additional hangar capacity/Launch Tubes, Heroic Action ownership and the ready/Exhausted behavior of Beast Mode when implementing these cards. Lord Commander's visible cost/Hand/Play are 4/5/3; it is a leader for a Super Capital Ship, not the Turanic carrier's unit/weapon profile. The user associates this group with that carrier; its full ship profile still needs a separate source.
 
-This batch improves the available references; it does not supply the remaining ordinary command faces or any Interrupt faces listed above, and does not by itself complete the published deck. Source intake is separate from implementing and testing the effects.
+This batch improves the available references; it does not itself supply the remaining ordinary command/Interrupt faces. Those were subsequently received on the final command sheet below. Source intake is separate from implementing and testing the effects.
 
 ## Faction-card batch received later on 2026-11-16
 
@@ -76,9 +76,9 @@ Seven more sheets were supplied with the labels Taiidan leaders/upgrades, Kushan
 | 4 / Kushan leaders | Raid Commander, Ion Controller, Recon Commander, Medical Chief, Chief of Staff, Point Defender, Fighter Ace, Station Overseer, Intelligence Officer, Grizzled Veteran, Strategist, Orbital Co-ordinator, Master of Arms |
 | 5 / Facilities | Hardened Defenses, Orbital Defence Control, Minefield, Ion Batteries, Star Port, Missile Defence |
 | 6 / Heroic commands | Patch 'Em Up, I Can Fix It, Rapid Reaction, Planetary Overwatch, Best of the Best, Launch All Fighters, Lightning Strike, Lead the Attack, Supreme Pilot, Frigate Attack, Prepare to Be Boarded, Fire and Maneuver, Power and Precision, No Escape |
-| 7 / Pirate-related leaders | Tactical Adjunct (Frigate), Cut-throat (Corvette Unit), Lord Commander (Super Capital Ship) |
+| 7 / Kadeshi and Turanic leaders | Tactical Adjunct (Kadeshi; Frigate), Cut-throat (Turanic; Corvette Unit), Lord Commander (Turanic; Super Capital Ship) |
 
-The final sheet contains leader faces with cost/Hand/Play and assignment classes, not ship movement, hull or weapon profiles. Do not interpret its category label as supplied pirate ship statistics. Only exposed fronts are inventoried; partly visible facilities beside the Heroic sheet and cards under stacks are not additional verified faces/copy counts.
+The user explicitly corrected the faction assignments: **Tactical Adjunct is Kadeshi; Cut-throat and Lord Commander are Turanic**. These identities override any earlier collective "pirate" shorthand. The final sheet contains leader faces with cost/Hand/Play and assignment classes, not ship movement, hull or weapon profiles. Do not interpret its category label as supplied pirate ship statistics. Only exposed fronts are inventoried; partly visible facilities beside the Heroic sheet and cards under stacks are not additional verified faces/copy counts.
 
 Version differences requiring explicit reconciliation with the corrected packs:
 
@@ -88,16 +88,28 @@ Version differences requiring explicit reconciliation with the corrected packs:
 - Facilities also differ: Orbital Defence Control on this sheet lacks the explicit Launch Tubes line shown on the corrected face. Corrected text remains the reference for the replaced profile.
 - Evasion/Evasive terminology and weapon/action symbols vary between faces. Reconcile with the rulebook legend and applicable corrected card rather than choosing a spelling or symbol by photo date.
 
-The 14 Heroic faces include two **Heroic Interrupts**: **Rapid Reaction** (Recon Commander) and **Planetary Overwatch** (Battery Coordinator). These are newly available reference faces; they do not replace the missing ordinary **Interrupt Move**, **Interrupt Repairs** or **Interrupt Counterintelligence**. Other owner bindings visible on the sheet include Medical Chief / Patch 'Em Up, Master Engineer / I Can Fix It, Launch Commander / Launch All Fighters, Grizzled Veteran / Lightning Strike, Fighter Ace / Lead the Attack, Veteran Captain / Frigate Attack and Hunter / No Escape. Do not assume unpictured owner profiles from their command titles.
+The 14 Heroic faces include two **Heroic Interrupts**: **Rapid Reaction** (Recon Commander) and **Planetary Overwatch** (Battery Coordinator). These are separate from ordinary **Interrupt Move**, **Interrupt Repairs** and **Interrupt Counterintelligence**, whose faces were subsequently received on the final command sheet. Other owner bindings visible on the sheet include Medical Chief / Patch 'Em Up, Master Engineer / I Can Fix It, Launch Commander / Launch All Fighters, Grizzled Veteran / Lightning Strike, Fighter Ace / Lead the Attack, Veteran Captain / Frigate Attack and Hunter / No Escape. Do not assume unpictured owner profiles from their command titles.
 
-Titles and main prose are readable. Small inline weapon/ability icons and the denser Heroic text need individual close inspection before exact transcription. The new names expand the reference inventory, not implemented gameplay coverage. The missing base-command list above remains applicable.
+Titles and main prose are readable. Small inline weapon/ability icons and the denser Heroic text need individual close inspection before exact transcription. The new names expand the reference inventory, not implemented gameplay coverage.
+
+## Complete base-command face sheet received on 2026-11-16
+
+One final sheet supplies **all 20 base command types**, including all four ordinary Interrupt faces. The original image, an upright inspection copy and SHA-256 provenance manifest are retained locally. Inventory in photographed row order:
+
+- Row 1: Interrupt Counterintelligence, Interrupt Move, Interrupt Attack, Interrupt Repairs, Ship Assault, Intercept, Stay In Formation.
+- Row 2: Target Bays, Repel Boarders, Hammer and Anvil, Deploy Engineers, Ready to Launch, Pincer Attack, Hit and Run.
+- Row 3: Weapons to Maximum, Target Weapons, Target Engines, Evasive Pattern Delta, Brace For Impact, All Ahead Full, plus a card back/basic-order legend.
+
+This closes the missing-face request for the base command deck. The published 54-copy inventory is already known separately. It does not make the remaining effects implemented, nor establish a later card revision by receipt date. Preserve existing training content until published actions, choices, buffs/debuffs and interrupt continuations are implemented and tested against the actual faces.
+
+Apply known source precedence: the previously supplied corrected **Deploy Engineers** and **Target Weapons** faces replace corresponding older faces where applicable. **All Ahead Full** on this sheet still prints a +1 ramming-die bonus; the supplied **Rulebook Errata 1.7**, All Ahead Full entry, explicitly removes it. Do not reintroduce that bonus from the photograph. Small inline icons, per-card choice/timing text and distinctions between a model, unit and unit type need close transcription before implementation. Blank prose panels on icon-only cards are not missing photographed text.
 
 ## Useful photo batches
 
-1. **Three remaining Interrupt faces:** Move, Repairs and Counterintelligence. Exact trigger windows, legal actors/targets, cancellation and continuation wording matter.
-2. **Remaining special-order, buff and debuff faces:** the 12 pending non-interrupt types not supplied above. Deploy Engineers and Target Weapons have now been photographed. Include the full action rows, icons, restrictions and duration text. One image per distinct face is sufficient; duplicate physical copies are unnecessary. Readable illustrations already supplied in the rulebooks can cover some entries.
-3. **Ships and leaders, per faction:** full statistics, weapon rows/arcs, ability values, costs, leader Hand/Play and colored tabs, including free assigned units. Interceptor and Wing/Squadron Leader examples on US Digital p.32 are already transcribed; most other profiles remain unverified.
-4. **Expansion cards later:** upgrades, heroes, heroic commands, facilities and added units. These are a separate batch from the 54-card base deck.
+1. **Ships, per faction:** full statistics, weapon rows/arcs, ability values, costs and colored tabs, including free assigned units. The pirate-related sheet supplies leaders, not ship profiles. Interceptor examples on US Digital p.32 are already transcribed; most other profiles remain unverified.
+2. **Unpictured leaders and Heroic owners:** full cost/Hand/Play, restrictions and abilities. Use the existing inventory to avoid requesting repeated faces; Wing/Squadron Leader book examples and photographed leaders are already available.
+3. **Higher-quality originals or targeted crops:** only where an inline icon or dense text cannot be resolved from the supplied photos and legend. No repeated full base-command deck photo is currently needed.
+4. **Other expansion faces:** only cards not present in the received upgrade/leader/facility/Heroic batches. Distinguish missing source profiles from pending implementations.
 
 Full faces with legible text and symbols are more useful than cropped prose alone. Use the errata and replacement catalogue to reconcile versions; do not infer a missing ability or an action sequence solely from a title. Card photographs are private reference inputs; no artwork is needed to make textual cards playable.
 
