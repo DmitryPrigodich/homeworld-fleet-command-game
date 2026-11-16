@@ -130,7 +130,7 @@ Costs, model counts and main statistic columns are readable; small weapon symbol
 
 ## Additional Taiidan Heroic leader sheet received on 2026-11-17
 
-The user asks whether this set was already photographed and tentatively suggests it is an update. Among previously received faces, **Hot Shot Pilot** was already supplied. The other six leader profiles are newly supplied: some names previously appeared only as owners printed on Heroic command cards, which did not establish their statistics.
+The user initially asks whether this set was already photographed and tentatively suggests an update, then confirms these are the missing original cards after comparison. Among previously received faces, **Hot Shot Pilot** was already supplied. The other six leader profiles are newly supplied: some names previously appeared only as owners printed on Heroic command cards, which did not establish their statistics.
 
 | Leader | Assignment on this face | Cost | Hand | Play | Prior face availability |
 | --- | --- | ---: | ---: | ---: | --- |
@@ -144,7 +144,7 @@ The user asks whether this set was already photographed and tentatively suggests
 
 Retain the image and SHA-256 provenance locally. The printed cost/Hand/Play and prose are readable; exact ability/icon transcription is still implementation work. Newly available owner profiles cover Planetary Overwatch, Frigate Attack, No Escape, Supreme Pilot, Launch All Fighters and I Can Fix It, respectively; Hot Shot Pilot / Best of the Best was already represented.
 
-**Revision status is unconfirmed.** The user's "looks like an update" is tentative, not a confirmed replacement scope. This Hot Shot Pilot face says **Evasion**, whereas the previously supplied corrected face says **Evasive**; Master Engineer also uses the **Crew Card** Staff wording seen on other differing faces. These are comparison markers, not sufficient evidence to date the entire sheet. Do not overwrite a known corrected profile solely from the later photograph or infer that this is the latest gameplay revision. Preserve each variant until its applicable correction is established.
+**Revision status: originals, as subsequently classified by the user.** The earlier tentative update label is superseded. This Hot Shot Pilot face says **Evasion**, whereas the previously supplied corrected face says **Evasive**; Master Engineer also uses the **Crew Card** Staff wording seen on other differing faces. Keep all seven as original references, with six newly supplied profiles and one repeated leader. Applicable corrected cards/errata retain precedence; receiving this original sheet later does not override them.
 
 ## Useful photo batches
 
