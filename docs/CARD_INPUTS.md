@@ -64,6 +64,34 @@ Main prose, leader cost/Hand/Play, tabs, action rows and restrictions are usable
 
 This batch improves the available references; it does not supply the remaining ordinary command faces or any Interrupt faces listed above, and does not by itself complete the published deck. Source intake is separate from implementing and testing the effects.
 
+## Faction-card batch received later on 2026-11-16
+
+Seven more sheets were supplied with the labels Taiidan leaders/upgrades, Kushan upgrades/leaders, Facilities, Heroic commands and Pirate ships. Preserve these as a separate batch; later receipt does not establish a later printed revision. Original files, SHA-256 provenance and upright inspection copies are kept in the ignored local reference directory. No photo artwork is published.
+
+| Photo | Visible fronts |
+| --- | --- |
+| 1 / Taiidan leaders | Raid Commander, Ion Controller, Orbital Co-ordinator, Chief of Staff, Point Defender |
+| 2 / Taiidan upgrades | Beast Mode, Tritium Injection, Prow Ram, Rammer, Hangar Bay, Large Hangar Bay, Modified Barrels, Automated Repair, Cruise Missiles, Extra Thrusters, Marines |
+| 3 / Kushan upgrades | EMP Bombs, Upgraded Thrusters, Large Hangar Bay, Thicker Armor, Precision Focus, Security Stations, Raiders, Med Bays, Advanced Point Defence, Guided Rounds, Hangar Bay, Hull Defence Guns |
+| 4 / Kushan leaders | Raid Commander, Ion Controller, Recon Commander, Medical Chief, Chief of Staff, Point Defender, Fighter Ace, Station Overseer, Intelligence Officer, Grizzled Veteran, Strategist, Orbital Co-ordinator, Master of Arms |
+| 5 / Facilities | Hardened Defenses, Orbital Defence Control, Minefield, Ion Batteries, Star Port, Missile Defence |
+| 6 / Heroic commands | Patch 'Em Up, I Can Fix It, Rapid Reaction, Planetary Overwatch, Best of the Best, Launch All Fighters, Lightning Strike, Lead the Attack, Supreme Pilot, Frigate Attack, Prepare to Be Boarded, Fire and Maneuver, Power and Precision, No Escape |
+| 7 / Pirate-related leaders | Tactical Adjunct (Frigate), Cut-throat (Corvette Unit), Lord Commander (Super Capital Ship) |
+
+The final sheet contains leader faces with cost/Hand/Play and assignment classes, not ship movement, hull or weapon profiles. Do not interpret its category label as supplied pirate ship statistics. Only exposed fronts are inventoried; partly visible facilities beside the Heroic sheet and cards under stacks are not additional verified faces/copy counts.
+
+Version differences requiring explicit reconciliation with the corrected packs:
+
+- Recon Commander here has **Ace Pilot 2**; the previously supplied corrected face has **Cool Under Pressure 2**. This is a mechanical difference, not just wording. Use the known corrected face for that profile.
+- Staff text here requires an existing **Crew Card**, whereas the corrected Chief of Staff/Intelligence Officer faces say **Leader Card**. Do not silently treat these as separate new requirements or merge the wordings.
+- Hangar Bay here permits a Super Capital Ship **or Frigate**, and its capacity prose lacks the corrected face's explicit additional-capacity wording. Use the corrected assignment/capacity profile where its replacement scope applies.
+- Facilities also differ: Orbital Defence Control on this sheet lacks the explicit Launch Tubes line shown on the corrected face. Corrected text remains the reference for the replaced profile.
+- Evasion/Evasive terminology and weapon/action symbols vary between faces. Reconcile with the rulebook legend and applicable corrected card rather than choosing a spelling or symbol by photo date.
+
+The 14 Heroic faces include two **Heroic Interrupts**: **Rapid Reaction** (Recon Commander) and **Planetary Overwatch** (Battery Coordinator). These are newly available reference faces; they do not replace the missing ordinary **Interrupt Move**, **Interrupt Repairs** or **Interrupt Counterintelligence**. Other owner bindings visible on the sheet include Medical Chief / Patch 'Em Up, Master Engineer / I Can Fix It, Launch Commander / Launch All Fighters, Grizzled Veteran / Lightning Strike, Fighter Ace / Lead the Attack, Veteran Captain / Frigate Attack and Hunter / No Escape. Do not assume unpictured owner profiles from their command titles.
+
+Titles and main prose are readable. Small inline weapon/ability icons and the denser Heroic text need individual close inspection before exact transcription. The new names expand the reference inventory, not implemented gameplay coverage. The missing base-command list above remains applicable.
+
 ## Useful photo batches
 
 1. **Three remaining Interrupt faces:** Move, Repairs and Counterintelligence. Exact trigger windows, legal actors/targets, cancellation and continuation wording matter.
