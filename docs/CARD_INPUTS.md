@@ -128,6 +128,24 @@ Confirmed revision checks to preserve when transcribing:
 
 Costs, model counts and main statistic columns are readable; small weapon symbols and dense prose still need close transcription against the legend/errata. Ship art is reference material, not a distributed game asset. Availability of these profiles does not replace remaining Kushan, Kadeshi or Turanic ship inputs.
 
+## Additional Taiidan Heroic leader sheet received on 2026-11-17
+
+The user asks whether this set was already photographed and tentatively suggests it is an update. Among previously received faces, **Hot Shot Pilot** was already supplied. The other six leader profiles are newly supplied: some names previously appeared only as owners printed on Heroic command cards, which did not establish their statistics.
+
+| Leader | Assignment on this face | Cost | Hand | Play | Prior face availability |
+| --- | --- | ---: | ---: | ---: | --- |
+| Battery Coordinator | Planet | 3 | 3 | 2 | New |
+| Veteran Captain | Frigate | 3 | 3 | 2 | New |
+| Hunter | Super Capital Ship | 4 | 6 | 3 | New |
+| Veteran Commander | Corvette | 2 | 2 | 1 | New |
+| Launch Commander | Carrier | 3 | 2 | 1 | New |
+| Hot Shot Pilot | Fighter Unit | 3 | 2 | 1 | Previously supplied; compare revision |
+| Master Engineer | Station or Frigate | 2 | 2 | 1 | New |
+
+Retain the image and SHA-256 provenance locally. The printed cost/Hand/Play and prose are readable; exact ability/icon transcription is still implementation work. Newly available owner profiles cover Planetary Overwatch, Frigate Attack, No Escape, Supreme Pilot, Launch All Fighters and I Can Fix It, respectively; Hot Shot Pilot / Best of the Best was already represented.
+
+**Revision status is unconfirmed.** The user's "looks like an update" is tentative, not a confirmed replacement scope. This Hot Shot Pilot face says **Evasion**, whereas the previously supplied corrected face says **Evasive**; Master Engineer also uses the **Crew Card** Staff wording seen on other differing faces. These are comparison markers, not sufficient evidence to date the entire sheet. Do not overwrite a known corrected profile solely from the later photograph or infer that this is the latest gameplay revision. Preserve each variant until its applicable correction is established.
+
 ## Useful photo batches
 
 1. **Remaining ships, per faction:** full statistics, weapon rows/arcs, ability values, costs and colored tabs, including free assigned units. The 19 Taiidan types and seven replacement faces above are now available; do not request them again as missing. Kushan, Kadeshi and Turanic ship profiles remain separate inputs; the pirate-related sheet supplies leaders, not ship profiles. Interceptor examples on US Digital p.32 are already transcribed. Photographed profiles still require exact transcription/validation before implementation.
