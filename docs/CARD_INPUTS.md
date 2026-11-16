@@ -104,9 +104,33 @@ This closes the missing-face request for the base command deck. The published 54
 
 Apply known source precedence: the previously supplied corrected **Deploy Engineers** and **Target Weapons** faces replace corresponding older faces where applicable. **All Ahead Full** on this sheet still prints a +1 ramming-die bonus; the supplied **Rulebook Errata 1.7**, All Ahead Full entry, explicitly removes it. Do not reintroduce that bonus from the photograph. Small inline icons, per-card choice/timing text and distinctions between a model, unit and unit type need close transcription before implementation. Blank prose panels on icon-only cards are not missing photographed text.
 
+## Taiidan ship originals and latest update received on 2026-11-17
+
+Four ship-profile photographs were supplied as Taiidan originals followed by the latest update. Treat sheets 1-3 as original references and sheet 4 as the latest replacement faces for its seven pictured types. Keep both revisions; do not apply the replacement label to unpictured ship types or infer that every printed ability is already implemented. Original images, upright inspection copies and SHA-256 provenance are retained locally, outside Git.
+
+| Sheet | Visible ship profiles |
+| --- | --- |
+| 1 / Originals | Scout, Attack Bomber, Cloaked Fighter, Salvage Corvette, Interceptor, Defence Fighter, Repair Corvette, Light Corvette; partially cropped Heavy Corvette and Multi-gun Corvette at the right edge |
+| 2 / Originals | Heavy Corvette, Minelayer Corvette, Ion Cannon Frigate, Carrier, Multi-gun Corvette, Assault Frigate, Field Frigate, Destroyer |
+| 3 / Originals | Missile Destroyer, Heavy Cruiser, Imperial Flagship |
+| 4 / Latest update | Multi-gun Corvette, Assault Frigate, Heavy Cruiser, Minelayer Corvette, Destroyer, Missile Destroyer, Imperial Flagship |
+
+The batch exposes **19 distinct Taiidan ship types**. The two cropped original profiles on sheet 1 appear fully on sheet 2; no repeat of that whole sheet is currently needed. This count describes the received sources, not proof that every Taiidan ship/expansion profile has been supplied.
+
+Confirmed revision checks to preserve when transcribing:
+
+- Minelayer Corvette changes from **2 to 3 models**. The latest mine-placement text also restricts the adjacent hex to one without a unit or terrain feature.
+- Assault Frigate's printed Large Projectile Cannon War Dice change from **1 to 3**. Keep its other weapon row and revised symbols as a coherent profile; do not combine old and new rows.
+- Multi-gun Corvette's latest **Defender 1** text applies to adjacent allied units, whereas the original limits the bonus to up to two adjacent allied units. Preserve the explicit corrected wording when implementing target/recipient selection.
+- Heavy Cruiser's latest Twin Turrets text explicitly limits the additional paid attack to **once per turn**.
+- Missile Destroyer's latest Target Lock text explicitly covers both the Evasive unit ability and buff.
+- Imperial Flagship's updated dense factory/launch/assigned-unit wording needs an individual close inspection before exact transcription. Its original, larger face remains useful for comparison, but does not override the latest face.
+
+Costs, model counts and main statistic columns are readable; small weapon symbols and dense prose still need close transcription against the legend/errata. Ship art is reference material, not a distributed game asset. Availability of these profiles does not replace remaining Kushan, Kadeshi or Turanic ship inputs.
+
 ## Useful photo batches
 
-1. **Ships, per faction:** full statistics, weapon rows/arcs, ability values, costs and colored tabs, including free assigned units. The pirate-related sheet supplies leaders, not ship profiles. Interceptor examples on US Digital p.32 are already transcribed; most other profiles remain unverified.
+1. **Remaining ships, per faction:** full statistics, weapon rows/arcs, ability values, costs and colored tabs, including free assigned units. The 19 Taiidan types and seven replacement faces above are now available; do not request them again as missing. Kushan, Kadeshi and Turanic ship profiles remain separate inputs; the pirate-related sheet supplies leaders, not ship profiles. Interceptor examples on US Digital p.32 are already transcribed. Photographed profiles still require exact transcription/validation before implementation.
 2. **Unpictured leaders and Heroic owners:** full cost/Hand/Play, restrictions and abilities. Use the existing inventory to avoid requesting repeated faces; Wing/Squadron Leader book examples and photographed leaders are already available.
 3. **Higher-quality originals or targeted crops:** only where an inline icon or dense text cannot be resolved from the supplied photos and legend. No repeated full base-command deck photo is currently needed.
 4. **Other expansion faces:** only cards not present in the received upgrade/leader/facility/Heroic batches. Distinguish missing source profiles from pending implementations.
