@@ -126,7 +126,7 @@ Confirmed revision checks to preserve when transcribing:
 - Missile Destroyer's latest Target Lock text explicitly covers both the Evasive unit ability and buff.
 - Imperial Flagship's updated dense factory/launch/assigned-unit wording needs an individual close inspection before exact transcription. Its original, larger face remains useful for comparison, but does not override the latest face.
 
-Costs, model counts and main statistic columns are readable; small weapon symbols and dense prose still need close transcription against the legend/errata. Ship art is reference material, not a distributed game asset. Availability of these profiles does not replace remaining Kushan, Kadeshi or Turanic ship inputs.
+Costs, model counts and main statistic columns are readable; small weapon symbols and dense prose still need close transcription against the legend/errata. Ship art is reference material, not a distributed game asset. These Taiidan faces do not establish corresponding Kushan, Kadeshi or Turanic statistics; see subsequent batches for separately supplied profiles.
 
 ## Additional Taiidan Heroic leader sheet received on 2026-11-17
 
@@ -146,9 +146,34 @@ Retain the image and SHA-256 provenance locally. The printed cost/Hand/Play and 
 
 **Revision status: originals, as subsequently classified by the user.** The earlier tentative update label is superseded. This Hot Shot Pilot face says **Evasion**, whereas the previously supplied corrected face says **Evasive**; Master Engineer also uses the **Crew Card** Staff wording seen on other differing faces. Keep all seven as original references, with six newly supplied profiles and one repeated leader. Applicable corrected cards/errata retain precedence; receiving this original sheet later does not override them.
 
+## Kushan ship originals and latest update received on 2026-11-17
+
+Four further photographs were explicitly supplied as Kushan originals plus the latest update. Retain sheets 1-3 as the original profiles; sheet 4 supersedes the nine pictured ship types only. The files, upright inspection copies and SHA-256 provenance are retained privately. Do not derive one faction's values or revision changes by mirroring the other faction.
+
+| Sheet | Visible ship profiles |
+| --- | --- |
+| 1 / Originals | Scout, Attack Bomber, Defender, Salvage Corvette, Interceptor, Cloaked Fighter, Repair Corvette, Light Corvette; cropped Heavy Corvette and Multi-gun Corvette at the right edge |
+| 2 / Originals | Heavy Corvette, Minelayer Corvette, Ion Cannon Frigate, Carrier, Multi-gun Corvette, Assault Frigate, Drone Frigate, Destroyer; fragments of preceding profiles at the left edge |
+| 3 / Originals | Missile Destroyer, Heavy Cruiser, Mothership |
+| 4 / Latest update | Attack Bomber, Minelayer Corvette, Drone Frigate, Missile Destroyer, Carrier, Multi-gun Corvette, Assault Frigate, Destroyer, Heavy Cruiser |
+
+This supplies **19 distinct Kushan ship types and nine replacement faces**. Fully exposed profiles on sheet 2 cover the right-edge crops on sheet 1. Partly visible cards under stacks are not additional verified types/copy counts. This is an intake count, not a claim that every faction/expansion ship is present or implemented.
+
+Revision checks and faction distinctions:
+
+- Minelayer Corvette changes from **2 to 3 models**; latest mine placement excludes hexes containing a unit or terrain feature.
+- Attack Bomber's printed bonus against the indicated larger target classes changes from **+2 to +1 War Dice**. Confirm target-class symbols against the legend when transcribing; retain the entire latest weapon row.
+- Kushan Assault Frigate's original Large Projectile Cannon already prints **3 War Dice**; the latest also prints 3. Do not copy the Taiidan original-to-update 1-to-3 change into the Kushan revision history.
+- Kushan Multi-gun Corvette's original Defender already refers to adjacent allied units without the Taiidan original's explicit two-recipient limit. Preserve each faction's actual text.
+- Heavy Cruiser's latest Twin Turrets explicitly restricts the paid additional attack to **once per turn**; Missile Destroyer's latest Target Lock explicitly excludes both the Evasive unit ability and buff.
+- Drone Frigate's latest text/symbol arrangement around its Evasive weapon ability and incoming drone defense needs close interpretation against the legend. Do not turn a conditional weapon ability into an unconditional ship-wide statistic.
+- Carrier's latest factory, assigned Interceptor and Launch Tubes wording comes from its own latest face. Kushan **Mothership** is on original sheet 3 and is not replaced by the Taiidan **Imperial Flagship**, nor by an unpictured supposed replacement.
+
+Main statistics/costs, model counts, tabs and prose are readable. Small weapon/action symbols and the denser capital-ship text still need close transcription/validation before gameplay data is changed. This submission is a source intake, not completion of the corresponding mechanics.
+
 ## Useful photo batches
 
-1. **Remaining ships, per faction:** full statistics, weapon rows/arcs, ability values, costs and colored tabs, including free assigned units. The 19 Taiidan types and seven replacement faces above are now available; do not request them again as missing. Kushan, Kadeshi and Turanic ship profiles remain separate inputs; the pirate-related sheet supplies leaders, not ship profiles. Interceptor examples on US Digital p.32 are already transcribed. Photographed profiles still require exact transcription/validation before implementation.
+1. **Remaining ships, per faction:** full statistics, weapon rows/arcs, ability values, costs and colored tabs, including free assigned units. The 19 Taiidan types/seven replacement faces and 19 Kushan types/nine replacement faces above are now available; do not request them again as missing. Kadeshi and Turanic ship profiles, plus any other unpictured types, remain separate inputs; the pirate-related sheet supplies leaders, not ship profiles. Interceptor examples on US Digital p.32 are already transcribed. Photographed profiles still require exact transcription/validation before implementation.
 2. **Unpictured leaders and Heroic owners:** full cost/Hand/Play, restrictions and abilities. Use the existing inventory to avoid requesting repeated faces; Wing/Squadron Leader book examples and photographed leaders are already available.
 3. **Higher-quality originals or targeted crops:** only where an inline icon or dense text cannot be resolved from the supplied photos and legend. No repeated full base-command deck photo is currently needed.
 4. **Other expansion faces:** only cards not present in the received upgrade/leader/facility/Heroic batches. Distinguish missing source profiles from pending implementations.
