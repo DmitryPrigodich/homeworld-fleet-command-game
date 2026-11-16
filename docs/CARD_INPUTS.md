@@ -45,6 +45,25 @@ Readability: titles, main prose, costs, Hand/Play and colored assignment tabs ar
 
 Still needed for pending base command mechanics: **Interrupt Move, Interrupt Repairs, Interrupt Counterintelligence**, plus **Pincer Attack, Intercept, Hit and Run, Ship Assault, Ready to Launch, Weapons to Maximum, Hammer and Anvil, Brace For Impact, Evasive Pattern Delta, Repel Boarders, Target Engines, Target Bays**. All Ahead Full, Stay In Formation and Interrupt Attack already have book references; request new faces only if those cards were also revised. Full ship unit profiles and unpictured leaders/expansion cards remain separate inputs.
 
+## Second small-card photo batch received on 2026-11-16
+
+Six additional photographs cover the same corrected small-card families in separate groups. The user calls these photos "2.0" and says originals will follow; this is a photo-batch label, not evidence of a new numbered rules edition. Retain both batches and compare corresponding faces before changing a gameplay profile. The files, an SHA-256 source manifest and upright inspection copies are retained only in the ignored local reference directory.
+
+| Photo | Visible fronts |
+| --- | --- |
+| 1 / Upgrades | Red and blue Large Hangar Bay and Hangar Bay; red Beast Mode; blue Advanced Point Defense, Hull Defense Guns, Raiders, Upgraded Thrusters and Thicker Armor |
+| 2 / Heroic leaders | Hot Shot Pilot, Strategist, Station Overseer, Recon Commander, Fighter Ace |
+| 3 / Leaders | Red and blue Orbital Co-ordinator, Point Defender and Chief of Staff; blue Intelligence Officer |
+| 4 / Facilities | Star Port, Orbital Defense Control, Ion Batteries, Missile Defense |
+| 5 / Heroic commands | Supreme Pilot, Best of the Best, Prepare to Be Boarded, Power and Precision, Fire and Maneuver |
+| 6 / Commands and carrier-related leader | Target Weapons, Deploy Engineers, Lord Commander |
+
+The category labels follow the user's grouping. They do not establish extra mechanics absent from the card faces/rules. Only the exposed front of a stack is inventoried; stack thickness does not establish copy counts. The visible SKU card identifies the pack but is not a gameplay card.
+
+Main prose, leader cost/Hand/Play, tabs, action rows and restrictions are usable references. Small inline icons and weapon rows remain subject to close inspection and the expected originals. Preserve the blue/red distinctions, Staff assignment prerequisites, additional hangar capacity/Launch Tubes, Heroic Action ownership and the ready/Exhausted behavior of Beast Mode when implementing these cards. Lord Commander's visible cost/Hand/Play are 4/5/3; it is a leader for a Super Capital Ship, not the Turanic carrier's unit/weapon profile. The user associates this group with that carrier; its full ship profile still needs a separate source.
+
+This batch improves the available references; it does not supply the remaining ordinary command faces or any Interrupt faces listed above, and does not by itself complete the published deck. Source intake is separate from implementing and testing the effects.
+
 ## Useful photo batches
 
 1. **Three remaining Interrupt faces:** Move, Repairs and Counterintelligence. Exact trigger windows, legal actors/targets, cancellation and continuation wording matter.
