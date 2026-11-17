@@ -1089,6 +1089,211 @@
       "name": "Basic order",
       "kind": "basic",
       "description": "Move / Attack"
+    },
+    {
+      "id": "core:intercept",
+      "name": "Intercept",
+      "kind": "order",
+      "description": "Move, Lightning Move, then Attack. Each action may be skipped.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "lightning",
+            "attack"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "core:hit-and-run",
+      "name": "Hit and Run",
+      "kind": "order",
+      "description": "Move, Attack, then Lightning Move. Each action may be skipped.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "attack",
+            "lightning"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "core:pincer-attack",
+      "name": "Pincer Attack",
+      "kind": "order",
+      "description": "Assign two units. Each may make a Lightning Move and Attack. The second unit may attack only the same target as the first.",
+      "lines": [
+        {
+          "actions": [
+            "lightning",
+            "attack"
+          ]
+        },
+        {
+          "actions": [
+            "lightning",
+            "attack"
+          ]
+        }
+      ],
+      "sameTarget": true
+    },
+    {
+      "id": "core:hammer-and-anvil",
+      "name": "Hammer and Anvil",
+      "kind": "order",
+      "description": "First unit: Power Attack. Second unit: Lightning Move, then Attack against the first unit's target.",
+      "lines": [
+        {
+          "actions": [
+            "power"
+          ]
+        },
+        {
+          "actions": [
+            "lightning",
+            "attack"
+          ]
+        }
+      ],
+      "sameTarget": true
+    },
+    {
+      "id": "core:weapons-to-maximum",
+      "name": "Weapons to Maximum",
+      "kind": "order",
+      "description": "Move, then Power Attack. Power Attack may use a ranged weapon, ram or boarding action.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "power"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "core:ship-assault",
+      "name": "Ship Assault",
+      "kind": "order",
+      "description": "Move, then optionally board an adjacent enemy unit with +2 dice.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "board"
+          ]
+        }
+      ],
+      "boardingDice": 2,
+      "boardAfterMove": true
+    },
+    {
+      "id": "core:deploy-engineers",
+      "name": "Deploy Engineers",
+      "kind": "order",
+      "description": "Remove one Crippled or Focus Fire token at the start of activation, then Move or Attack.",
+      "lines": [
+        {
+          "actions": [
+            "choice"
+          ]
+        }
+      ],
+      "repairAtStart": true
+    },
+    {
+      "id": "core:brace-for-impact",
+      "name": "Brace for Impact",
+      "kind": "order",
+      "description": "Gain Braced (+1 armor), then Move or Attack. Cannot be assigned to fighters.",
+      "lines": [
+        {
+          "actions": [
+            "choice"
+          ]
+        }
+      ],
+      "selfBuff": "brace",
+      "excludeFighters": true
+    },
+    {
+      "id": "core:repel-boarders",
+      "name": "Repel Boarders",
+      "kind": "order",
+      "description": "Gain Lockdown (+1 armor against boarding), then Move or Attack. Cannot be assigned to fighters.",
+      "lines": [
+        {
+          "actions": [
+            "choice"
+          ]
+        }
+      ],
+      "selfBuff": "lockdown",
+      "excludeFighters": true
+    },
+    {
+      "id": "core:evasive-pattern-delta",
+      "name": "Evasive Pattern Delta",
+      "kind": "order",
+      "description": "A unit with Afterburners gains one level of Evasive, then may Move.",
+      "lines": [
+        {
+          "actions": [
+            "move"
+          ]
+        }
+      ],
+      "selfBuff": "evasive",
+      "requireAfterburners": true
+    },
+    {
+      "id": "core:target-engines",
+      "name": "Target Engines",
+      "kind": "order",
+      "description": "Move, then Attack. At least one success before armor cripples the target's engines. Fighters are immune to this card effect.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "attack"
+          ]
+        }
+      ],
+      "attackEffect": "engines"
+    },
+    {
+      "id": "core:target-weapons",
+      "name": "Target Weapons",
+      "kind": "order",
+      "description": "Move, then Attack. At least one success before armor cripples the target's weapons. Fighters are immune to this card effect.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "attack"
+          ]
+        }
+      ],
+      "attackEffect": "weapons"
+    },
+    {
+      "id": "core:target-bays",
+      "name": "Target Bays",
+      "kind": "order",
+      "description": "Move, then Attack. At least one success before armor cripples the target's bays. Fighters are immune to this card effect.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "attack"
+          ]
+        }
+      ],
+      "attackEffect": "bays"
     }
   ],
   "decks": [
@@ -1143,6 +1348,76 @@
             "order-23",
             "order-24"
           ]
+        }
+      ]
+    },
+    {
+      "id": "core:available-commands",
+      "name": "Available command cards",
+      "entries": [
+        {
+          "card": "core:all-ahead-full",
+          "copies": 2
+        },
+        {
+          "card": "core:stay-in-formation",
+          "copies": 3
+        },
+        {
+          "card": "core:pincer-attack",
+          "copies": 3
+        },
+        {
+          "card": "core:intercept",
+          "copies": 3
+        },
+        {
+          "card": "core:hit-and-run",
+          "copies": 3
+        },
+        {
+          "card": "core:ship-assault",
+          "copies": 2
+        },
+        {
+          "card": "core:deploy-engineers",
+          "copies": 2
+        },
+        {
+          "card": "core:weapons-to-maximum",
+          "copies": 6
+        },
+        {
+          "card": "core:hammer-and-anvil",
+          "copies": 2
+        },
+        {
+          "card": "core:brace-for-impact",
+          "copies": 3
+        },
+        {
+          "card": "core:evasive-pattern-delta",
+          "copies": 3
+        },
+        {
+          "card": "core:repel-boarders",
+          "copies": 2
+        },
+        {
+          "card": "core:target-engines",
+          "copies": 3
+        },
+        {
+          "card": "core:target-weapons",
+          "copies": 3
+        },
+        {
+          "card": "core:target-bays",
+          "copies": 2
+        },
+        {
+          "card": "core:interrupt-attack",
+          "copies": 3
         }
       ]
     }

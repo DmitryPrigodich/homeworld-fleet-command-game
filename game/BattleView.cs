@@ -38,7 +38,7 @@ public partial class Main
                     ?? _state.Units.FirstOrDefault(u => u.Side == LocalCommandSide)?.Id ?? "";
         }
         else if (_state.Reinforce != null) _selected = _state.Reinforce.Source;
-        else if (_state.Cards?.Pending is { } pending) { _selected = SpecialOrders.Actor(_content, _state!, pending); _action = SpecialOrders.Action(_content, _state!, pending) == "attack" ? "attack" : "move"; }
+        else if (_state.Cards?.Pending is { } pending) { _selected = SpecialOrders.Actor(_content, _state!, pending); _action = SpecialOrders.IsAttackAction(SpecialOrders.Action(_content, _state!, pending)) ? "attack" : "move"; }
         ClearScreen(); var map = _content.Maps[_state.Map];
         _cameraTarget = World(new(map.Width - 1, map.Height - 1)) * 0.5f;
         _cameraBaseSize = Math.Max(map.Width * 2.35f, map.Height * 2.9f);
@@ -283,7 +283,7 @@ public partial class Main
             var attack = options.AttackTargets.Select(t => BotAttack(unit, t)).FirstOrDefault(cmd => cmd != null);
             if (attack != null) ApplyCommand(1, attack);
             else if (options.MoveCells.Length > 0) { var h = options.MoveCells[0]; ApplyCommand(1, new("move", actor, Q: h.Q, R: h.R)); }
-            else if (FleetBattle && SpecialOrders.Action(_content, _state!, order) == "attack" && FleetRuleTools.Has(unit, "weapons")) ApplyCommand(1, new("damage-control", Repair: "ask"));
+            else if (FleetBattle && SpecialOrders.IsAttackAction(SpecialOrders.Action(_content, _state!, order)) && FleetRuleTools.Has(unit, "weapons")) ApplyCommand(1, new("damage-control", Repair: "ask"));
             else ApplyCommand(1, new("skip"));
             return;
         }

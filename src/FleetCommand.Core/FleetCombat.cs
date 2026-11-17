@@ -60,7 +60,7 @@ public static class FleetCombat
             : new WeaponDefinition(cmd.AttackKind, cmd.AttackKind, cmd.AttackKind == "board" ? ship.Crew : ship.Ram, 1, Kind: "close");
         int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + (cmd.Power ? weapon.PowerDice : 0) + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.AttackDice + (cmd.AttackKind is "ram" or "board" ? l.CloseDice : 0));
         if (cmd.AttackKind == "ranged") dice -= FleetWeapons.Attack(c, s, unit, target, weapon.Id).Cover;
-        if (cmd.AttackKind == "board") dice -= unit.CrewDamage;
+        if (cmd.AttackKind == "board") dice += SpecialOrders.BoardingBonus(c, s, unit.Id) - unit.CrewDamage;
         if (cmd.AttackKind == "ram" && FleetRuleTools.Strike(ship)) dice += SpecialOrders.Lightning(ship);
         return Math.Max(1, dice);
     }
@@ -131,6 +131,10 @@ public static class FleetCombat
         int focus = combat.Kind == "board" ? 0 : ones, crew = combat.Kind == "board" ? ones : 0;
         var survivor = target with { Models = target.Models - killed, FocusFire = Math.Max(0, target.FocusFire + focus - killed), CrewDamage = target.CrewDamage + crew,
             Effects = ones > 0 ? (target.Effects ?? []).Except(FleetRuleTools.Buffs).ToArray() : target.Effects };
+        string orderEffect = combat.Interrupt || combat.Kind is not ("ranged" or "ram" or "board") ? "" : SpecialOrders.AttackEffect(c, s, unit.Id);
+        bool systemCrippled = orderEffect != "" && successes > 0 && FleetRuleTools.Class(defender) != "fighter";
+        if (systemCrippled)
+            survivor = survivor with { Effects = (survivor.Effects ?? []).Append(orderEffect).Distinct().ToArray() };
         if (combat.Kind == "ram" && FleetRuleTools.Class(ship) == "fighter" && successes > 0)
             survivor = survivor with { Effects = (survivor.Effects ?? []).Append(combat.Effect).Distinct().ToArray() };
         var next = s with { Combat = null, Units = s.Units.Where(u => u.Id != target.Id).ToList() };
@@ -150,6 +154,7 @@ public static class FleetCombat
         bool fighterSuicide = combat.Kind == "ram" && FleetRuleTools.Class(ship) == "fighter" && successes > 0;
         if (fighterSuicide) { next = FleetClose.Award(c, next, unit, 1 - unit.Side); next = next with { Units = next.Units.Where(u => u.Id != unit.Id).ToList() }; }
         string message = $"{FleetPresentation.UnitName(c, s, unit)} → {FleetPresentation.UnitName(c, s, target)} ({combat.Kind}): [{string.Join(", ", combat.Rolls)}], armor {armor}, losses {killed}, Focus Fire +{focus}, Crew Damage +{crew}." + (captured ? " Target captured." : "");
+        if (systemCrippled && survivor.Models > 0) message += " Target system crippled: " + orderEffect + ".";
         if (combat.Kind is not ("cap" or "dogfight" or "terrain-dogfight")) next = FleetObjectives.Check(c, next);
         if (next.Finished) return new(true, message, next);
         if (combat.Kind is "defense" or "cap" or "dogfight" or "terrain-dogfight") return new(true, message, next);

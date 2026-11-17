@@ -71,7 +71,7 @@ Gameplay mods may add or explicitly override `cards`, `decks` and `rules[].deck`
 
 Point a map's `rules` at `myfleet:rules` to use this deck. Entries refer to card *types*. Each copy receives a stable instance ID (`myfleet:maneuver#1`, etc.); optional `instances` explicitly supplies one unique nonempty ID per copy. IDs are unique across the whole deck, at most 160 characters. Explicit IDs support migrated or specially named copies; the training deck retains `order-01` through `order-24`. Do not repeat an entry with automatically generated IDs for the same type; combine its counts or provide distinct explicit IDs. Deck size is 1-512 copies. Drawing handles smaller-than-hand-capacity decks without creating cards; the rulebook draw/recycle policy is unchanged.
 
-Supported `kind` values are `order`, `interrupt` and `basic`. Orders currently accept one or two unit lines, each with 1-8 actions selected from `move`, `attack`, `lightning`. Actors are assigned before starting; tabletop mode may omit one of two lines. Any action may be skipped, and the sequence spends one card/Play in total. A `basic` definition has no special action but remains usable as payment for a basic order, bid or other card cost.
+Supported `kind` values are `order`, `interrupt` and `basic`. Orders currently accept one or two unit lines, each with 1-8 actions selected from `move`, `attack`, `lightning`, `power`, `choice`, `board`; see Additional supported command effects below. Actors are assigned before starting; tabletop mode may omit one of two lines. Any action may be skipped, and the sequence spends one card/Play in total. A `basic` definition has no special action but remains usable as payment for a basic order, bid or other card cost.
 
 `straightCourse: true` constrains a single line of Moves to one continuous direction, as on All Ahead Full. `adjacentOnLightning: true` constrains the second line's Lightning Move to end beside the first actor, as on Stay in Formation. These flags are explicit; the number of rows or instance ID does not imply a restriction. Lightning still uses the ship's Afterburners, including engine damage restrictions. Interrupts currently accept only `interrupt: "attack"`; they share the once-per-type-per-round attack limit even if differently named. Other action/effect strings are rejected rather than silently ignored. New printed orders, buffs and interrupts need their verified timing and corresponding engine handlers.
 
@@ -165,7 +165,7 @@ Multiple different leader cards may attach to one unit and sum their bonuses. Fi
 
 Optional theme fields `tabBlue`, `tabYellow` and `tabGrey` control the editor's slot palette independently of player ownership colors. They default to `#36a9de`, `#d8ad37` and `#87929c`.
 
-The core `PreparedBattle` envelope stores two plans, field dimensions, objects, seed/background and optional two-sided `ForceLimit` records. A limit can cap `budget` and `reserveStars`, whitelist `ships`/`leaders`, or disable `allowReserve`. These restrictions are a core interface for future scenario packs; the editor currently exposes custom skirmishes. This envelope is stored with saves and sent by the host, then validated and registered before battle state loads. Cards, private deposits and RNG still follow normal private-view filtering. The network signature is `fleet-scenarios-v1` to reject older binaries.
+The core `PreparedBattle` envelope stores two plans, field dimensions, objects, seed/background and optional two-sided `ForceLimit` records. A limit can cap `budget` and `reserveStars`, whitelist `ships`/`leaders`, or disable `allowReserve`. These restrictions are a core interface for future scenario packs; the editor currently exposes custom skirmishes. This envelope is stored with saves and sent by the host, then validated and registered before battle state loads. Cards, private deposits and RNG still follow normal private-view filtering. The network signature is `fleet-cards-v3` to reject older binaries.
 
 ## Two-hex ships and board masks
 
@@ -184,3 +184,20 @@ An objective with `kind: "event"` refers to the event ID in `target`, with thres
 ## Language packs
 
 EN/RU and additional languages are presentation data, loaded outside gameplay fingerprints. Author names and visible source text in English, and use those canonical English strings as keys in every language file. English itself has an editable catalog; missing translations fall back to it. See [LOCALIZATION.md](LOCALIZATION.md) for the catalog format, precedence and fallback. Ship, scenario, event and objective names introduced by a mod should have corresponding language entries in that mod's `locales` directory. Changing languages does not reload game definitions or change saved log records.
+
+## Additional supported command effects
+
+Order action rows also accept `power` (forced Power Attack), `choice` (one Move or Attack, saved once selected) and `board` (boarding only). Existing `move`, `lightning` and `attack` remain supported. Optional type fields are:
+
+| Field | Meaning / validation |
+| --- | --- |
+| `sameTarget` | Two rows, exactly one attack/power/board per row; second attacks the first declared target |
+| `selfBuff` | `brace`, `lockdown` or `evasive`, at activation start; one row |
+| `repairAtStart` | Remove one chosen Crippled/Focus Fire token; one row |
+| `attackEffect` | `engines`, `weapons` or `bays`, on a non-fighter success before armor |
+| `excludeFighters` | Reject assignment to fighter units |
+| `requireAfterburners` | Require a nonzero Afterburners ability |
+| `boardingDice` | 0–20 extra dice on this order's boarding step |
+| `boardAfterMove` | Require completed movement; row must be exactly `move`, `board` |
+
+Activation/combat effects require the tabletop handler. Basic/interrupt definitions cannot declare order effects. `BattleCommand.cardRepair` accepts `auto` (first available), empty (skip), `focus`, `engines`, `weapons` or `bays`; an absent explicit token is rejected before spending. Normal activation Damage Control remains separate. These fields implement current verified needs; arbitrary triggers/scripts, Heroic effects and additional interrupt handlers are not implicitly supported. See [COMMAND_ORDERS.md](COMMAND_ORDERS.md). Current peer protocol: `fleet-cards-v3`.

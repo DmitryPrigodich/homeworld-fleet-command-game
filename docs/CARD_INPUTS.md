@@ -10,26 +10,26 @@ The supplied `Compete-Component-Catalogue-for-Homeworld.pdf`, command-card secti
 | --- | ---: | --- |
 | All Ahead Full | 2 | Implemented |
 | Stay In Formation | 3 | Implemented |
-| Pincer Attack | 3 | Pending |
-| Intercept | 3 | Pending |
-| Hit and Run | 3 | Pending |
-| Ship Assault | 2 | Pending |
+| Pincer Attack | 3 | Implemented |
+| Intercept | 3 | Implemented |
+| Hit and Run | 3 | Implemented |
+| Ship Assault | 2 | Implemented |
 | Ready to Launch | 2 | Pending |
-| Deploy Engineers | 2 | Pending; corrected face supplied in photo batch 2026-11-12 |
-| Weapons to Maximum | 6 | Pending; weapon power parameters exist, granting order does not |
-| Hammer and Anvil | 2 | Pending |
-| Brace For Impact | 3 | Effect state exists; granting card pending |
-| Evasive Pattern Delta | 3 | Effect state exists; granting card pending |
-| Repel Boarders | 2 | Effect state exists; granting card pending |
-| Target Engines | 3 | Crippled state exists; granting card pending |
-| Target Weapons | 3 | Crippled state exists; corrected granting card supplied in photo batch 2026-11-12 |
-| Target Bays | 2 | Crippled state exists; granting card pending |
+| Deploy Engineers | 2 | Implemented from corrected face supplied in photo batch 2026-11-12 |
+| Weapons to Maximum | 6 | Implemented; forced Power Attack action |
+| Hammer and Anvil | 2 | Implemented |
+| Brace For Impact | 3 | Implemented; activation buff and action |
+| Evasive Pattern Delta | 3 | Implemented; activation buff and action |
+| Repel Boarders | 2 | Implemented; activation buff and action |
+| Target Engines | 3 | Implemented; success before armor, non-fighters only |
+| Target Weapons | 3 | Implemented from corrected face supplied in photo batch 2026-11-12 |
+| Target Bays | 2 | Implemented; success before armor, non-fighters only |
 | Interrupt Attack | 3 | Implemented |
 | Interrupt Move | 2 | Pending |
 | Interrupt Repairs | 3 | Pending |
 | Interrupt Counterintelligence | 2 | Pending |
 
-The playable training deck still has 24 instances. The inventory above is not a claim that the full 54-card deck or its effects already works. Card types, deck copies, action rows and explicit constraints now come from `content/base/content.json`; neither `SpecialOrders` nor `InterruptRules` interprets instance number ranges. Exact transcription, revision reconciliation and additional effect handlers are still needed before populating the full published deck. Artwork remains optional and independent of mechanics.
+The legacy training deck still has 24 instances; the separate supported-command mode now uses 45 cards / 16 types. The inventory above is not a claim that the full 54-card deck or its effects already works. Card types, deck copies, action rows and explicit constraints now come from `content/base/content.json`; neither `SpecialOrders` nor `InterruptRules` interprets instance number ranges. Exact transcription, revision reconciliation and additional effect handlers are still needed before populating the full published deck. Artwork remains optional and independent of mechanics.
 
 ## Corrected-card photos received on 2026-11-12
 
@@ -227,3 +227,9 @@ Full faces with legible text and symbols are more useful than cropped prose alon
 - Implement the official solo/co-op command-bank and threat/selection procedures from the supplied guide. The current heuristic AI and shared-fleet networking do not implement those procedures.
 
 For each implemented mechanic, retain command validation, previews where relevant, immutable save/replay, private multiplayer views, usable UI and EN/RU coverage. The editor and additional scenario packs follow this mechanics pass.
+
+## Current implementation and deferred verification
+
+The user has asked to continue with existing sources and review possible missing ordinary profiles later. The earlier photo-list sections are an audit of verified faces, not a request to pause development or photograph the whole collection again. [PROFILE_REVIEW.md](PROFILE_REVIEW.md) is the deferred checklist. Functional card actions and conditions take priority; exact artwork is optional.
+
+Thirteen more base orders now execute their photographed sequences/effects, alongside All Ahead Full, Stay in Formation and Interrupt Attack: a supported 45-card / 16-type deck with UI, saves and network coverage. [COMMAND_ORDERS.md](COMMAND_ORDERS.md) records all types/counts and their limits. Ready to Launch and the Move/Repairs/Counterintelligence interrupts are received but not yet implemented. Other received profiles/attachments/Heroic effects still need transcription or handlers; none should be relabeled as missing photographs merely because implementation is pending. No source artwork is committed.

@@ -30,6 +30,14 @@ public partial class Main : Node3D
     private int _frames;
     private string[] _args = [];
 
+    public override void _ExitTree()
+    {
+        // Finalize discarded scene resources while Godot's C# bindings are still alive.
+        // Otherwise a finalizer can race native language teardown after a long match.
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+    }
+
     public override void _Ready()
     {
         _root = ProjectSettings.GlobalizePath("res://");
@@ -55,6 +63,7 @@ public partial class Main : Node3D
             if (_args.Contains("--smoke-cap")) ConfigureCapContent();
             if (_args.Contains("--smoke-terrain")) ConfigureTerrainContent();
             if (_args.Contains("--smoke-objectives")) ConfigureObjectiveContent();
+            if (_args.Contains("--smoke-published-orders")) ConfigurePublishedOrderContent();
             if (_args.Contains("--capture-battle")) StartBattle("core:training", false);
             if (_args.Contains("--capture-generator")) GeneratorMenu();
             if (_args.Contains("--capture-forces")) ForceMenu();
@@ -66,11 +75,12 @@ public partial class Main : Node3D
             {
                 bool coop = _args.Contains("--smoke-coop");
                 if (coop) _campaign = FleetCommand.Core.Campaign.Start(_content, "core:patrol", ["host"]);
-                StartBattle(_args.Contains("--smoke-objectives") ? BasicCardBattle.ObjectivesMapId : _args.Contains("--smoke-logistics") ? BasicCardBattle.LogisticsMapId : _args.Contains("--smoke-economy") ? BasicCardBattle.EconomyMapId : _args.Contains("--smoke-terrain") ? TerrainCheckMap : _args.Contains("--smoke-tabletop") || _args.Contains("--smoke-defense") || _args.Contains("--smoke-cap") ? BasicCardBattle.TabletopMapId : _args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop);
+                StartBattle(_args.Contains("--smoke-published-orders") ? BasicCardBattle.OrdersMapId : _args.Contains("--smoke-objectives") ? BasicCardBattle.ObjectivesMapId : _args.Contains("--smoke-logistics") ? BasicCardBattle.LogisticsMapId : _args.Contains("--smoke-economy") ? BasicCardBattle.EconomyMapId : _args.Contains("--smoke-terrain") ? TerrainCheckMap : _args.Contains("--smoke-tabletop") || _args.Contains("--smoke-defense") || _args.Contains("--smoke-cap") ? BasicCardBattle.TabletopMapId : _args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop);
                 if (_args.Contains("--smoke-forces")) StartPrepared(new([ForceBattle.PracticeForce("kushan"), ForceBattle.PracticeForce("taiidan")]), false);
                 if (_args.Contains("--smoke-scenario")) { _settings = _settings with { Language = "ru" }; _locale.SetLanguage("ru"); StartBattle("core:first-contact", false); ConfigureFeatureBattle(false); }
                 if (_args.Contains("--smoke-large")) { StartBattle("practice:large", false); ConfigureFeatureBattle(true); }
                 if (_args.Contains("--smoke-data-cards")) { StartBattle("cardtest:sector", false); ConfigureDataCardBattle(1); }
+                if (_args.Contains("--smoke-published-orders")) ConfigurePublishedOrderBattle(1);
                 if (_args.Contains("--smoke-defense")) ConfigureDefenseBattle();
                 if (_args.Contains("--smoke-cap")) ConfigureCapBattle();
                 if (_args.Contains("--smoke-terrain")) ConfigureTerrainBattle();
@@ -204,6 +214,7 @@ public partial class Main : Node3D
         if (_frames == 5 && _args.Contains("--check-actions")) _ = CheckActionHighlights();
         if (_frames == 5 && _args.Contains("--check-cards")) _ = CheckCards();
         if (_frames == 5 && _args.Contains("--check-data-cards")) _ = CheckDataCards();
+        if (_frames == 5 && _args.Contains("--check-published-orders")) _ = CheckPublishedOrders();
         if (_frames == 5 && _args.Contains("--check-special")) _ = CheckSpecialCards();
         if (_frames == 5 && _args.Contains("--check-interrupt")) _ = CheckInterrupts();
         if (_frames == 5 && _args.Contains("--check-tabletop")) _ = CheckTabletop();

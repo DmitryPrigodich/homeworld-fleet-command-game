@@ -4,7 +4,9 @@ namespace FleetCommand.Core;
 public sealed record CardLine(string[] Actions);
 public sealed record CardDefinition(string Id, string Name, string Kind, string Description = "",
     CardLine[]? Lines = null, bool StraightCourse = false, bool AdjacentOnLightning = false,
-    string Interrupt = "");
+    string Interrupt = "", bool SameTarget = false, string SelfBuff = "", bool RepairAtStart = false,
+    string AttackEffect = "", bool ExcludeFighters = false, bool RequireAfterburners = false, int BoardingDice = 0,
+    bool BoardAfterMove = false);
 public sealed record DeckEntry(string Card, int Copies = 1, string[]? Instances = null);
 public sealed record DeckDefinition(string Id, string Name, DeckEntry[] Entries);
 
@@ -39,10 +41,17 @@ public static class CommandCards
             var lines = card.Lines ?? [];
             if (string.IsNullOrWhiteSpace(card.Name) || card.Kind is not ("order" or "interrupt" or "basic")
                 || (card.Kind == "order" ? lines.Length is < 1 or > 2 || card.Interrupt != "" : lines.Length != 0)
-                || lines.Any(l => l == null || l.Actions == null || l.Actions.Length is < 1 or > 8 || l.Actions.Any(a => a is not ("move" or "attack" or "lightning")))
+                || lines.Any(l => l == null || l.Actions == null || l.Actions.Length is < 1 or > 8 || l.Actions.Any(a => a is not ("move" or "attack" or "lightning" or "power" or "choice" or "board")))
                 || (card.Kind == "interrupt" ? card.Interrupt != "attack" : card.Interrupt != "")
                 || card.StraightCourse && (lines.Length != 1 || lines[0].Actions.Any(a => a != "move"))
-                || card.AdjacentOnLightning && (lines.Length != 2 || lines[0].Actions.Contains("lightning") || !lines[1].Actions.Contains("lightning")))
+                || card.AdjacentOnLightning && (lines.Length != 2 || lines[0].Actions.Contains("lightning") || !lines[1].Actions.Contains("lightning"))
+                || card.SameTarget && (lines.Length != 2 || lines.Any(l => l.Actions.Count(a => a is "attack" or "power" or "board") != 1))
+                || card.SelfBuff != "" && !FleetRuleTools.Buffs.Contains(card.SelfBuff)
+                || card.AttackEffect != "" && !FleetRuleTools.Debuffs.Contains(card.AttackEffect)
+                || card.Kind != "order" && (card.SelfBuff != "" || card.AttackEffect != "" || card.RepairAtStart || card.ExcludeFighters || card.RequireAfterburners)
+                || (card.SelfBuff != "" || card.RepairAtStart) && lines.Length != 1
+                || card.BoardingDice is < 0 or > 20 || card.BoardingDice > 0 && !lines.SelectMany(l => l.Actions).Contains("board")
+                || card.BoardAfterMove && (lines.Length != 1 || !lines[0].Actions.SequenceEqual(["move", "board"])))
                 throw new InvalidDataException($"Unsupported command card definition: {card.Id}");
         }
         foreach (var deck in c.Decks.Values)

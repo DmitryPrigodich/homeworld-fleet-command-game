@@ -46,6 +46,8 @@ public partial class Main
         Button(box, "FLEET PREPARATION", () => ForceMenu());
         Button(box, "TRAINING CARD BATTLE", StartCardBattle);
         Button(box, "RULES / DEVELOPMENT MODE", () => { StartBattle(BasicCardBattle.TabletopMapId, true); QueueBot(); });
+        Button(box, "COMMAND ORDERS AND EFFECTS", () => { StartBattle(BasicCardBattle.OrdersMapId, true); QueueBot(); });
+        Text(box, "45 cards / 16 supported types. Ready to Launch and three interrupt types are still pending.", 13, _colors.Muted);
         Button(box, "OBJECTIVES AND MEDALS", () => { StartBattle(BasicCardBattle.ObjectivesMapId, true); QueueBot(); });
         Button(box, "BAYS AND REINFORCEMENTS", () => { StartBattle(BasicCardBattle.LogisticsMapId, true); QueueBot(); });
         Button(box, "SURVEY AND HARVEST", () => { StartBattle(BasicCardBattle.EconomyMapId, true); QueueBot(); });

@@ -172,6 +172,8 @@ public static class InterruptRules
     {
         var pause = next.Cards!.Response!;
         next = next with { Cards = next.Cards with { Response = null } };
+        if (!pause.Basic && pause.Command.Kind == "move" && next.Cards.Pending is { } order && next.Units.Any(u => u.Id == pause.Command.Unit))
+            next = next with { Cards = next.Cards with { Pending = order with { Moved = true } } };
         if (!pause.Basic) return SpecialOrders.Advance(c, original, next, pause.Side, message);
         var result = SkirmishRules.FinishOrder(c, original, next, pause.Side, message);
         return result with { State = result.State.Round != original.Round && !result.State.Finished ? BasicCardRules.NextRound(c, result.State) : result.State };
@@ -214,7 +216,7 @@ public static class InterruptRules
             throw new InvalidDataException("Invalid response window.");
         var unit = state.Units.Single(u => u.Id == pause.Command.Unit); var previous = pause.Transit ?? new Hex(unit.Q, unit.R);
         if ((pause.Basic && (pause.Side == 0 ? state.Orders0 : state.Orders1) < 1)
-            || (!pause.Basic && (SpecialOrders.Action(c, state, cards.Pending!) == "attack" ? pause.Command.Kind != "attack" : pause.Command.Kind != "move"))
+            || (!pause.Basic && (SpecialOrders.IsAttackAction(SpecialOrders.Action(c, state, cards.Pending!)) ? pause.Command.Kind != "attack" : pause.Command.Kind != "move"))
             || pause.Command.Kind == "move" && (pause.RemainingPath.LastOrDefault(new Hex(unit.Q, unit.R)) != new Hex(pause.Command.Q, pause.Command.R)))
             throw new InvalidDataException("Invalid suspended action.");
         foreach (var cell in pause.RemainingPath)

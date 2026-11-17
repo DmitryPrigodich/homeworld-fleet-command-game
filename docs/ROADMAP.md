@@ -29,12 +29,13 @@ Keep future native tablet and browser clients possible through plain rule/data/c
 - [x] First two special orders, preassigned actors, skippable action sequences, mid-order saves, UI guide and network regression scenarios.
 - [x] Interrupt Attack, per-hex movement pauses, response before attack dice, per-round reaction limits and a repeatable lesson.
 - [x] Data-defined command card types, action lines, explicit movement restrictions and per-ruleset decks; custom deck save/replay, UI and network checks.
-- [ ] Remaining special orders, full initiative options, leader budgets and interrupts (see TESTING.md for current limits).
+- [x] Thirteen additional base orders/effects, 45-card supported deck, choice/target/movement continuation, EN/RU controls, UI and ENet checks; see COMMAND_ORDERS.md.
+- [ ] Complete the base command deck (Ready to Launch and three interrupt types); integrate exact remaining attachment/leader profiles. Initiative and leader budgets already have shared handlers.
 
 - [x] Freeze US Digital + Errata 1.7 reference priority and record timing interpretations in RULES_COVERAGE.md.
 - [x] Leader/faction budgets, multi-card bids, cleanup, post-roll decisions and repair; published deck/card data still incomplete.
 - [x] Extend saved response windows to terrain, CAP and defensive fire.
-- [ ] Remaining interrupt types once exact card text is available.
+- [ ] Ready to Launch and remaining three interrupts (faces received; implementation pending).
 - [x] Ship classes, proper turning/arcs, boarding, ramming/collision, crew/leader transfers, hulks and defensive fire.
 - [x] Two-hex capital hulls: bow/stern travel budgets, pivots, footprint geometry/rendering, hazards and rear-shot immunity.
 - [x] CAP entry/exit, off-board targeting, movement with host, simultaneous interception and return after host destruction.

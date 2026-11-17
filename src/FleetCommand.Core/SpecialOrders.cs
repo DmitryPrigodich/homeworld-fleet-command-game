@@ -1,7 +1,8 @@
 namespace FleetCommand.Core;
 
-public sealed record PendingOrder(string Card, int Side, string[] Units, int Step, int Direction = -1, string BasicAction = "", BattleCommand? Deferred = null);
-public static class SpecialOrders
+public sealed record PendingOrder(string Card, int Side, string[] Units, int Step, int Direction = -1, string BasicAction = "", BattleCommand? Deferred = null,
+    string Choice = "", string FirstTarget = "", bool Moved = false);
+public static partial class SpecialOrders
 {
     public static bool Formation(ContentCatalog c, BattleState? state, string card) => CommandCards.Find(c, state, card)?.Lines?.Length == 2;
     public static string Name(ContentCatalog c, BattleState? state, string card) => CommandCards.Name(c, state, card);
@@ -19,9 +20,9 @@ public static class SpecialOrders
         }
         throw new InvalidDataException("Invalid command card step.");
     }
-    public static string Action(ContentCatalog c, BattleState state, PendingOrder order) => order.BasicAction == "harvest" ? order.Step == 0 ? "move" : "harvest" : order.BasicAction != "" ? order.BasicAction : Step(c, state, order).Action;
+    public static string Action(ContentCatalog c, BattleState state, PendingOrder order) => order.BasicAction == "harvest" ? order.Step == 0 ? "move" : "harvest" : order.BasicAction != "" ? order.BasicAction : order.Choice != "" ? order.Choice : Step(c, state, order).Action;
     public static string Actor(ContentCatalog c, BattleState state, PendingOrder order) => order.Units[order.BasicAction != "" ? 0 : Step(c, state, order).Line];
-    public static string ActionName(ContentCatalog c, BattleState state, PendingOrder order) => Action(c, state, order) switch { "attack" => "Attack", "lightning" => "Lightning Move", "harvest" => "Resource harvesting", _ => "Movement" };
+    public static string ActionName(ContentCatalog c, BattleState state, PendingOrder order) => Action(c, state, order) switch { "attack" => "Attack", "power" => "Power Attack", "board" => "Boarding", "choice" => "Move or Attack", "lightning" => "Lightning Move", "harvest" => "Resource harvesting", _ => "Movement" };
     public static int Steps(ContentCatalog c, BattleState state, PendingOrder order) => order.BasicAction == "harvest" ? 2 : order.BasicAction != "" ? 1 : CommandCards.Find(c, state, order.Card)!.Lines!.Sum(l => l.Actions.Length);
     public static int Lightning(ShipDefinition ship) => ship.Afterburners >= 0 ? ship.Afterburners : ship.Id is "core:kushan-interceptor" or "core:taiidan-interceptor" ? 2 : 0;
     private static BattleState Sandbox(ContentCatalog c, BattleState state, PendingOrder order) => state with
@@ -61,15 +62,20 @@ public static class SpecialOrders
         var order = state.Cards?.Pending;
         if (order == null || state.Finished || order.Side != side || id != Actor(c, state, order)) return UnitActions.Empty;
         if (Action(c, state, order) == "harvest") return new([], [], FleetEconomy.Targets(c, state, side, id));
+        if (Action(c, state, order) == "board" && CommandCards.Find(c, state, order.Card)!.BoardAfterMove && !order.Moved) return UnitActions.Empty;
         var unit = state.Units.Single(u => u.Id == id);
         if (Action(c, state, order) == "lightning" && (Lightning(c.Ships[unit.Definition]) == 0 || FleetRuleTools.Enabled(c, state) && FleetRuleTools.Has(unit, "engines"))) return UnitActions.Empty;
         var geometry = Geometry(c, state, order);
         var options = new SkirmishRules().GetActions(geometry, Sandbox(c, state, order), side, id);
-        if (Action(c, state, order) == "attack") return new([], options.AttackTargets);
+        string action = Action(c, state, order);
+        var targets = options.AttackTargets.Where(id =>
+            (action != "board" || FleetClose.Allowed(c, state, unit, state.Units.Find(u => u.Id == id), "board"))
+            && (!RestrictedTarget(c, state, order) || id == order.FirstTarget)).ToArray();
+        if (IsAttackAction(action)) return new([], targets);
         if (order.BasicAction != "") return new(options.MoveCells, []);
         var moves = options.MoveCells.Where(h => StraightCourse(c, state, order) ? Straight(c, state, unit, h, order) :
             Action(c, state, order) != "lightning" || !AdjacentOnLightning(c, state, order) || state.Units.Any(first => first.Id == order.Units[0] && h.Distance(new(first.Q, first.R)) == 1)).ToArray();
-        return new(moves, []);
+        return new(moves, action == "choice" ? targets : []);
     }
     public static CommandResult Start(ContentCatalog c, BattleState state, int side, BattleCommand command)
     {
@@ -78,6 +84,8 @@ public static class SpecialOrders
         bool partialFormation = FleetRuleTools.Enabled(c, state) && Formation(c, state, command.Card);
         var unit = state.Units.Find(u => u.Id == (command.Unit == "" && partialFormation ? command.OtherUnit : command.Unit));
         if (!Supported(c, state, command.Card) || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(command.Card)) return Reject("Select an available special card.");
+        var definition = CommandCards.Find(c, state, command.Card)!;
+        if (!CanAssign(c, state, definition, unit) || definition.RepairAtStart && unit != null && !ValidCardRepair(unit, command.CardRepair)) return Reject("This card cannot be assigned to that unit or repair choice.");
         if (state.ActiveSide != side || unit == null || unit.Side != side || unit.Activated || unit.Hulk || (side == 0 ? state.Orders0 : state.Orders1) >= FleetRuleTools.PlayLimit(c, state, side)) return Reject("This unit cannot receive an order.");
         string[] units = Formation(c, state, command.Card) ? [command.Unit, command.OtherUnit] : [command.Unit];
         if (units.Distinct().Count() != units.Length || units.All(id => id == "") || units.Any(id => (id != "" || !partialFormation) && !state.Units.Any(u => u.Id == id && u.Side == side && !u.Activated && !u.Hulk))) return Reject("Assign different ready units to the action lines you want to use.");
@@ -87,6 +95,7 @@ public static class SpecialOrders
             Units = state.Units.Select(u => units.Contains(u.Id) ? (FleetRuleTools.Enabled(c, state) ? FleetRuleTools.NewOrder(u) : u) with { Activated = true } : u).ToList(),
             Orders0 = state.Orders0 + (side == 0 ? 1 : 0), Orders1 = state.Orders1 + (side == 1 ? 1 : 0), Sequence = state.Sequence + 1 };
         string message = Name(c, state, command.Card) + ": order started and units assigned. ";
+        next = ApplyStartEffect(next, definition, unit!.Id, command.CardRepair, out var cardMessage); message += cardMessage;
         if (FleetRuleTools.Enabled(c, state)) for (int i = 0; i < units.Length; i++)
         { if (units[i] == "") continue; next = FleetRuleTools.DamageControl(c, next, units[i], i == 0 ? command.Repair : command.OtherRepair, out var repair); message += repair; }
         return FleetTerrain.Activation(c, state, next, units, "order", message);
@@ -111,36 +120,45 @@ public static class SpecialOrders
         CommandResult Reject(string message) => new(false, message, state);
         if (order.Side != side) return Reject("Wait for the special order to finish.");
         BattleState next = state; string message;
-        if (command.Kind == "damage-control" && FleetRuleTools.Enabled(c, state) && Action(c, state, order) == "attack" && FleetRuleTools.Has(state.Units.Single(u => u.Id == Actor(c, state, order)), "weapons"))
+        if (command.Kind == "damage-control" && FleetRuleTools.Enabled(c, state) && (IsAttackAction(Action(c, state, order)) || Action(c, state, order) == "choice") && FleetRuleTools.Has(state.Units.Single(u => u.Id == Actor(c, state, order)), "weapons"))
         {
             if (command.Repair != "ask" && command.Repair != "focus" && !FleetRuleTools.Debuffs.Contains(command.Repair)) return Reject("Choose an effect for Damage Control.");
             next = FleetRuleTools.DamageControl(c, state, Actor(c, state, order), command.Repair, out message, advance: true);
             if (next.Repairs is { Length: > 0 }) return new(true, message, next with { Sequence = state.Sequence + 1 });
             return Advance(c, state, next, side, message);
         }
-        if (command.Kind == "embark" && Action(c, state, order) is "move" or "lightning" && command.Unit == Actor(c, state, order))
+        if (command.Kind == "embark" && Action(c, state, order) is "move" or "lightning" or "choice" && command.Unit == Actor(c, state, order))
         {
             if (StraightCourse(c, state, order) && order.Direction >= 0
                 && !state.Units.Any(p => p.Id == command.Target && StraightDirection(new(state.Units.Single(u => u.Id == command.Unit).Q, state.Units.Single(u => u.Id == command.Unit).R), new(p.Q, p.R)) == order.Direction)) return Reject("Embarkation must continue the order's straight course.");
-            return InterruptRules.Start(c, state, side, command, basic: false);
+            var embarkState = ChooseAction(c, state, order, "move");
+            var embarkResult = InterruptRules.Start(c, embarkState, side, command, basic: false);
+            return embarkResult.Accepted ? embarkResult : Reject(embarkResult.Message);
         }
         if (command.Kind == "harvest") return FleetEconomy.Harvest(c, state, side, command);
         if (command.Kind is "skip" or "finish-order") message = command.Kind == "skip" ? "Action skipped." : "Remaining actions skipped.";
         else
         {
-            var expected = Action(c, state, order) == "attack" ? "attack" : "move";
+            string action = Action(c, state, order);
+            if (command.Power && action != "power") return Reject("Power Attack requires the corresponding order.");
+            var expected = IsAttackAction(action) ? "attack" : action == "choice" ? command.Kind : "move";
             var options = Actions(c, state, side, command.Unit);
             bool turn = expected == "move" && FleetRuleTools.Enabled(c, state) && !command.AutoFacing && state.Units.Any(u => u.Id == command.Unit && u.Q == command.Q && u.R == command.R);
-            if (command.Kind != expected || command.Unit != Actor(c, state, order) || (expected == "move" ? !turn && !options.MoveCells.Contains(new(command.Q, command.R)) : !options.AttackTargets.Contains(command.Target)))
+            if (expected is not ("move" or "attack") || command.Kind != expected || command.Unit != Actor(c, state, order) || (expected == "move" ? !turn && !options.MoveCells.Contains(new(command.Q, command.R)) : !options.AttackTargets.Contains(command.Target)))
                 return Reject("The action does not match the order's current step or target.");
-            return InterruptRules.Start(c, state, side, command, basic: false);
+            var chosen = ChooseAction(c, state, order, expected);
+            if (expected == "attack" && order.BasicAction == "" && Step(c, state, order).Line == 0 && CommandCards.Find(c, state, order.Card)!.SameTarget)
+                chosen = chosen with { Cards = chosen.Cards! with { Pending = chosen.Cards!.Pending! with { FirstTarget = command.Target } } };
+            command = command with { Power = action == "power", AttackKind = action == "board" ? "board" : command.AttackKind };
+            var result = InterruptRules.Start(c, chosen, side, command, basic: false);
+            return result.Accepted ? result : Reject(result.Message);
         }
         return Advance(c, state, next, side, message, command.Kind == "finish-order");
     }
     internal static CommandResult Advance(ContentCatalog c, BattleState original, BattleState next, int side, string message, bool finish = false)
     {
         var order = next.Cards!.Pending!;
-        order = order with { Step = finish ? Steps(c, next, order) : order.Step + 1 };
+        order = order with { Step = finish ? Steps(c, next, order) : order.Step + 1, Choice = "" };
         while (order.Step < Steps(c, next, order) && !next.Units.Any(u => u.Id == Actor(c, next, order) && u.Patrol == "")) order = order with { Step = order.Step + 1 };
         if (next.Finished || order.Step >= Steps(c, next, order))
         {
@@ -157,7 +175,9 @@ public static class SpecialOrders
         if ((order.BasicAction == "" ? !Supported(c, state, order.Card) : order.BasicAction is not ("move" or "attack" or "harvest" or "transfer-crew" or "transfer-stars")) || order.Side is < 0 or > 1 || state.ActiveSide != order.Side || state.Cards.Phase != "orders" || state.Finished
             || order.Units == null || order.Units.Length != (order.BasicAction == "" && Formation(c, state, order.Card) ? 2 : 1) || order.Units.Distinct().Count() != order.Units.Length
             || order.Units.Any(id => state.Units.Any(u => u.Id == id && (u.Side != order.Side || !u.Activated)))
-            || order.Step < 0 || order.Step >= Steps(c, state, order) || order.Direction is < -1 or > 5 || !state.Cards.Discard.Contains(order.Card))
+            || order.Step < 0 || order.Step >= Steps(c, state, order) || order.Direction is < -1 or > 5 || !state.Cards.Discard.Contains(order.Card)
+            || order.Choice is not ("" or "move" or "attack") || order.Choice != "" && (order.BasicAction != "" || Step(c, state, order).Action != "choice")
+            || order.FirstTarget == null || order.FirstTarget.Length > 80 || order.FirstTarget != "" && (order.BasicAction != "" || !CommandCards.Find(c, state, order.Card)!.SameTarget))
             throw new InvalidDataException("Invalid pending special order.");
         if (!state.Units.Any(u => u.Id == Actor(c, state, order)) && state.Hazards is not { Length: > 0 }) throw new InvalidDataException("Pending actor is missing.");
     }

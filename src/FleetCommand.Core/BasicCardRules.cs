@@ -14,6 +14,7 @@ public static class BasicCardBattle
     public const string LogisticsMapId = "practice:logistics";
     public const string EconomyMapId = "practice:economy";
     public const string TerrainMapId = "practice:hazards";
+    public const string OrdersMapId = "practice:orders";
     public static void Register(ContentCatalog c)
     {
         c.Rules["practice:cards"] = new("practice:cards", "Basic card practice", "cards-basic-v1", OrdersPerSide: 1, RearShots: false);
@@ -72,6 +73,21 @@ public static class BasicCardBattle
         c.Fleets["practice:large-enemy"] = new("practice:large-enemy", "Training large ship", [new("practice:large-taiidan", 7, 2, 3), new("practice:taiidan-wing", 8, 4, 3)]);
         c.Fleets["practice:large-fleet"] = new("practice:large-fleet", "Training large ship", [new("practice:large-ship", 2, 2), new("practice:kushan-wing", 1, 4)]);
         c.Maps["practice:large"] = c.Maps[TabletopMapId] with { Id = "practice:large", Name = "Two-hex ships / training battle", Fleets = ["practice:large-fleet", "practice:large-enemy"], Objects = [] };
+        c.Rules[OrdersMapId] = c.Rules[TabletopMapId] with { Id = OrdersMapId, Name = "Command orders and effects", Deck = "core:available-commands" };
+        c.Maps[OrdersMapId] = c.Maps[ObjectivesMapId] with { Id = OrdersMapId, Name = "Command orders and effects", Rules = OrdersMapId, Objects = [], AsteroidStars = null, Objectives = null };
+        foreach (string faction in new[] { "kushan", "taiidan" })
+        {
+            string leader = "practice:" + faction + "-orders";
+            c.Leaders[leader] = new(leader, "Training command officer", faction, ["frigate"], Hand: 3, Play: 2, Stars: 1);
+            var fleet = c.Fleets["practice:" + faction + "-objectives"];
+            c.Fleets[leader] = fleet with { Id = leader, Units = fleet.Units.Select((u, i) =>
+            {
+                var ship = c.Ships[u.Ship]; string id = "practice:orders-" + ship.Id.Split(':')[1];
+                c.Ships[id] = ship with { Id = id, Name = "Command drill: " + ship.Name, Label = "Command drill: " + FleetPresentation.ShipName(ship), Afterburners = FleetRuleTools.Strike(ship) ? 2 : 1 };
+                return u with { Ship = id, Leader = i == 0 ? leader : u.Leader };
+            }).ToArray() };
+        }
+        c.Maps[OrdersMapId] = c.Maps[OrdersMapId] with { Fleets = ["practice:kushan-orders", "practice:taiidan-orders"] };
     }
 }
 

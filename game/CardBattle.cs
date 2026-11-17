@@ -6,6 +6,7 @@ public partial class Main
     private string _selectedCard = "";
     private string _secondOrderUnit = "";
     private string _formationLines = "both";
+    private string _cardRepairChoice = "auto";
     private void CardGuide()
     {
         EndTutorial(); _state = null; ClearScreen(); Heading("Tutorial: cards and special orders");
@@ -96,6 +97,7 @@ public partial class Main
             Text(parent, $"Action {pending.Step + 1}/{SpecialOrders.Steps(_content, _state!, pending)}: " + SpecialOrders.ActionName(_content, _state!, pending) + "\n" +
                 FleetPresentation.UnitName(_content, _state, _state.Units.Single(u => u.Id == SpecialOrders.Actor(_content, _state!, pending))), 13);
             Text(parent, pending.BasicAction == "harvest" ? "Free movement → harvest. Both steps may be skipped." : pending.BasicAction != "" ? "Card and Play already spent. Choose an action target or skip the action." : CommandCards.Description(_content, _state, pending.Card), 12, _colors.Muted);
+            if (SpecialOrders.Action(_content, _state, pending) == "choice") Text(parent, "Choose MOVE or ATTACK on the right, then select a target on the field.", 12, _colors.Highlight);
             Button(parent, "SKIP ACTION", () => Submit(new("skip")), LocalCommandSide != pending.Side);
             Button(parent, "FINISH ORDER", () => Submit(new("finish-order")), LocalCommandSide != pending.Side);
             DrawCardPreview(parent, pending.Card);
@@ -118,6 +120,15 @@ public partial class Main
         if (cards.Phase == "orders" && SpecialOrders.Supported(_content, _state!, _selectedCard))
         {
             var selected = _state.Units.Find(u => u.Id == _selected && u.Side == side && !u.Activated && !u.Hulk);
+            var cardDefinition = CommandCards.Find(_content, _state, _selectedCard)!;
+            if (cardDefinition.RepairAtStart && selected != null)
+            {
+                var values = new[] { "auto", "", "focus", "engines", "weapons", "bays" };
+                var repair = new OptionButton();
+                foreach (var value in values) repair.AddItem(value == "auto" ? "Card repair: first available token" : value == "" ? "Card repair: skip" : "Card repair: " + value);
+                repair.Select(Math.Max(0, Array.IndexOf(values, _cardRepairChoice)));
+                repair.ItemSelected += i => _cardRepairChoice = values[(int)i]; parent.AddChild(repair);
+            }
             if (FleetBattle && SpecialOrders.Formation(_content, _state!, _selectedCard))
             {
                 string[] modes = ["both", "first", "second"]; var lines = new OptionButton(); lines.AddItem("Both order lines"); lines.AddItem("First line only"); lines.AddItem("Second line only");
@@ -134,7 +145,7 @@ public partial class Main
             }
             var play = Button(parent, "SPECIAL ORDER", () => Submit(new("special", FleetBattle && SpecialOrders.Formation(_content, _state!, _selectedCard) && _formationLines == "second" ? "" : _selected,
                 Card: _selectedCard, OtherUnit: FleetBattle && SpecialOrders.Formation(_content, _state!, _selectedCard) && _formationLines == "first" ? "" : FleetBattle && SpecialOrders.Formation(_content, _state!, _selectedCard) && _formationLines == "second" ? _selected : _secondOrderUnit,
-                Repair: _repairChoice, OtherRepair: _repairOtherChoice)), selected == null || side != _state.ActiveSide);
+                Repair: _repairChoice, OtherRepair: _repairOtherChoice, CardRepair: _cardRepairChoice)), selected == null || side != _state.ActiveSide || !SpecialOrders.CanAssign(_content, _state, cardDefinition, selected));
             play.CustomMinimumSize = new(0, 32);
         }
         Text(parent, $"Hand {(side == 0 ? cards.HandLimit0 : cards.HandLimit1)} / Play {(side == 0 ? cards.PlayLimit0 : cards.PlayLimit1)} · Move / Attack / Harvest", 11, _colors.Muted);
