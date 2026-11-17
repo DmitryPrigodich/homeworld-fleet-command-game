@@ -171,10 +171,48 @@ Revision checks and faction distinctions:
 
 Main statistics/costs, model counts, tabs and prose are readable. Small weapon/action symbols and the denser capital-ship text still need close transcription/validation before gameplay data is changed. This submission is a source intake, not completion of the corresponding mechanics.
 
+## Neutral objects, Kadeshi/Turanic units and faction cards received on 2026-11-17
+
+Eight photographs were supplied; the user explicitly identifies **the last two sheets as updates**. Preserve sheets 1-6 separately from the replacements on sheets 7-8. Source images, upright inspection copies and SHA-256 provenance are retained privately. The faction assignments confirmed earlier remain in force: Kadeshi and Turanic are distinct, not one combined pirate faction.
+
+| Sheet | Visible fronts |
+| --- | --- |
+| 1 / Neutral originals | Weapons Platform, Research Facility, Space Station, Cryo Tray, Shipyard, Military Outpost, Gun Platform, Minefield; cropped Asteroid Field and Industrial World |
+| 2 / Neutral originals | Asteroid Field, Established Colony, New Settlement, Prison Station, Industrial World, Civilised World, Field Generator, Nebula; fragments of preceding cards |
+| 3 / Kadeshi originals | Swarmer, Advanced Swarmer, Multi-beam Frigate, Mothership, Fuel Pod |
+| 4 / Turanic originals | Bandit Interceptor, Thief Heavy Corvette, Lord Carrier, Brigand Missile Corvette, Dagger Ion Array Frigate |
+| 5 / Faction Ready faces and Bentusi | Kadesh, Taiidan, Turanic Raiders, Kushan faction abilities; Bentusi Ship unit profile |
+| 6 / Faction Used faces | Ability Used reverse faces for all four faction cards |
+| 7 / Neutral update | Space Station, Gun Platform, Field Generator, Asteroid Field, Shipyard, Prison Station, Minefield, Nebula |
+| 8 / Kadeshi/Turanic update | Kadeshi Mothership, Multi-beam Frigate, Advanced Swarmer, Fuel Pod, Swarmer; Turanic Lord Carrier and Brigand Missile Corvette |
+
+The originals expose **17 distinct neutral/object/Bentusi profiles**, **five Kadeshi ship types**, **five Turanic ship types**, and all four faction ability cards on both Ready/Used sides. Sheet 7 supplies eight replacement faces; sheet 8 supplies seven. These are source counts, not a claim of implemented coverage or a complete inventory of every expansion.
+
+Preserve these distinctions during transcription:
+
+- Weapons Platform and Gun Platform are separate profiles, not two names for the same weapons/price. The latest Gun Platform explicitly describes its two-platform/one-platform token sides.
+- Field Generator's latest hyperspace restriction explicitly affects **enemy** capital ships. Do not copy the original unrestricted wording into the active profile.
+- Latest Minefield text explicitly allows defensive fire and includes causing a unit to take Focus Fire in its reduction trigger. Keep the complete reduction/removal timing alongside the printed 5/3 token sides.
+- Updated stations carry their own factory, purchased-unit deployment and Launch Tubes text. Cryo Tray/Weapons Platform damage flips are separate from ordinary ship model/crew losses.
+- The latest Kadeshi Swarmer/Advanced Swarmer Limited Fuel checks whether the unit starts **an action** within three hexes of a Fuel Pod; the original says the unit starts within three hexes. Resolve exact timing from the latest face/rules rather than substituting round or order timing.
+- Latest Kadeshi Multi-beam Frigate/Fuel Pod/Mothership explicitly show crew values 2/2/6. Preserve these updated values instead of treating missing/dash original entries as perpetual boarding immunity. Kadeshi Mothership is distinct from the Kushan Mothership and Taiidan Imperial Flagship.
+- Latest Lord Carrier Power Drain and Brigand Target Lock must be transcribed from their updated faces. Brigand's latest exclusion explicitly covers the Evasive unit ability and buff.
+- Faction cards have printed cost 0, Hand 2 and Play 1. Their ability text and Ready/Used lifecycle are distinct from leader attachment rules. The four Ready abilities are Fuelled Up, Ferocious Attack, Ferocious Raiders and Redundant Systems. Preserve the Taiidan Valor interaction, Kushan token-removal options, Kadeshi order modification and Turanic boarding reroll as separate mechanics.
+
+## Intake completeness check after the final batch
+
+The photographed command deck, 19 Taiidan and 19 Kushan types, Kadeshi/Turanic ships, neutral profiles, faction cards, facilities, upgrades and Heroic families now provide substantial rule/profile sources. The **clear remaining photo gap is the ordinary Core Box leader cards for both Kushan and Taiidan**, as listed in the supplied component catalogue:
+
+**Squadron Leader, Wing Commander, Marine Commander, Marine Captain, Commander, Captain, Commodore, Carrier Captain, Vice Admiral, Admiral, Station Commander.**
+
+These are eleven distinct names per faction. Book examples already supply some profiles (including Wing Commander and Squadron Leader), but the ordinary leader faces have not appeared among the received photo batches; most remain unverified for complete cost/Hand/Play, compatible unit classes, tabs and effects. Do not confuse Captain with Veteran Captain, Commander with Veteran Commander, or these base leaders with the expansion Heroic/Staff faces. One exposed face per distinct name and faction is sufficient; duplicate physical copies are unnecessary. This is a request for source verification, not a claim that all 22 profiles are absent from every book example.
+
+Do not declare every expansion complete solely from this check: the available component catalogue provides the Core Box list, but its Campaign Expansion section ends before a complete card inventory. Missing artwork/backs are not blockers. Ask for targeted crops only if a particular symbol or line remains unresolved; do not request wholesale rephotographing of already supplied sets. Implementing/transcribing all received effects is now the main outstanding work, independently of this specific leader-photo gap.
+
 ## Useful photo batches
 
-1. **Remaining ships, per faction:** full statistics, weapon rows/arcs, ability values, costs and colored tabs, including free assigned units. The 19 Taiidan types/seven replacement faces and 19 Kushan types/nine replacement faces above are now available; do not request them again as missing. Kadeshi and Turanic ship profiles, plus any other unpictured types, remain separate inputs; the pirate-related sheet supplies leaders, not ship profiles. Interceptor examples on US Digital p.32 are already transcribed. Photographed profiles still require exact transcription/validation before implementation.
-2. **Unpictured leaders and Heroic owners:** full cost/Hand/Play, restrictions and abilities. Use the existing inventory to avoid requesting repeated faces; Wing/Squadron Leader book examples and photographed leaders are already available.
+1. **Ordinary Core Box leaders:** the eleven names per faction listed above. Verify full cost/Hand/Play, assignment restrictions, tabs and abilities against the actual faces; retain book examples already transcribed.
+2. **Other specifically identified missing profiles:** only names absent from the received batches. The 19 Taiidan, 19 Kushan, five Kadeshi and five Turanic ship types above are available, as are the photographed Heroic owners; do not keep requesting them as missing. Any additional expansion inventory must be checked separately.
 3. **Higher-quality originals or targeted crops:** only where an inline icon or dense text cannot be resolved from the supplied photos and legend. No repeated full base-command deck photo is currently needed.
 4. **Other expansion faces:** only cards not present in the received upgrade/leader/facility/Heroic batches. Distinguish missing source profiles from pending implementations.
 
