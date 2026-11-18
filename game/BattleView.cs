@@ -186,6 +186,8 @@ public partial class Main
             float d = World(new(q, r)).DistanceTo(hit.Value); if (d < distance) { distance = d; tile = new(q, r); }
         }
         if (tile == null || distance > 1.05f) return;
+        if (_state.Cards?.Pending is { } launchOrder && SpecialOrders.Action(_content, _state, launchOrder) == "launch" && !FleetDecision)
+        { Submit(new("launch", SpecialOrders.Actor(_content, _state, launchOrder), Q: tile.Value.Q, R: tile.Value.R, Facing: Math.Max(0, _facingChoice), Repair: _repairChoice)); return; }
         if (_state.Reinforce != null && !(_state.Hazard != null || _state.Combat != null || _state.Defense != null || _state.Repairs is { Length: > 0 })) { PlaceReinforcement(tile.Value); return; }
         var target = _state.Units.Find(u => u.Patrol == "" && FleetFootprint.Contains(_content, u, tile.Value));
         var obj = FleetTerrain.Objects(_content, _state).FirstOrDefault(o => o.Q == tile.Value.Q && o.R == tile.Value.R);
@@ -271,6 +273,11 @@ public partial class Main
         }
         if (_state.Cards?.Pending is { } order)
         {
+            if (SpecialOrders.Action(_content, _state, order) == "launch")
+            {
+                string child = SpecialOrders.Actor(_content, _state, order); var exits = FleetLaunchOrders.Cells(_content, _state, child);
+                ApplyCommand(1, exits.Length == 0 ? new("skip") : new("launch", child, Q: exits[0].Q, R: exits[0].R)); return;
+            }
             var actor = SpecialOrders.Actor(_content, _state!, order); var unit = _state.Units.Single(u => u.Id == actor);
             if (SpecialOrders.Action(_content, _state!, order) == "harvest")
             {

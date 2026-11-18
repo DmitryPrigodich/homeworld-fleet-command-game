@@ -95,9 +95,10 @@ public partial class Main
         {
             Text(parent, pending.BasicAction == "" ? SpecialOrders.Name(_content, _state!, pending.Card) : "BASIC ORDER", 15, _colors.Highlight);
             Text(parent, $"Action {pending.Step + 1}/{SpecialOrders.Steps(_content, _state!, pending)}: " + SpecialOrders.ActionName(_content, _state!, pending) + "\n" +
-                FleetPresentation.UnitName(_content, _state, _state.Units.Single(u => u.Id == SpecialOrders.Actor(_content, _state!, pending))), 13);
+                FleetPresentation.UnitName(_content, _state, _state.Units.Concat(_state.Reserves ?? []).Single(u => u.Id == SpecialOrders.Actor(_content, _state!, pending))), 13);
             Text(parent, pending.BasicAction == "harvest" ? "Free movement → harvest. Both steps may be skipped." : pending.BasicAction != "" ? "Card and Play already spent. Choose an action target or skip the action." : CommandCards.Description(_content, _state, pending.Card), 12, _colors.Muted);
             if (SpecialOrders.Action(_content, _state, pending) == "choice") Text(parent, "Choose MOVE or ATTACK on the right, then select a target on the field.", 12, _colors.Highlight);
+            if (SpecialOrders.Action(_content, _state, pending) == "launch") Text(parent, "Click a green exit hex to launch this squadron. The carrier keeps its activation state.", 12, _colors.Highlight);
             Button(parent, "SKIP ACTION", () => Submit(new("skip")), LocalCommandSide != pending.Side);
             Button(parent, "FINISH ORDER", () => Submit(new("finish-order")), LocalCommandSide != pending.Side);
             DrawCardPreview(parent, pending.Card);
@@ -119,8 +120,8 @@ public partial class Main
         }
         if (cards.Phase == "orders" && SpecialOrders.Supported(_content, _state!, _selectedCard))
         {
-            var selected = _state.Units.Find(u => u.Id == _selected && u.Side == side && !u.Activated && !u.Hulk);
             var cardDefinition = CommandCards.Find(_content, _state, _selectedCard)!;
+            var selected = (FleetLaunchOrders.IsLaunch(cardDefinition) ? _state.Reserves ?? [] : _state.Units).Find(u => u.Id == _selected && u.Side == side && !u.Activated && !u.Hulk);
             if (cardDefinition.RepairAtStart && selected != null)
             {
                 var values = new[] { "auto", "", "focus", "engines", "weapons", "bays" };

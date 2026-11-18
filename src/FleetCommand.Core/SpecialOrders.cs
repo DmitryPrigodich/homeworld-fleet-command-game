@@ -22,7 +22,7 @@ public static partial class SpecialOrders
     }
     public static string Action(ContentCatalog c, BattleState state, PendingOrder order) => order.BasicAction == "harvest" ? order.Step == 0 ? "move" : "harvest" : order.BasicAction != "" ? order.BasicAction : order.Choice != "" ? order.Choice : Step(c, state, order).Action;
     public static string Actor(ContentCatalog c, BattleState state, PendingOrder order) => order.Units[order.BasicAction != "" ? 0 : Step(c, state, order).Line];
-    public static string ActionName(ContentCatalog c, BattleState state, PendingOrder order) => Action(c, state, order) switch { "attack" => "Attack", "power" => "Power Attack", "board" => "Boarding", "choice" => "Move or Attack", "lightning" => "Lightning Move", "harvest" => "Resource harvesting", _ => "Movement" };
+    public static string ActionName(ContentCatalog c, BattleState state, PendingOrder order) => Action(c, state, order) switch { "launch" => "Launch", "attack" => "Attack", "power" => "Power Attack", "board" => "Boarding", "choice" => "Move or Attack", "lightning" => "Lightning Move", "harvest" => "Resource harvesting", _ => "Movement" };
     public static int Steps(ContentCatalog c, BattleState state, PendingOrder order) => order.BasicAction == "harvest" ? 2 : order.BasicAction != "" ? 1 : CommandCards.Find(c, state, order.Card)!.Lines!.Sum(l => l.Actions.Length);
     public static int Lightning(ShipDefinition ship) => ship.Afterburners >= 0 ? ship.Afterburners : ship.Id is "core:kushan-interceptor" or "core:taiidan-interceptor" ? 2 : 0;
     private static BattleState Sandbox(ContentCatalog c, BattleState state, PendingOrder order) => state with
@@ -61,6 +61,7 @@ public static partial class SpecialOrders
     {
         var order = state.Cards?.Pending;
         if (order == null || state.Finished || order.Side != side || id != Actor(c, state, order)) return UnitActions.Empty;
+        if (Action(c, state, order) == "launch") return new(FleetLaunchOrders.Cells(c, state, id), []);
         if (Action(c, state, order) == "harvest") return new([], [], FleetEconomy.Targets(c, state, side, id));
         if (Action(c, state, order) == "board" && CommandCards.Find(c, state, order.Card)!.BoardAfterMove && !order.Moved) return UnitActions.Empty;
         var unit = state.Units.Single(u => u.Id == id);
@@ -81,6 +82,7 @@ public static partial class SpecialOrders
     {
         CommandResult Reject(string message) => new(false, message, state);
         var cards = state.Cards!;
+        if (CommandCards.Find(c, state, command.Card) is { } launchCard && FleetLaunchOrders.IsLaunch(launchCard)) return FleetLaunchOrders.Begin(c, state, side, command);
         bool partialFormation = FleetRuleTools.Enabled(c, state) && Formation(c, state, command.Card);
         var unit = state.Units.Find(u => u.Id == (command.Unit == "" && partialFormation ? command.OtherUnit : command.Unit));
         if (!Supported(c, state, command.Card) || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(command.Card)) return Reject("Select an available special card.");
@@ -119,6 +121,7 @@ public static partial class SpecialOrders
         var order = state.Cards!.Pending!;
         CommandResult Reject(string message) => new(false, message, state);
         if (order.Side != side) return Reject("Wait for the special order to finish.");
+        if (Action(c, state, order) == "launch" && command.Kind == "launch") return FleetLaunchOrders.Place(c, state, side, command);
         BattleState next = state; string message;
         if (command.Kind == "damage-control" && FleetRuleTools.Enabled(c, state) && (IsAttackAction(Action(c, state, order)) || Action(c, state, order) == "choice") && FleetRuleTools.Has(state.Units.Single(u => u.Id == Actor(c, state, order)), "weapons"))
         {
@@ -179,6 +182,11 @@ public static partial class SpecialOrders
             || order.Choice is not ("" or "move" or "attack") || order.Choice != "" && (order.BasicAction != "" || Step(c, state, order).Action != "choice")
             || order.FirstTarget == null || order.FirstTarget.Length > 80 || order.FirstTarget != "" && (order.BasicAction != "" || !CommandCards.Find(c, state, order.Card)!.SameTarget))
             throw new InvalidDataException("Invalid pending special order.");
-        if (!state.Units.Any(u => u.Id == Actor(c, state, order)) && state.Hazards is not { Length: > 0 }) throw new InvalidDataException("Pending actor is missing.");
+        if (Action(c, state, order) == "launch")
+        {
+            var child = state.Reserves?.Find(u => u.Id == Actor(c, state, order));
+            if (child == null || child.Side != order.Side || !child.Activated || !FleetLaunchOrders.IsLaunch(CommandCards.Find(c, state, order.Card)!) || child.Embarked == "") throw new InvalidDataException("Invalid pending launch order.");
+        }
+        else if (!state.Units.Any(u => u.Id == Actor(c, state, order)) && state.Hazards is not { Length: > 0 }) throw new InvalidDataException("Pending actor is missing.");
     }
 }

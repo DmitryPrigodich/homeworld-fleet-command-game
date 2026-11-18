@@ -75,7 +75,7 @@ internal static class PublishedOrderScenarios
         { try { test(new(root, name)); } catch (Exception e) { throw new Exception(name + ": " + e.Message, e); } count++; Console.WriteLine("PUBLISHED ORDER PASS " + name); }
         Case("available-order-deck-conservation", s =>
         {
-            var deck = CommandCards.Deck(s.C, s.S); Check(deck.Entries.Length == 16 && CommandCards.Instances(deck).Count == 45, "Wrong supported-card inventory");
+            var deck = CommandCards.Deck(s.C, s.S); Check(deck.Entries.Length == 17 && CommandCards.Instances(deck).Count == 47, "Wrong supported-card inventory");
             Check(deck.Entries.Single(e => e.Card == "core:weapons-to-maximum").Copies == 6, "Printed copy count lost");
             s.E.Load(s.E.Save(s.S));
         });

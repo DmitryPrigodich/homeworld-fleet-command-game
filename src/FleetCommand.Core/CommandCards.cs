@@ -41,7 +41,8 @@ public static class CommandCards
             var lines = card.Lines ?? [];
             if (string.IsNullOrWhiteSpace(card.Name) || card.Kind is not ("order" or "interrupt" or "basic")
                 || (card.Kind == "order" ? lines.Length is < 1 or > 2 || card.Interrupt != "" : lines.Length != 0)
-                || lines.Any(l => l == null || l.Actions == null || l.Actions.Length is < 1 or > 8 || l.Actions.Any(a => a is not ("move" or "attack" or "lightning" or "power" or "choice" or "board")))
+                || lines.Any(l => l == null || l.Actions == null || l.Actions.Length is < 1 or > 8 || l.Actions.Any(a => a is not ("move" or "attack" or "lightning" or "power" or "choice" or "board" or "launch")))
+                || lines.SelectMany(l => l.Actions).Contains("launch") && (lines.Length != 1 || !lines[0].Actions.SequenceEqual(["launch", "lightning", "attack"]) || card.SelfBuff != "" || card.RepairAtStart || card.AttackEffect != "")
                 || (card.Kind == "interrupt" ? card.Interrupt != "attack" : card.Interrupt != "")
                 || card.StraightCourse && (lines.Length != 1 || lines[0].Actions.Any(a => a != "move"))
                 || card.AdjacentOnLightning && (lines.Length != 2 || lines[0].Actions.Contains("lightning") || !lines[1].Actions.Contains("lightning"))

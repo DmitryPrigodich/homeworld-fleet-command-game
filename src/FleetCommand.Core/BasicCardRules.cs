@@ -15,6 +15,7 @@ public static class BasicCardBattle
     public const string EconomyMapId = "practice:economy";
     public const string TerrainMapId = "practice:hazards";
     public const string OrdersMapId = "practice:orders";
+    public const string LaunchOrdersMapId = "practice:launch-orders";
     public static void Register(ContentCatalog c)
     {
         c.Rules["practice:cards"] = new("practice:cards", "Basic card practice", "cards-basic-v1", OrdersPerSide: 1, RearShots: false);
@@ -88,6 +89,14 @@ public static class BasicCardBattle
             }).ToArray() };
         }
         c.Maps[OrdersMapId] = c.Maps[OrdersMapId] with { Fleets = ["practice:kushan-orders", "practice:taiidan-orders"] };
+        c.Maps[LaunchOrdersMapId] = c.Maps[LogisticsMapId] with { Id = LaunchOrdersMapId, Name = "Launch orders", Rules = OrdersMapId, Objects = [] };
+        foreach (string faction in new[] { "kushan", "taiidan" })
+        {
+            string ship = "practice:launch-" + faction + "-wing", fleet = "practice:launch-" + faction;
+            c.Ships[ship] = c.Ships["practice:" + faction + "-wing"] with { Id = ship, Name = "Launch training wing", Label = "Launch training wing", Afterburners = 2 };
+            c.Fleets[fleet] = c.Fleets["practice:" + faction + "-logistics"] with { Id = fleet, Units = c.Fleets["practice:" + faction + "-logistics"].Units.Select(u => u.Ship == "practice:" + faction + "-wing" ? u with { Ship = ship } : u).ToArray() };
+        }
+        c.Maps[LaunchOrdersMapId] = c.Maps[LaunchOrdersMapId] with { Fleets = ["practice:launch-kushan", "practice:launch-taiidan"] };
     }
 }
 

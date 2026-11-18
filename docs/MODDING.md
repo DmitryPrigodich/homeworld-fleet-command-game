@@ -165,7 +165,7 @@ Multiple different leader cards may attach to one unit and sum their bonuses. Fi
 
 Optional theme fields `tabBlue`, `tabYellow` and `tabGrey` control the editor's slot palette independently of player ownership colors. They default to `#36a9de`, `#d8ad37` and `#87929c`.
 
-The core `PreparedBattle` envelope stores two plans, field dimensions, objects, seed/background and optional two-sided `ForceLimit` records. A limit can cap `budget` and `reserveStars`, whitelist `ships`/`leaders`, or disable `allowReserve`. These restrictions are a core interface for future scenario packs; the editor currently exposes custom skirmishes. This envelope is stored with saves and sent by the host, then validated and registered before battle state loads. Cards, private deposits and RNG still follow normal private-view filtering. The network signature is `fleet-cards-v3` to reject older binaries.
+The core `PreparedBattle` envelope stores two plans, field dimensions, objects, seed/background and optional two-sided `ForceLimit` records. A limit can cap `budget` and `reserveStars`, whitelist `ships`/`leaders`, or disable `allowReserve`. These restrictions are a core interface for future scenario packs; the editor currently exposes custom skirmishes. This envelope is stored with saves and sent by the host, then validated and registered before battle state loads. Cards, private deposits and RNG still follow normal private-view filtering. The network signature is `fleet-cards-v4` to reject older binaries.
 
 ## Two-hex ships and board masks
 
@@ -200,4 +200,6 @@ Order action rows also accept `power` (forced Power Attack), `choice` (one Move 
 | `boardingDice` | 0–20 extra dice on this order's boarding step |
 | `boardAfterMove` | Require completed movement; row must be exactly `move`, `board` |
 
-Activation/combat effects require the tabletop handler. Basic/interrupt definitions cannot declare order effects. `BattleCommand.cardRepair` accepts `auto` (first available), empty (skip), `focus`, `engines`, `weapons` or `bays`; an absent explicit token is rejected before spending. Normal activation Damage Control remains separate. These fields implement current verified needs; arbitrary triggers/scripts, Heroic effects and additional interrupt handlers are not implicitly supported. See [COMMAND_ORDERS.md](COMMAND_ORDERS.md). Current peer protocol: `fleet-cards-v3`.
+Activation/combat effects require the tabletop handler. Basic/interrupt definitions cannot declare order effects. `BattleCommand.cardRepair` accepts `auto` (first available), empty (skip), `focus`, `engines`, `weapons` or `bays`; an absent explicit token is rejected before spending. Normal activation Damage Control remains separate. These fields implement current verified needs; arbitrary triggers/scripts, Heroic effects and additional interrupt handlers are not implicitly supported. See [COMMAND_ORDERS.md](COMMAND_ORDERS.md). Current peer protocol: `fleet-cards-v4`.
+
+The `launch` action is supported only as the single row `["launch", "lightning", "attack"]`, with no activation buff/repair/attack effect. It assigns a ready embarked unit, not its parent. During that first step send `BattleCommand(kind: "launch", unit: childId, q, r, facing, repair)`; placement validates the original carrier's free adjacent exits and Launch Tubes. Later steps use the normal saved order machinery.

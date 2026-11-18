@@ -1294,6 +1294,21 @@
         }
       ],
       "attackEffect": "bays"
+    },
+    {
+      "id": "core:ready-to-launch",
+      "name": "Ready to Launch",
+      "kind": "order",
+      "description": "Launch one ready embarked squadron, then Lightning Move and Attack. The carrier keeps its activation state. Launch Tubes still apply.",
+      "lines": [
+        {
+          "actions": [
+            "launch",
+            "lightning",
+            "attack"
+          ]
+        }
+      ]
     }
   ],
   "decks": [
@@ -1418,6 +1433,10 @@
         {
           "card": "core:interrupt-attack",
           "copies": 3
+        },
+        {
+          "card": "core:ready-to-launch",
+          "copies": 2
         }
       ]
     }

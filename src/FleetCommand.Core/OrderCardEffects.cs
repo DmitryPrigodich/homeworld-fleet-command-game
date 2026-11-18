@@ -8,6 +8,7 @@ public static partial class SpecialOrders
     private static BattleState ChooseAction(ContentCatalog c, BattleState s, PendingOrder order, string action) =>
         order.BasicAction == "" && Step(c, s, order).Action == "choice" ? s with { Cards = s.Cards! with { Pending = order with { Choice = action } } } : s;
     public static bool CanAssign(ContentCatalog c, BattleState s, CardDefinition card, BattleUnit? unit) => unit != null
+        && (FleetLaunchOrders.IsLaunch(card) ? FleetLaunchOrders.CanAssign(c, s, unit) : unit.Embarked == "")
         && (!card.ExcludeFighters || FleetRuleTools.Class(c.Ships[unit.Definition]) != "fighter")
         && (!card.RequireAfterburners || Lightning(c.Ships[unit.Definition]) > 0)
         && (FleetRuleTools.Enabled(c, s) || card.SelfBuff == "" && card.AttackEffect == "" && !card.RepairAtStart
