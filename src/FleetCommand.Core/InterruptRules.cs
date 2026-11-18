@@ -3,18 +3,19 @@ namespace FleetCommand.Core;
 // The active side keeps its turn while the other side answers this public pause.
 public sealed record PendingResponse(int Side, BattleCommand Command, bool Basic, Hex[] RemainingPath, int[]? PathFacings = null, Hex? Transit = null, int TransitFacing = -1, MovementStep? MoveStart = null, int FrontSpent = 0, int RearSpent = 0);
 
-public static class InterruptRules
+public static partial class InterruptRules
 {
     public static bool IsAttack(ContentCatalog c, BattleState? state, string card) => CommandCards.Find(c, state, card) is { Kind: "interrupt", Interrupt: "attack" };
     public static int Responder(BattleState state) => 1 - state.Cards!.Response!.Side;
     public static string[] Played(CardRound cards, int side) => (side == 0 ? cards.Interrupts0 : cards.Interrupts1) ?? [];
-    public static bool Available(ContentCatalog c, BattleState state, int side) => !Played(state.Cards!, side).Any(id => IsAttack(c, state, id));
+    public static bool Available(ContentCatalog c, BattleState state, int side, string kind = "attack") => !Used(state.Cards!, side).Contains(kind)
+        && !Played(state.Cards!, side).Any(id => CommandCards.Find(c, state, id)?.Interrupt == kind);
     private static bool CanShoot(ContentCatalog c, BattleState state, BattleUnit unit, string target) => !unit.Hulk && unit.Patrol == "" &&
         (SkirmishGeometry.Attack(c, state, unit, state.Units.Find(u => u.Id == target)).Allowed || FleetRuleTools.Enabled(c, state)
             && (FleetClose.Allowed(c, state, unit, state.Units.Find(u => u.Id == target), "ram") || FleetClose.Allowed(c, state, unit, state.Units.Find(u => u.Id == target), "board")));
     public static UnitActions Actions(ContentCatalog c, BattleState state, int side, string id)
     {
-        if (state.Finished || state.Cards?.Response is not { } pause || side != 1 - pause.Side
+        if (state.Finished || state.Cards?.Counter != null || state.Cards?.Response is not { } pause || side != 1 - pause.Side
             || !Available(c, state, side) || !(side == 0 ? state.Cards.Hand0 : state.Cards.Hand1).Any(id => IsAttack(c, state, id))) return UnitActions.Empty;
         var unit = state.Units.Find(u => u.Id == id && u.Side == side);
         return unit != null && CanShoot(c, state, unit, pause.Command.Unit) ? new([], [pause.Command.Unit]) : UnitActions.Empty;
@@ -193,13 +194,15 @@ public static class InterruptRules
         if (FleetRuleTools.Enabled(c, state) && command.Power) return Reject("Interrupt Attack does not grant Power Attack.");
         if (command.Kind != "interrupt" || !IsAttack(c, state, command.Card) || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(command.Card)
             || !Actions(c, state, side, command.Unit).AttackTargets.Contains(command.Target)) return Reject("Requires Interrupt Attack and one of your units able to attack the acting enemy.");
+        if (FleetRuleTools.Enabled(c, state) && !FleetCombat.Allowed(c, state, state.Units.Single(u => u.Id == command.Unit), state.Units.Find(u => u.Id == command.Target), command)) return Reject("The selected interrupt attack is unavailable.");
         cards = cards with { Hand0 = cards.Hand0.Where(id => id != command.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != command.Card).ToArray(),
             Interrupts0 = side == 0 ? Played(cards, side).Append(command.Card).ToArray() : cards.Interrupts0,
             Interrupts1 = side == 1 ? Played(cards, side).Append(command.Card).ToArray() : cards.Interrupts1 };
-        var result = Attack(c, state with { Cards = cards }, side, command with { Kind = "attack" }, interrupt: true);
-        if (!result.Accepted) return Reject(result.Message);
-        if (result.State.Combat != null || result.State.Defense != null || result.State.Overrun != null) return result with { State = result.State with { Sequence = state.Sequence + 1 } };
-        return Continue(c, state, result.State, "Interrupt Attack: " + result.Message);
+        cards = MarkUsed(cards, side, "attack");
+        var spent = state with { Cards = cards };
+        if (CanOfferCounter(c, spent, 1 - side)) return new(true, "Interrupt declared. The opponent may use Counterintelligence before its effect.",
+            spent with { Cards = cards with { Counter = new(side, command) }, Sequence = state.Sequence + 1 });
+        return ExecuteInterruptAttack(c, state, spent, side, command);
     }
     internal static CommandResult CombatResolved(ContentCatalog c, BattleState original, BattleState next, string message, bool interrupt) =>
         interrupt ? Continue(c, original, next, "Interrupt Attack: " + message) : Complete(c, original, next, message);
@@ -207,7 +210,12 @@ public static class InterruptRules
     {
         var cards = state.Cards!;
         foreach (int side in new[] { 0, 1 })
+        {
             if (Played(cards, side).Length > 1 || Played(cards, side).Any(id => !IsAttack(c, state, id))) throw new InvalidDataException("Invalid played interrupts.");
+            var used = Used(cards, side);
+            if (used.Length > 4 || used.Distinct().Count() != used.Length || used.Any(k => k is not ("attack" or "move" or "repairs" or "counter"))) throw new InvalidDataException("Invalid used interrupt types.");
+        }
+        ValidateCounter(c, state);
         if (cards.Response is not { } pause) return;
         if (state.Finished || cards.Phase != "orders" || pause.Side != state.ActiveSide || pause.Command == null || pause.Command.Kind is not ("move" or "attack")
             || pause.RemainingPath == null || pause.RemainingPath.Length > 2500 || pause.Command.Facing is < 0 or > 5

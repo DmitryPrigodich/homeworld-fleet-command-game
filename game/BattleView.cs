@@ -108,7 +108,7 @@ public partial class Main
         }
         DrawTutorialMarker();
         var top = Panel(30, 22, 1380, 68);
-        Text(top, $"{map.Name.ToUpperInvariant()}     /     ROUND {_state.Round}     /     " + (_state.Combat != null ? "ROLL: " + SideName(_state.Combat.Side) : _state.Cards?.Response != null ? "RESPONSE: " + SideName(InterruptRules.Responder(_state)) : "TURN: " + SideName(_state.ActiveSide)), 22, _colors.Accent);
+        Text(top, $"{map.Name.ToUpperInvariant()}     /     ROUND {_state.Round}     /     " + (_state.Cards?.Counter is { } counterChoice ? "COUNTER: " + SideName(1 - counterChoice.Side) : _state.Combat != null ? "ROLL: " + SideName(_state.Combat.Side) : _state.Cards?.Response != null ? "RESPONSE: " + SideName(InterruptRules.Responder(_state)) : "TURN: " + SideName(_state.ActiveSide)), 22, _colors.Accent);
         var left = ScrollBattlePanel(Panel(30, 112, 260, 610));
         Text(left, _tutorial != null ? "TUTORIAL" : _campaign == null ? "SKIRMISH" : "CAMPAIGN", 18, _colors.Highlight);
         Text(left, _tutorial != null ? "BLUE — OUR SIDE / RED — ENEMY" : _generation == null ? "Data-defined scenario" : $"Seed: {_generation.Seed}", 13, _colors.Muted);
@@ -215,6 +215,12 @@ public partial class Main
     private void BotTurn()
     {
         if (_state == null || !_bot || _state.Finished) return;
+        if (_state?.Cards?.Counter is { } counter)
+        {
+            if (counter.Side != 0) return;
+            string card = _state.Cards.Hand1.FirstOrDefault(id => InterruptRules.IsCounter(_content, _state, id)) ?? "";
+            ApplyCommand(1, card == "" ? new("decline-counter") : new("counter", Card: card)); return;
+        }
         if (_state.CapEntry is { } entry) { if (entry.Side == 1) ApplyCommand(1, new("cap-enter", Target: FleetCap.Hosts(_content, _state, _state.Units.Single(u => u.Id == entry.Unit))[0].Id)); return; }
         if (_state.Overrun is { } overrun) { if (overrun.Side == 1) ApplyCommand(1, new("overrun")); return; }
         if (_state.Repairs is { Length: > 0 })

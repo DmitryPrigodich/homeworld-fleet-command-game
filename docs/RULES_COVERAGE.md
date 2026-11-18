@@ -7,8 +7,8 @@ The user's current scope is all supplied rules before visual playtesting. This a
 | Area | Required coverage | Current status |
 | --- | --- | --- |
 | Round structure (pp. 10–15) | Leader/faction Hand and Play, any-size hidden initiative bids, tie rebids, pass, cleanup discards, draw/recycle | Implemented in tabletop development mode; published leader/deck data still incomplete |
-| Orders | All printed command actions, preassigned units, optional actions, spending, buffs/debuffs | Sixteen special orders and Interrupt Attack in a 47-card supported deck; three interrupts pending |
-| Interrupts | Attack, Move, Repairs, Counter-Intelligence; once per type/round; suspended actions | Attack implemented; other three faces received, handlers pending |
+| Orders | All printed command actions, preassigned units, optional actions, spending, buffs/debuffs | Sixteen special orders, Interrupt Attack and Counterintelligence in a 49-card supported deck; Move and Repairs interrupts pending |
+| Interrupts | Attack, Move, Repairs, Counter-Intelligence; once per type/round; suspended actions | Attack and Counterintelligence implemented; Move and Repairs faces received, handlers pending |
 | Movement (pp. 16–17) | Strike/capital turning, turn in place, facing, Afterburners, friendly transit, two-hex ships | Turning, saved facing paths, gravity, Afterburners and two-hex capital hulls implemented |
 | Ranged combat (pp. 17, 20–24) | Weapon choice, target classes, arcs, cover, power attacks, rapid/evasive cancellation, armor, prow/rear, focus | Weapon data/choice, arcs, cover, rapid/evasive, armor/prow/rear and focus implemented; Power Attack cards implemented in the supported command deck |
 | Combat choices (p. 27) | Post-roll Valor and Taiidan rerolls, ownership/passing/exhaustion | Implemented, saved post-roll decision, UI and ENet restore check |
@@ -72,4 +72,4 @@ Every completed row needs authoritative command validation, legal-action preview
 
 ## Available command deck
 
-[COMMAND_ORDERS.md](COMMAND_ORDERS.md) records the 47-card / 17-type partial deck, thirteen newly implemented orders and exact remaining four types. Move-or-Attack choice, forced Power Attack, same-target two-unit orders, completed-Move boarding, activation buffs/engineer repair and success-before-armor system damage are playable with saved continuations. Brace changes ranged/ram armor but not boarding armor (US Digital p.21); Lockdown explicitly affects boarding. Corrected Deploy Engineers removes one token permanently, independently of activation Damage Control.
+[COMMAND_ORDERS.md](COMMAND_ORDERS.md) records the 49-card / 18-type partial deck, thirteen newly implemented orders and exact remaining four types. Move-or-Attack choice, forced Power Attack, same-target two-unit orders, completed-Move boarding, activation buffs/engineer repair and success-before-armor system damage are playable with saved continuations. Brace changes ranged/ram armor but not boarding armor (US Digital p.21); Lockdown explicitly affects boarding. Corrected Deploy Engineers removes one token permanently, independently of activation Damage Control.

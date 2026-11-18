@@ -12,7 +12,7 @@ public partial class Main
     private bool _transferLeader;
     private int _facingChoice = -1;
     private bool FleetBattle => _state != null && FleetRuleTools.Enabled(_content, _state);
-    private bool FleetDecision => _state?.Reinforce != null || _state?.Hazard != null || _state?.Combat != null || _state?.Defense != null || _state?.CapEntry != null || _state?.Overrun != null || _state?.Repairs is { Length: > 0 };
+    private bool FleetDecision => _state?.Cards?.Counter != null || _state?.Reinforce != null || _state?.Hazard != null || _state?.Combat != null || _state?.Defense != null || _state?.CapEntry != null || _state?.Overrun != null || _state?.Repairs is { Length: > 0 };
     private BattleCommand? BotAttack(BattleUnit unit, string target, bool interrupt = false)
     {
         string card = interrupt ? _state!.Cards!.Hand1.FirstOrDefault(id => InterruptRules.IsAttack(_content, _state, id)) ?? "" : _state?.Cards?.Hand1.FirstOrDefault() ?? "";
@@ -24,7 +24,7 @@ public partial class Main
         }
         return null;
     }
-    private bool BotExpected => _state!.CapEntry is { } entry ? entry.Side == 1 : _state.Overrun is { } overrun ? overrun.Side == 1 : _state.Repairs is { Length: > 0 } ? _state.Repairs[0].Side == 1 : _state.Combat is { } combat ? FleetCombat.DecisionSide(combat) == 1 : _state.Defense is { } defense ? defense.Side == 0 : _state.Cards?.Response != null ? InterruptRules.Responder(_state) == 1
+    private bool BotExpected => _state!.Cards?.Counter is { } counter ? counter.Side == 0 : _state.CapEntry is { } entry ? entry.Side == 1 : _state.Overrun is { } overrun ? overrun.Side == 1 : _state.Repairs is { Length: > 0 } ? _state.Repairs[0].Side == 1 : _state.Combat is { } combat ? FleetCombat.DecisionSide(combat) == 1 : _state.Defense is { } defense ? defense.Side == 0 : _state.Cards?.Response != null ? InterruptRules.Responder(_state) == 1
         : _state.Cards?.Phase is "initiative" or "cleanup" ? !_state.Cards.Ready1 : _state.ActiveSide == 1;
     private VBoxContainer ScrollBattlePanel(VBoxContainer outer)
     {

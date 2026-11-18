@@ -70,6 +70,21 @@ public partial class Main
     private void DrawCards(Control parent)
     {
         if (_state?.Cards is not { } cards) return;
+        if (cards.Counter is { } counter)
+        {
+            int counterSide = 1 - counter.Side;
+            Text(parent, "COUNTERINTELLIGENCE", 15, _colors.Highlight);
+            Text(parent, "Declared interrupt: " + CommandCards.Name(_content, _state, counter.Command.Card), 13);
+            Text(parent, "Cancel the interrupt before its effect, or let it proceed. Both cancelled cards are discarded; both types count as used this round.", 13);
+            if (LocalCommandSide == counterSide)
+            {
+                string card = (counterSide == 0 ? cards.Hand0 : cards.Hand1).FirstOrDefault(id => InterruptRules.IsCounter(_content, _state, id)) ?? "";
+                if (card != "") Button(parent, "CANCEL INTERRUPT", () => Submit(new("counter", Card: card)));
+                Button(parent, "LET INTERRUPT PROCEED", () => Submit(new("decline-counter")));
+            }
+            else Text(parent, "Waiting for counter decision: " + SideName(counterSide), 13);
+            return;
+        }
         if (DrawFleetPhase(parent)) return;
         if (cards.Response is { } pause)
         {

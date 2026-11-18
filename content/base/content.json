@@ -1309,6 +1309,13 @@
           ]
         }
       ]
+    },
+    {
+      "id": "core:interrupt-counterintelligence",
+      "name": "Interrupt Counterintelligence",
+      "kind": "interrupt",
+      "interrupt": "counter",
+      "description": "Cancel a declared interrupt and discard both cards before its effect. Cannot cancel Counterintelligence. Once per round."
     }
   ],
   "decks": [
@@ -1436,6 +1443,10 @@
         },
         {
           "card": "core:ready-to-launch",
+          "copies": 2
+        },
+        {
+          "card": "core:interrupt-counterintelligence",
           "copies": 2
         }
       ]

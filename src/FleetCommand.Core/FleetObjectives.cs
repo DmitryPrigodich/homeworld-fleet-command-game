@@ -38,7 +38,7 @@ public static class FleetObjectives
     }
     internal static BattleState AtLimit(ContentCatalog c, BattleState s) => Result(Refresh(c, s), "round-limit");
     internal static BattleState Close(BattleState s) => s with { Combat = null, Defense = null, CapEntry = null, Overrun = null, Repairs = null, Hazard = null, Hazards = null, Reinforce = null,
-        Cards = s.Cards == null ? null : s.Cards with { Pending = null, Response = null } };
+        Cards = s.Cards == null ? null : s.Cards with { Pending = null, Response = null, Counter = null } };
     internal static BattleState RecordCapture(ContentCatalog c, BattleState s, string unit, int side)
     {
         if (!Enabled(c, s)) return s;

@@ -27,9 +27,9 @@ The supplied `Compete-Component-Catalogue-for-Homeworld.pdf`, command-card secti
 | Interrupt Attack | 3 | Implemented |
 | Interrupt Move | 2 | Pending |
 | Interrupt Repairs | 3 | Pending |
-| Interrupt Counterintelligence | 2 | Pending |
+| Interrupt Counterintelligence | 2 | Implemented; saved pre-effect cancellation |
 
-The legacy training deck still has 24 instances; the separate supported-command mode now uses 47 cards / 17 types. The inventory above is not a claim that the full 54-card deck or its effects already works. Card types, deck copies, action rows and explicit constraints now come from `content/base/content.json`; neither `SpecialOrders` nor `InterruptRules` interprets instance number ranges. Exact transcription, revision reconciliation and additional effect handlers are still needed before populating the full published deck. Artwork remains optional and independent of mechanics.
+The legacy training deck still has 24 instances; the separate supported-command mode now uses 49 cards / 18 types. The inventory above is not a claim that the full 54-card deck or its effects already works. Card types, deck copies, action rows and explicit constraints now come from `content/base/content.json`; neither `SpecialOrders` nor `InterruptRules` interprets instance number ranges. Exact transcription, revision reconciliation and additional effect handlers are still needed before populating the full published deck. Artwork remains optional and independent of mechanics.
 
 ## Corrected-card photos received on 2026-11-12
 
@@ -232,4 +232,4 @@ For each implemented mechanic, retain command validation, previews where relevan
 
 The user has asked to continue with existing sources and review possible missing ordinary profiles later. The earlier photo-list sections are an audit of verified faces, not a request to pause development or photograph the whole collection again. [PROFILE_REVIEW.md](PROFILE_REVIEW.md) is the deferred checklist. Functional card actions and conditions take priority; exact artwork is optional.
 
-Thirteen more base orders now execute their photographed sequences/effects, alongside All Ahead Full, Stay in Formation and Interrupt Attack: a supported 47-card / 17-type deck with UI, saves and network coverage. [COMMAND_ORDERS.md](COMMAND_ORDERS.md) records all types/counts and their limits. Ready to Launch is implemented; the Move/Repairs/Counterintelligence interrupts are received but not yet implemented. Other received profiles/attachments/Heroic effects still need transcription or handlers; none should be relabeled as missing photographs merely because implementation is pending. No source artwork is committed.
+Thirteen more base orders now execute their photographed sequences/effects, alongside All Ahead Full, Stay in Formation and Interrupt Attack: a supported 49-card / 18-type deck with UI, saves and network coverage. [COMMAND_ORDERS.md](COMMAND_ORDERS.md) records all types/counts and their limits. Ready to Launch and Counterintelligence are implemented; Move/Repairs faces are received but their handlers remain pending. Other received profiles/attachments/Heroic effects still need transcription or handlers; none should be relabeled as missing photographs merely because implementation is pending. No source artwork is committed.
