@@ -24,7 +24,8 @@ public static partial class InterruptRules
         CommandResult Reject(string why) => new(false, why, s);
         if (side != 1 - frame.Side) return Reject("The opponent decides whether to counter the declared interrupt.");
         var next = s with { Cards = cards with { Counter = null } };
-        if (command.Kind == "decline-counter") return ExecuteInterruptAttack(c, s, next, frame.Side, frame.Command);
+        if (command.Kind == "decline-counter") return frame.Command.Kind == "interrupt-repairs"
+            ? ExecuteRepair(c, next, frame.Command) : ExecuteInterruptAttack(c, s, next, frame.Side, frame.Command);
         if (command.Kind != "counter" || !IsCounter(c, s, command.Card) || !Available(c, s, side, "counter")
             || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(command.Card)) return Reject("Requires an available Counterintelligence card; Counterintelligence cannot counter itself.");
         var used = MarkUsed(cards, side, "counter");
@@ -32,14 +33,22 @@ public static partial class InterruptRules
             Hand0 = cards.Hand0.Where(id => id != command.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != command.Card).ToArray(),
             Interrupts0 = Played(cards, 0).Where(id => id != frame.Command.Card).ToArray(), Interrupts1 = Played(cards, 1).Where(id => id != frame.Command.Card).ToArray(),
             Discard = cards.Discard.Append(frame.Command.Card).Append(command.Card).ToArray() } };
-        return Continue(c, s, next, "Counterintelligence: both cards discarded; the interrupt has no effect.");
+        const string cancelled = "Counterintelligence: both cards discarded; the interrupt has no effect.";
+        return frame.Command.Kind == "interrupt-repairs" ? new(true, cancelled, next with { Sequence = s.Sequence + 1 }) : Continue(c, s, next, cancelled);
     }
     private static void ValidateCounter(ContentCatalog c, BattleState s)
     {
         if (s.Cards?.Counter is not { } frame) return;
         var cards = s.Cards; var command = frame.Command;
-        if (frame.Side is < 0 or > 1 || cards.Response is not { } pause || frame.Side != 1 - pause.Side || command == null
-            || command.Kind != "interrupt" || command.Power || !IsAttack(c, s, command.Card) || !Played(cards, frame.Side).Contains(command.Card)
+        if (s.Finished || frame.Side is < 0 or > 1 || command == null || !Played(cards, frame.Side).Contains(command.Card) || !CanOfferCounter(c, s, 1 - frame.Side))
+            throw new InvalidDataException("Invalid Counterintelligence opportunity.");
+        if (command.Kind == "interrupt-repairs")
+        {
+            if (cards.Phase != "orders" || !IsRepair(c, s, command.Card) || !Used(cards, frame.Side).Contains("repairs") || !RepairTargetAllowed(c, s, frame.Side, command)) throw new InvalidDataException("Invalid countered repair.");
+            return;
+        }
+        if (cards.Response is not { } pause || frame.Side != 1 - pause.Side
+            || command.Kind != "interrupt" || command.Power || !IsAttack(c, s, command.Card)
             || !Used(cards, frame.Side).Contains("attack") || command.Target != pause.Command.Unit || !CanOfferCounter(c, s, 1 - frame.Side)
             || !s.Units.Any(u => u.Id == command.Unit && u.Side == frame.Side && CanShoot(c, s, u, command.Target))
             || FleetRuleTools.Enabled(c, s) && !FleetCombat.Allowed(c, s, s.Units.Single(u => u.Id == command.Unit), s.Units.Find(u => u.Id == command.Target), command)

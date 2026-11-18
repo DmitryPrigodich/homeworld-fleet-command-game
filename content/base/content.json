@@ -1316,6 +1316,13 @@
       "kind": "interrupt",
       "interrupt": "counter",
       "description": "Cancel a declared interrupt and discard both cards before its effect. Cannot cancel Counterintelligence. Once per round."
+    },
+    {
+      "id": "core:interrupt-repairs",
+      "name": "Interrupt Repairs",
+      "kind": "interrupt",
+      "interrupt": "repairs",
+      "description": "Remove one Focus Fire token or restore one lost fighter model to your surviving squadron. No Play or activation. Once per round."
     }
   ],
   "decks": [
@@ -1448,6 +1455,10 @@
         {
           "card": "core:interrupt-counterintelligence",
           "copies": 2
+        },
+        {
+          "card": "core:interrupt-repairs",
+          "copies": 3
         }
       ]
     }

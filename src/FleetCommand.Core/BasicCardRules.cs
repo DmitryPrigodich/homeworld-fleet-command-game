@@ -142,6 +142,7 @@ public sealed class BasicCardRules : IRuleModule
         var cards = state.Cards;
         if (state.Finished || side is < 0 or > 1 || cards == null || cards.IsView) return Reject("You cannot issue an order in this state.");
         if (cards.Counter != null) return InterruptRules.ResolveCounter(c, state, side, command);
+        if (command.Kind == "interrupt-repairs") return InterruptRules.Repair(c, state, side, command);
         if (state.Repairs is { Length: > 0 }) return FleetRepairs.Apply(c, state, side, command);
         if (state.Overrun != null) return FleetClose.Apply(c, state, side, command);
         if (state.Combat != null) return FleetCombat.Apply(c, state, side, command);

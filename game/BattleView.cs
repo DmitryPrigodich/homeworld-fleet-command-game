@@ -151,6 +151,7 @@ public partial class Main
             if (_state.Scenario?.Tokens.Any(t => t.Unit == selected.Id) == true) Text(right, "ON BOARD: INTELLIGENCE", 14, _colors.Highlight);
             foreach (var leader in FleetRuleTools.AssignedLeaders(_content, selected)) Text(right, "Leader: " + leader.Name, 14, _colors.Highlight);
         }
+        DrawRepairInterrupt(right);
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
         {
             Button(right, _action == "move" ? "▶ MOVE" : "MOVEMENT", () => ChooseBattleAction("move"), FleetDecision || _state.Cards?.Response != null || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.Move);
@@ -220,6 +221,12 @@ public partial class Main
             if (counter.Side != 0) return;
             string card = _state.Cards.Hand1.FirstOrDefault(id => InterruptRules.IsCounter(_content, _state, id)) ?? "";
             ApplyCommand(1, card == "" ? new("decline-counter") : new("counter", Card: card)); return;
+        }
+        if (_state.Cards is { Phase: "orders" } && InterruptRules.Available(_content, _state, 1, "repairs"))
+        {
+            string card = _state.Cards.Hand1.FirstOrDefault(id => InterruptRules.IsRepair(_content, _state, id)) ?? "";
+            var target = InterruptRules.RepairTargets(_content, _state, 1).FirstOrDefault();
+            if (card != "" && target != null) { ApplyCommand(1, new("interrupt-repairs", target.Id, Card: card, Repair: target.FocusFire > 0 ? "focus" : "fighter")); return; }
         }
         if (_state.CapEntry is { } entry) { if (entry.Side == 1) ApplyCommand(1, new("cap-enter", Target: FleetCap.Hosts(_content, _state, _state.Units.Single(u => u.Id == entry.Unit))[0].Id)); return; }
         if (_state.Overrun is { } overrun) { if (overrun.Side == 1) ApplyCommand(1, new("overrun")); return; }

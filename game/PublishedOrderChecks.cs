@@ -43,7 +43,7 @@ public partial class Main
     private void PublishedOrderNetworkClient()
     {
         var cards = _state!.Cards!;
-        if (CommandCards.Instances(CommandCards.Deck(_content, _state)).Count != 49) throw new InvalidDataException("Incorrect published command deck.");
+        if (CommandCards.Instances(CommandCards.Deck(_content, _state)).Count != 52) throw new InvalidDataException("Incorrect published command deck.");
         if (_publishedOrderStep == 0)
         { _publishedOrderStep = 1; Submit(new("special", "s1-3", Card: "core:brace-for-impact#1")); }
         else if (_publishedOrderStep == 1 && cards.Pending is { Choice: "" })

@@ -211,7 +211,8 @@ public static partial class InterruptRules
         var cards = state.Cards!;
         foreach (int side in new[] { 0, 1 })
         {
-            if (Played(cards, side).Length > 1 || Played(cards, side).Any(id => !IsAttack(c, state, id))) throw new InvalidDataException("Invalid played interrupts.");
+            if (Played(cards, side).Length > 4 || Played(cards, side).Any(id => !IsAttack(c, state, id) && !IsRepair(c, state, id))
+                || Played(cards, side).Select(id => CommandCards.Find(c, state, id)!.Interrupt).Distinct().Count() != Played(cards, side).Length) throw new InvalidDataException("Invalid played interrupts.");
             var used = Used(cards, side);
             if (used.Length > 4 || used.Distinct().Count() != used.Length || used.Any(k => k is not ("attack" or "move" or "repairs" or "counter"))) throw new InvalidDataException("Invalid used interrupt types.");
         }

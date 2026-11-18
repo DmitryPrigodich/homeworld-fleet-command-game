@@ -40,6 +40,7 @@ public partial class Main
     }
     private BattleCommand WithCard(BattleCommand command)
     {
+        if (command.Kind is "counter" or "interrupt-repairs") return command;
         if (FleetBattle)
         {
             if (command.Kind is "begin-order" or "special" or "move" or "attack")
