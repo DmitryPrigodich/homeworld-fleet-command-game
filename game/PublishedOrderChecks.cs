@@ -18,7 +18,7 @@ public partial class Main
     {
         string[] a = ["core:all-ahead-full#2"], b = ["core:brace-for-impact#1"];
         if (side == 0) (a, b) = (b, a);
-        _state = _state! with { ActiveSide = side, Cards = _state.Cards! with { Hand0 = a, Hand1 = b, Discard = [], Phase = "orders",
+        _state = _state! with { ActiveSide = side, ValorOwner = side, Cards = _state.Cards! with { Hand0 = a, Hand1 = b, Discard = [], Phase = "orders",
             Deck = CommandCards.Instances(CommandCards.Deck(_content, _state)).Keys.Except(a).Except(b).ToArray() },
             Units = _state.Units.Select(u => u.Id == "s0-0" ? u with { Q = 2, R = 2 } : u.Id == "s1-3" ? u with { Q = 3, R = 2 } : u).ToList() };
         DrawBattle();
@@ -35,7 +35,7 @@ public partial class Main
         if (command?.Kind == "attack")
         {
             if (_state!.Cards?.Pending?.Choice != "attack" || _state.Cards.Response == null) throw new InvalidDataException("Chosen action was not restored.");
-            GD.Print("ORDER_CHOICE_NETWORK_RESUMED"); ApplyCommand(0, new("decline"));
+            GD.Print("ORDER_CHOICE_NETWORK_RESUMED");
         }
         if (command?.Kind == "resolve" && _state!.Cards!.Pending == null)
         { GD.Print("PUBLISHED_ORDER_NETWORK_OK"); Broadcast(); GetTree().CreateTimer(0.5).Timeout += () => GetTree().Quit(); }
@@ -43,7 +43,7 @@ public partial class Main
     private void PublishedOrderNetworkClient()
     {
         var cards = _state!.Cards!;
-        if (CommandCards.Instances(CommandCards.Deck(_content, _state)).Count != 52) throw new InvalidDataException("Incorrect published command deck.");
+        if (CommandCards.Instances(CommandCards.Deck(_content, _state)).Count != 54) throw new InvalidDataException("Incorrect published command deck.");
         if (_publishedOrderStep == 0)
         { _publishedOrderStep = 1; Submit(new("special", "s1-3", Card: "core:brace-for-impact#1")); }
         else if (_publishedOrderStep == 1 && cards.Pending is { Choice: "" })
@@ -88,10 +88,10 @@ public partial class Main
             StartBattle(BasicCardBattle.OrdersMapId, false, persist: false); ConfigurePublishedOrderBattle(0); _selectedCard = "core:brace-for-impact#1"; SelectUnit("s0-0"); await Frames();
             Press("SPECIAL ORDER"); await Frames(); Require(FleetRuleTools.Has(_state!.Units.Single(u => u.Id == "s0-0"), "brace"), "Braced is applied before the chosen action");
             Press("ATTACK"); Submit(new("attack", "s0-0", "s1-3")); await Frames();
-            Require(_state.Cards!.Pending?.Choice == "attack" && _state.Cards.Response != null, "Chosen attack is suspended for a response");
+            Require(_state.Cards!.Pending?.Choice == "attack" && _state.Combat != null, "Chosen attack waits for its roll decision");
             string before = _engine.Save(_state); SaveGame(); LoadGame(false); await Frames(); Require(before == _engine.Save(_state!), "Card effect and choice restore exactly");
             if (DisplayServer.GetName() != "headless") GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(_root, "tmp", "published-orders.png"));
-            Press("SKIP WINDOW"); await Frames();
+            Press("ACCEPT ROLL"); await Frames();
             Require(_state!.Cards!.Pending == null && _state.Orders0 == 1, "Chosen action completes with one card and Play");
             NetworkMenu(); await Frames(); Require(Nodes(_ui).OfType<CheckBox>().Any(c => c.Text == "Command orders and effects"), "Command deck can be hosted for PvP and co-op");
             GD.Print("PUBLISHED_ORDER_UI_OK"); GetTree().Quit();

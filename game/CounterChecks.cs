@@ -9,6 +9,7 @@ public partial class Main
     {
         foreach (string id in new[] { "practice:orders-kushan-boarder", "practice:orders-taiidan-boarder" })
             _content.Ships[id] = _content.Ships[id] with { Armor = 50, Move = 3, Weapons = [new("gun", "Counter test gun", 2, 5)] };
+        foreach (var ship in _content.Ships.Values.Where(d => d.Id.StartsWith("practice:orders-") && d.Faction == "taiidan").ToArray()) _content.Ships[ship.Id] = ship with { Move = 0 };
     }
     private void ConfigureCounterBattle()
     {

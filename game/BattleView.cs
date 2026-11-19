@@ -30,6 +30,7 @@ public partial class Main
         else if (_state.Repairs is { Length: > 0 }) _selected = _state.Repairs[0].Unit;
         else if (_state.Combat != null) _selected = _state.Combat.Attacker;
         else if (_state.Defense != null) _selected = _state.Defense.Attack.Target;
+        else if (_state.Cards?.Response is { Replan: true } replanning) { _selected = replanning.Command.Unit; _action = "move"; }
         else if (_state.Cards?.Response != null)
         {
             _action = "attack";
@@ -108,7 +109,7 @@ public partial class Main
         }
         DrawTutorialMarker();
         var top = Panel(30, 22, 1380, 68);
-        Text(top, $"{map.Name.ToUpperInvariant()}     /     ROUND {_state.Round}     /     " + (_state.Cards?.Counter is { } counterChoice ? "COUNTER: " + SideName(1 - counterChoice.Side) : _state.Combat != null ? "ROLL: " + SideName(_state.Combat.Side) : _state.Cards?.Response != null ? "RESPONSE: " + SideName(InterruptRules.Responder(_state)) : "TURN: " + SideName(_state.ActiveSide)), 22, _colors.Accent);
+        Text(top, $"{map.Name.ToUpperInvariant()}     /     ROUND {_state.Round}     /     " + (_state.Cards?.Counter is { } counterChoice ? "COUNTER: " + SideName(1 - counterChoice.Side) : _state.Combat != null ? "ROLL: " + SideName(_state.Combat.Side) : _state.Cards?.Response is { Replan: true } route ? "RESUME: " + SideName(route.Side) : _state.Cards?.Response != null ? "RESPONSE: " + SideName(InterruptRules.Responder(_state)) : "TURN: " + SideName(_state.ActiveSide)), 22, _colors.Accent);
         var left = ScrollBattlePanel(Panel(30, 112, 260, 610));
         Text(left, _tutorial != null ? "TUTORIAL" : _campaign == null ? "SKIRMISH" : "CAMPAIGN", 18, _colors.Highlight);
         Text(left, _tutorial != null ? "BLUE — OUR SIDE / RED — ENEMY" : _generation == null ? "Data-defined scenario" : $"Seed: {_generation.Seed}", 13, _colors.Muted);
@@ -155,7 +156,7 @@ public partial class Main
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
         {
             Button(right, _action == "move" ? "▶ MOVE" : "MOVEMENT", () => ChooseBattleAction("move"), FleetDecision || _state.Cards?.Response != null || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.Move);
-            Button(right, _action == "attack" ? "▶ ATTACK" : "ATTACK", () => ChooseBattleAction("attack"), FleetDecision || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.Attack);
+            Button(right, _action == "attack" ? "▶ ATTACK" : "ATTACK", () => ChooseBattleAction("attack"), FleetDecision || _state.Cards?.Response?.Replan == true || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.Attack);
             Button(right, "END TURN", () => Submit(new("pass")), FleetDecision || _state.Cards?.Response != null || _state.Cards?.Pending != null || _state.Cards?.Phase is "initiative" or "cleanup" || _tutorial != null && _tutorial.Step != TutorialStep.EndTurn);
         }
         if (_tutorial == null && !_interruptLesson) Button(right, "SAVE", () => { SaveGame(); _status = "Saved."; DrawBattle(); }, _networkActive && !_isHost);
@@ -189,7 +190,11 @@ public partial class Main
         if (tile == null || distance > 1.05f) return;
         if (_state.Cards?.Pending is { } launchOrder && SpecialOrders.Action(_content, _state, launchOrder) == "launch" && !FleetDecision)
         { Submit(new("launch", SpecialOrders.Actor(_content, _state, launchOrder), Q: tile.Value.Q, R: tile.Value.R, Facing: Math.Max(0, _facingChoice), Repair: _repairChoice)); return; }
-        if (_state.Reinforce != null && !(_state.Hazard != null || _state.Combat != null || _state.Defense != null || _state.Repairs is { Length: > 0 })) { PlaceReinforcement(tile.Value); return; }
+        if (_state.Cards?.Response is { Replan: true } routeChoice && LocalCommandSide == routeChoice.Side && !FleetDecision)
+        { Submit(new("resume-move", routeChoice.Command.Unit, Q: tile.Value.Q, R: tile.Value.R, Facing: Math.Max(0, _facingChoice), AutoFacing: _facingChoice < 0)); return; }
+        if (_state.Reinforce != null && _state.Cards?.Response == null && !(_state.Hazard != null || _state.Combat != null || _state.Defense != null || _state.Repairs is { Length: > 0 })) { PlaceReinforcement(tile.Value); return; }
+        if (_state.Cards?.Response is { Replan: false } && _action == "move" && _unitActions.MoveCells.Contains(tile.Value) && !FleetDecision)
+        { Submit(new("move", _selected, Q: tile.Value.Q, R: tile.Value.R)); return; }
         var target = _state.Units.Find(u => u.Patrol == "" && FleetFootprint.Contains(_content, u, tile.Value));
         var obj = FleetTerrain.Objects(_content, _state).FirstOrDefault(o => o.Q == tile.Value.Q && o.R == tile.Value.R);
         if (obj != null && TryHarvestObject(obj)) return;
@@ -216,7 +221,7 @@ public partial class Main
     private void BotTurn()
     {
         if (_state == null || !_bot || _state.Finished) return;
-        if (_state?.Cards?.Counter is { } counter)
+        if (_state.Cards?.Counter is { } counter)
         {
             if (counter.Side != 0) return;
             string card = _state.Cards.Hand1.FirstOrDefault(id => InterruptRules.IsCounter(_content, _state, id)) ?? "";
@@ -259,8 +264,18 @@ public partial class Main
         if (_state.Cards?.Response != null)
         {
             if (InterruptRules.Responder(_state) != 1) return;
+            if (_state.Cards.Response.Replan)
+            {
+                string actor = _state.Cards.Response.Command.Unit; var cells = _engine.GetActions(_state, 1, actor).MoveCells;
+                ApplyCommand(1, cells.Length == 0 ? new("stop-move") : new("resume-move", actor, Q: cells[0].Q, R: cells[0].R)); return;
+            }
             var unit = _state.Units.FirstOrDefault(u => _engine.GetActions(_state, 1, u.Id).AttackTargets.Length > 0);
-            ApplyCommand(1, unit == null ? new("decline") : BotAttack(unit, _state.Cards.Response.Command.Unit, interrupt: true) ?? new("decline"));
+            var attack = unit == null ? null : BotAttack(unit, _state.Cards.Response.Command.Unit, interrupt: true);
+            if (attack != null) { ApplyCommand(1, attack); return; }
+            string card = _state.Cards.Hand1.FirstOrDefault(id => InterruptRules.IsMove(_content, _state, id) && InterruptRules.Eligible(_content, _state, id, _state.Cards.Response)) ?? "";
+            var mover = _state.Units.FirstOrDefault(u => _engine.GetActions(_state, 1, u.Id).MoveCells.Length > 0);
+            if (card != "" && mover != null) { var h = _engine.GetActions(_state, 1, mover.Id).MoveCells[0]; ApplyCommand(1, new("interrupt-move", mover.Id, Q: h.Q, R: h.R, Card: card)); }
+            else ApplyCommand(1, new("decline"));
             return;
         }
         if (_state.Cards?.Phase == "initiative") { ApplyCommand(1, new("initiative")); return; }

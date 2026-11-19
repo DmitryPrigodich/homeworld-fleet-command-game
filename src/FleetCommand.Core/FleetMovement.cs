@@ -9,6 +9,14 @@ public static class FleetMovement
         var ship = c.Ships[unit.Definition];
         return FleetRuleTools.Has(unit, "engines") ? Math.Min(1, ship.Move) : ship.Move + (ship.Abilities ?? []).Select(id => c.Abilities[id]).Where(a => a.Handler == "move-bonus").Sum(a => a.Value);
     }
+    internal static int Cost(ContentCatalog c, BattleState s, BattleUnit unit, MovementStep from, MovementStep to, string embark = "")
+    {
+        if (from.Cell == to.Cell) return 1;
+        if (embark != "" && s.Units.Any(p => p.Id == embark && FleetFootprint.Contains(c, p, to.Cell))) return 1;
+        bool Gravity(Hex h) => c.Maps[s.Map].Objects.Any(o => (c.Objects[o.Definition].Kind == "planet" || o.Definition == "core:planet") && h.Distance(new(o.Q, o.R)) == 1);
+        int cost = FleetTerrain.Objects(c, s).Where(o => new Hex(o.Q, o.R) == to.Cell).Select(o => c.Objects[o.Definition].Kind == "asteroid" ? 1 : c.Objects[o.Definition].MoveCost).DefaultIfEmpty(1).Max();
+        return Gravity(from.Cell) && !Gravity(to.Cell) ? Math.Max(2, cost) : cost;
+    }
     private static (Dictionary<Position, int> Costs, Dictionary<Position, Position> Previous) Search(ContentCatalog c, BattleState s, BattleUnit unit, string embark = "")
     {
         var map = c.Maps[s.Map]; var rules = c.Rules[map.Rules]; var ship = c.Ships[unit.Definition];

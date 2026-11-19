@@ -12,10 +12,10 @@ public partial class Main
     private bool _transferLeader;
     private int _facingChoice = -1;
     private bool FleetBattle => _state != null && FleetRuleTools.Enabled(_content, _state);
-    private bool FleetDecision => _state?.Cards?.Counter != null || _state?.Reinforce != null || _state?.Hazard != null || _state?.Combat != null || _state?.Defense != null || _state?.CapEntry != null || _state?.Overrun != null || _state?.Repairs is { Length: > 0 };
+    private bool FleetDecision => _state?.Cards?.Counter != null || _state?.Reinforce != null && _state.Cards?.Response == null || _state?.Hazard != null || _state?.Combat != null || _state?.Defense != null || _state?.CapEntry != null || _state?.Overrun != null || _state?.Repairs is { Length: > 0 };
     private BattleCommand? BotAttack(BattleUnit unit, string target, bool interrupt = false)
     {
-        string card = interrupt ? _state!.Cards!.Hand1.FirstOrDefault(id => InterruptRules.IsAttack(_content, _state, id)) ?? "" : _state?.Cards?.Hand1.FirstOrDefault() ?? "";
+        string card = interrupt ? _state!.Cards!.Hand1.FirstOrDefault(id => InterruptRules.IsAttack(_content, _state, id) && InterruptRules.Eligible(_content, _state, id, _state.Cards.Response!)) ?? "" : _state?.Cards?.Hand1.FirstOrDefault() ?? "";
         if (!FleetBattle) return new(interrupt ? "interrupt" : "attack", unit.Id, target, Card: card);
         foreach (string kind in new[] { "ranged", "board", "ram" })
         {
@@ -35,7 +35,7 @@ public partial class Main
     private bool DrawFleetPhase(Control parent)
     {
         if (!FleetBattle) return false;
-        if (_state!.Reinforce != null && _state.Hazard == null && _state.Combat == null && _state.Defense == null) return DrawReinforcePhase(parent);
+        if (_state!.Reinforce != null && _state.Cards?.Response == null && _state.Hazard == null && _state.Combat == null && _state.Defense == null) return DrawReinforcePhase(parent);
         if (_state!.CapEntry is { } entry)
         {
             Text(parent, "ASSIGN CAP", 16, _colors.Highlight);

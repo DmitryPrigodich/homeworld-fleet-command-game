@@ -40,6 +40,7 @@ public partial class Main
     {
         if (!FleetBattle) return;
         Text(parent, $"Reserve resources: {(_state!.ActiveSide == 0 ? _state.Funds0 : _state.Funds1)} ★", 13);
+        if (_state.Cards?.Response != null) return;
         if (_state.Reinforce is { } frame && _state.Hazard == null && _state.Defense == null && _state.Combat == null && _state.Repairs is not { Length: > 0 })
         {
             if (LocalCommandSide != frame.Side) return;

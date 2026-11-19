@@ -104,6 +104,12 @@ internal static class CommandCardScenarios
             c.Cards[card.Id] = card with { Lines = [new(["imaginary-effect"])] }; Reject(c.Validate);
             c.Cards[card.Id] = card with { Interrupt = "repair" }; Reject(c.Validate);
             c.Cards[card.Id] = card;
+            var move = c.Cards["core:interrupt-move"];
+            c.Cards[move.Id] = move with { InterruptRange = 0 }; Reject(c.Validate);
+            c.Cards[move.Id] = move with { InterruptTriggers = ["attack"] }; Reject(c.Validate);
+            c.Cards[move.Id] = move with { InterruptTriggers = ["move", "move"] }; Reject(c.Validate);
+            c.Cards[move.Id] = move with { InterruptTriggers = ["unknown"] }; Reject(c.Validate);
+            c.Cards[move.Id] = move;
             c.Decks[deck.Id] = deck with { Entries = [new("missing:card")] }; Reject(c.Validate);
             c.Decks[deck.Id] = deck with { Entries = [new(card.Id, 2, ["duplicate", "duplicate"])] }; Reject(c.Validate);
             c.Decks[deck.Id] = deck with { Entries = [new(card.Id, 2, ["one"])] }; Reject(c.Validate);

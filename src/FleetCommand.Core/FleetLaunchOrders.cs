@@ -31,9 +31,16 @@ public static class FleetLaunchOrders
         if (child == null || child.Side != side || cmd.Facing is < 0 or > 5 || !Cells(c, s, child.Id).Contains(cell))
             return new(false, "Choose a free exit hex for the assigned embarked squadron.", s);
         var arriving = child with { Q = cmd.Q, R = cmd.R, Facing = cmd.Facing, Embarked = "" };
-        var next = s with { Cards = s.Cards with { Pending = order with { Step = 1 } }, Reserves = s.Reserves!.Where(u => u.Id != child.Id).ToList(),
+        var next = s with { Cards = s.Cards with { Pending = order with { Step = 1, LaunchArrival = true } }, Reserves = s.Reserves!.Where(u => u.Id != child.Id).ToList(),
             Units = s.Units.Select(u => u.Id == child.Embarked ? u with { Launches = u.Launches + 1 } : u).Append(arriving).ToList() };
         next = FleetRuleTools.DamageControl(c, next, arriving.Id, cmd.Repair, out var repair);
-        return FleetTerrain.Activation(c, s, next, [arriving.Id], "order", "Squadron launched; continue with Lightning Move and Attack. " + repair);
+        return FleetTerrain.Activation(c, s, next, [arriving.Id], "launch-order", "Squadron launched; continue with Lightning Move and Attack. " + repair);
+    }
+    internal static CommandResult Resume(ContentCatalog c, BattleState before, BattleState s, string message)
+    {
+        var order = s.Cards!.Pending!; string actor = SpecialOrders.Actor(c, s, order);
+        var next = s with { Cards = s.Cards with { Pending = order with { LaunchArrival = false } } };
+        if (s.Finished || !s.Units.Any(u => u.Id == actor)) return SpecialOrders.Advance(c, before, next, order.Side, message, s.Finished);
+        return InterruptRules.ArrivalOpportunity(c, before, next, actor, message) ?? new(true, message, next with { Sequence = before.Sequence + 1 });
     }
 }

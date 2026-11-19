@@ -18,7 +18,7 @@ public partial class Main
         Text(box, "3. SPECIAL ACTIONS", 20, _colors.Highlight);
         Text(box, "All Ahead Full: two moves in the same direction. Stay in Formation: assign the second unit beforehand; the first performs Move → Attack, the second Lightning Move → Attack. Lightning Move uses Afterburners and must end adjacent to the first unit.\n\nThe game displays the current step and selects its actor. You may skip an action or finish the order early. Saving preserves the current step.", 17);
         Text(box, "4. RETURN FIRE", 20, _colors.Highlight);
-        Text(box, "Interrupt Attack: during a response window, select your unit and click the red target, the acting enemy unit. Activated units may respond without spending Play, once per round. SKIP WINDOW resumes the enemy action. Movement responses occur after entering a free hex; attack responses occur before rolling.", 17);
+        Text(box, "Interrupt Attack: during a response window, select your unit and click the red target, the acting enemy unit. Activated units may respond without spending Play, once per round. SKIP WINDOW resumes the enemy action. Published Attack and Move interrupts respond to enemy Move, Lightning Move or Reinforce. Move requires a friendly unit within 3 hexes. Only the legacy training deck also pauses ordinary attacks before rolling.", 17);
         var actions = new HBoxContainer(); actions.AddThemeConstantOverride("separation", 10); box.AddChild(actions);
         Button(actions, "TRAINING: INTERRUPT", StartInterruptLesson);
         Button(actions, "START CARD BATTLE", StartCardBattle);
@@ -34,13 +34,13 @@ public partial class Main
         _state = state with { ActiveSide = 1, Units = state.Units.Where(u => u.Id is "s0-0" or "s0-1" or "s1-3")
             .Select(u => u.Id == "s0-0" ? u with { Q = 2, R = 3, Activated = true } : u.Id == "s0-1" ? u with { Q = 1, R = 4 } : u with { Q = 3, R = 3 }).ToList(),
             Cards = new(deck, hand0, hand1, [], Phase: "orders") };
-        ApplyCommand(1, new("attack", "s1-3", "s0-0", Card: "order-22"));
-        _status = "Lesson: the enemy declared an attack. Click the red target to respond with your already activated Interceptor unit #1. Main game saves are not affected.";
+        ApplyCommand(1, new("move", "s1-3", Q: 2, R: 2, Card: "order-22"));
+        _status = "Lesson: the enemy is moving. Click the red target to respond with your already activated Interceptor unit #1. Main game saves are not affected.";
         DrawBattle();
     }
     private BattleCommand WithCard(BattleCommand command)
     {
-        if (command.Kind is "counter" or "interrupt-repairs") return command;
+        if (command.Kind is "counter" or "interrupt-repairs" or "interrupt-move" or "resume-move" or "stop-move") return command;
         if (FleetBattle)
         {
             if (command.Kind is "begin-order" or "special" or "move" or "attack")
@@ -62,7 +62,14 @@ public partial class Main
         if (_state?.Cards?.Response != null && command.Kind == "attack")
         {
             var responseHand = LocalCommandSide == 0 ? _state.Cards.Hand0 : _state.Cards.Hand1;
-            return command with { Kind = "interrupt", Card = responseHand.Contains(_selectedCard) && InterruptRules.IsAttack(_content, _state, _selectedCard) ? _selectedCard : responseHand.FirstOrDefault(id => InterruptRules.IsAttack(_content, _state, id)) ?? "" };
+            bool Valid(string id) => InterruptRules.IsAttack(_content, _state, id) && InterruptRules.Eligible(_content, _state, id, _state.Cards.Response);
+            return command with { Kind = "interrupt", Card = responseHand.Contains(_selectedCard) && Valid(_selectedCard) ? _selectedCard : responseHand.FirstOrDefault(Valid) ?? "" };
+        }
+        if (_state?.Cards?.Response is { Replan: false } movingResponse && command.Kind == "move")
+        {
+            var responseHand = LocalCommandSide == 0 ? _state.Cards.Hand0 : _state.Cards.Hand1;
+            bool Valid(string id) => InterruptRules.IsMove(_content, _state, id) && InterruptRules.Eligible(_content, _state, id, movingResponse);
+            return command with { Kind = "interrupt-move", Card = responseHand.Contains(_selectedCard) && Valid(_selectedCard) ? _selectedCard : responseHand.FirstOrDefault(Valid) ?? "" };
         }
         if (_state?.Cards is not { Phase: "orders", Pending: null, Response: null } cards || command.Kind is "pass" or "special" or "faction") return command;
         var hand = LocalCommandSide == 0 ? cards.Hand0 : cards.Hand1;
@@ -89,13 +96,23 @@ public partial class Main
         if (DrawFleetPhase(parent)) return;
         if (cards.Response is { } pause)
         {
-            int responder = 1 - pause.Side;
-            Text(parent, "RETURN FIRE", 15, _colors.Highlight);
+            if (pause.Replan)
+            {
+                Text(parent, "RESUME MOVEMENT", 15, _colors.Highlight);
+                Text(parent, "The field has changed. Choose a green destination using the remaining movement allowance, or stop here.", 13);
+                if (LocalCommandSide == pause.Side) Button(parent, "STOP HERE", () => Submit(new("stop-move")));
+                else Text(parent, "Waiting for the moving player's route choice.", 13);
+                return;
+            }
+            int responder = InterruptRules.Responder(_state);
+            Text(parent, "INTERRUPT WINDOW", 15, _colors.Highlight);
             Text(parent, "Target: " + FleetPresentation.UnitName(_content, _state, _state.Units.Single(u => u.Id == pause.Command.Unit)), 13);
             if (LocalCommandSide != responder) { Text(parent, "Waiting for response: " + SideName(responder), 14); return; }
-            var responseHand = (responder == 0 ? cards.Hand0 : cards.Hand1).Where(id => InterruptRules.IsAttack(_content, _state, id)).ToArray();
+            var responseHand = (responder == 0 ? cards.Hand0 : cards.Hand1).Where(id => (InterruptRules.IsAttack(_content, _state, id) && InterruptRules.Available(_content, _state, responder)
+                || InterruptRules.IsMove(_content, _state, id) && InterruptRules.Available(_content, _state, responder, "move")) && InterruptRules.Eligible(_content, _state, id, pause)).ToArray();
             if (!responseHand.Contains(_selectedCard)) _selectedCard = responseHand.FirstOrDefault() ?? "";
-            Text(parent, responseHand.Length == 0 ? "No Interrupt Attack card. Skip the response window." : "Select your unit and click the red target. Activated units may also respond. No Play is spent.", 13);
+            _action = InterruptRules.IsMove(_content, _state, _selectedCard) ? "move" : "attack";
+            Text(parent, responseHand.Length == 0 ? "No usable reaction card. Skip the response window." : "Select a reaction card and your unit. Move to a green hex or attack the red enemy. No Play or activation is spent.", 13);
             foreach (var id in responseHand)
             {
                 string card = id;
@@ -103,7 +120,7 @@ public partial class Main
                 b.CustomMinimumSize = new(0, 30); b.AddThemeFontSizeOverride("font_size", 13);
             }
             Button(parent, "SKIP WINDOW", () => Submit(new("decline")));
-            Text(parent, "1 Interrupt Attack per round. The order resumes after the response.", 12, _colors.Muted);
+            Text(parent, "One interrupt of each type per round. The original action resumes afterwards.", 12, _colors.Muted);
             DrawCardPreview(parent, _selectedCard);
             return;
         }

@@ -25,11 +25,11 @@ The supplied `Compete-Component-Catalogue-for-Homeworld.pdf`, command-card secti
 | Target Weapons | 3 | Implemented from corrected face supplied in photo batch 2026-11-12 |
 | Target Bays | 2 | Implemented; success before armor, non-fighters only |
 | Interrupt Attack | 3 | Implemented |
-| Interrupt Move | 2 | Pending |
+| Interrupt Move | 2 | Implemented; range-three movement, saved nested reactions and remaining-route choice |
 | Interrupt Repairs | 3 | Implemented; whole Focus Fire token or one lost fighter model |
 | Interrupt Counterintelligence | 2 | Implemented; saved pre-effect cancellation |
 
-The legacy training deck still has 24 instances; the separate supported-command mode now uses 52 cards / 19 types. The inventory above is not a claim that the full 54-card deck or its effects already works. Card types, deck copies, action rows and explicit constraints now come from `content/base/content.json`; neither `SpecialOrders` nor `InterruptRules` interprets instance number ranges. Exact transcription, revision reconciliation and additional effect handlers are still needed before populating the full published deck. Artwork remains optional and independent of mechanics.
+The legacy training deck still has 24 instances; the separate command mode now implements all 54 base cards / 20 types. The training Attack interrupt has a separate explicit definition to retain its older pre-attack fixtures. Published Attack and Move use the photographed Move/Lightning/Reinforce triggers. Card types, deck copies, action rows and explicit constraints come from `content/base/content.json`; handlers do not interpret instance number ranges. Exact transcription/revision reconciliation and further handlers remain necessary for Heroic cards, attachments and other profiles. Artwork remains optional and independent of mechanics.
 
 ## Corrected-card photos received on 2026-11-12
 
@@ -43,7 +43,7 @@ Readability: titles, main prose, costs, Hand/Play and colored assignment tabs ar
 - Visible upgrades include Advanced Point Defense, Upgraded Thrusters, Thicker Armor, Hangar Bay, Large Hangar Bay, Hull Defense Guns, Raiders and Beast Mode (with an Exhausted section).
 - Planet modules: Orbital Defense Control, Star Port, Ion Batteries and Missile Defense.
 
-At this point in intake, faces were still missing for **Interrupt Move, Interrupt Repairs, Interrupt Counterintelligence**, plus **Pincer Attack, Intercept, Hit and Run, Ship Assault, Ready to Launch, Weapons to Maximum, Hammer and Anvil, Brace For Impact, Evasive Pattern Delta, Repel Boarders, Target Engines, Target Bays**. The final command sheet below supplies all of these; their implementations remain pending. Full ship unit profiles and unpictured leaders/expansion cards remain separate inputs.
+At this point in intake, faces were still missing for **Interrupt Move, Interrupt Repairs, Interrupt Counterintelligence**, plus **Pincer Attack, Intercept, Hit and Run, Ship Assault, Ready to Launch, Weapons to Maximum, Hammer and Anvil, Brace For Impact, Evasive Pattern Delta, Repel Boarders, Target Engines, Target Bays**. The final command sheet below supplies all of these; their implementations were pending at this intake stage. Full ship unit profiles and unpictured leaders/expansion cards remain separate inputs.
 
 ## Second small-card photo batch received on 2026-11-16
 
@@ -232,4 +232,4 @@ For each implemented mechanic, retain command validation, previews where relevan
 
 The user has asked to continue with existing sources and review possible missing ordinary profiles later. The earlier photo-list sections are an audit of verified faces, not a request to pause development or photograph the whole collection again. [PROFILE_REVIEW.md](PROFILE_REVIEW.md) is the deferred checklist. Functional card actions and conditions take priority; exact artwork is optional.
 
-Thirteen more base orders now execute their photographed sequences/effects, alongside All Ahead Full, Stay in Formation and Interrupt Attack: a supported 52-card / 19-type deck with UI, saves and network coverage. [COMMAND_ORDERS.md](COMMAND_ORDERS.md) records all types/counts and their limits. Ready to Launch, Repairs and Counterintelligence are implemented; the Move face is received but its handler remains pending. Other received profiles/attachments/Heroic effects still need transcription or handlers; none should be relabeled as missing photographs merely because implementation is pending. No source artwork is committed.
+Thirteen more base orders now execute their photographed sequences/effects, alongside All Ahead Full, Stay in Formation and Interrupt Attack: a supported 54-card / 20-type deck with UI, saves and network coverage. [COMMAND_ORDERS.md](COMMAND_ORDERS.md) records all types/counts and their limits. Ready to Launch, Repairs and Counterintelligence are implemented; Move is implemented with saved movement reactions and remaining-route choice. Other received profiles/attachments/Heroic effects still need transcription or handlers; none should be relabeled as missing photographs merely because implementation is pending. No source artwork is committed.

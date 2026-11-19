@@ -27,18 +27,19 @@ Keep future native tablet and browser clients possible through plain rule/data/c
 
 - [x] Separate basic-card practice mode, private views and deterministic whole-battle replay checks.
 - [x] First two special orders, preassigned actors, skippable action sequences, mid-order saves, UI guide and network regression scenarios.
-- [x] Interrupt Attack, per-hex movement pauses, response before attack dice, per-round reaction limits and a repeatable lesson.
+- [x] Interrupt Attack, per-hex movement pauses, published Move/Lightning/Reinforce timing, per-round limits and a repeatable lesson; legacy training timing is isolated.
 - [x] Data-defined command card types, action lines, explicit movement restrictions and per-ruleset decks; custom deck save/replay, UI and network checks.
-- [x] Thirteen additional base orders/effects, 52-card supported deck, choice/target/movement continuation, EN/RU controls, UI and ENet checks; see COMMAND_ORDERS.md.
-- [ ] Complete the base command deck (Interrupt Move); integrate exact remaining attachment/leader profiles. Initiative and leader budgets already have shared handlers.
+- [x] Thirteen additional base orders/effects, 54-card supported deck, choice/target/movement continuation, EN/RU controls, UI and ENet checks; see COMMAND_ORDERS.md.
+- [x] Complete the base command deck: all 54 cards / 20 types, including four interrupt types.
+- [ ] Integrate exact remaining attachment/leader profiles and Heroic abilities. Initiative and leader budgets already have shared handlers.
 
 - [x] Freeze US Digital + Errata 1.7 reference priority and record timing interpretations in RULES_COVERAGE.md.
-- [x] Leader/faction budgets, multi-card bids, cleanup, post-roll decisions and repair; published deck/card data still incomplete.
+- [x] Leader/faction budgets, multi-card bids, cleanup, post-roll decisions and repair; remaining Heroic/attachment/profile data still incomplete.
 - [x] Extend saved response windows to terrain, CAP and defensive fire.
 - [x] Ready to Launch: assigned offboard squadron, launch placement, continued Lightning Move/Attack, UI and saved ENet checks.
 - [x] Counterintelligence: saved pre-effect decision, cancellation, discard and consumed-type tracking, UI and ENet checks.
 - [x] Interrupt Repairs: token removal/model restoration, pre-effect cancellation, out-of-turn/post-roll/CAP saves, UI and ENet.
-- [ ] Interrupt Move (face received; implementation pending).
+- [x] Interrupt Move: range-three reactions, saved nested moves, remaining-route choices, normal terrain/CAP, arrival windows, UI and ENet.
 - [x] Ship classes, proper turning/arcs, boarding, ramming/collision, crew/leader transfers, hulks and defensive fire.
 - [x] Two-hex capital hulls: bow/stern travel budgets, pivots, footprint geometry/rendering, hazards and rear-shot immunity.
 - [x] CAP entry/exit, off-board targeting, movement with host, simultaneous interception and return after host destruction.

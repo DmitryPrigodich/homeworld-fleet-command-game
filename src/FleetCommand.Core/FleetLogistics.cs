@@ -1,6 +1,6 @@
 namespace FleetCommand.Core;
 
-public sealed record PendingReinforce(int Side, string Card, string Source, string Mode);
+public sealed record PendingReinforce(int Side, string Card, string Source, string Mode, string Arrival = "");
 public static class FleetLogistics
 {
     public static BattleUnit[] Children(BattleState s, string parent) => (s.Reserves ?? []).Where(u => u.Embarked == parent).ToArray();
@@ -53,6 +53,11 @@ public static class FleetLogistics
     internal static CommandResult Resume(ContentCatalog c, BattleState before, BattleState s, string message)
     {
         var frame = s.Reinforce!;
+        if (frame.Arrival != "" && !s.Finished)
+        {
+            s = s with { Reinforce = frame with { Arrival = "" } };
+            var window = InterruptRules.ArrivalOpportunity(c, before, s, frame.Arrival, message); if (window != null) return window;
+        }
         if (s.Finished || frame.Mode is "deploy" or "build" || !s.Units.Any(u => u.Id == frame.Source)) return Finish(c, before, s, message);
         return new(true, message + " Continue reinforcing or finish the order.", s with { Sequence = before.Sequence + 1 });
     }
@@ -94,7 +99,7 @@ public static class FleetLogistics
         if (!FleetFootprint.CanPlace(c, next, arriving, destination, cmd.Facing)) return Reject("There must be space for the ship's entire hull.");
         if (frame.Mode == "deploy" && FleetFootprint.Cells(c.Ships[arriving.Definition], destination, cmd.Facing).Any(h => !DeployCells(c, s, side).Contains(h))) return Reject("The entire ship must fit inside the deployment zone.");
         arriving = FleetRuleTools.NewOrder(arriving) with { Q = cmd.Q, R = cmd.R, Facing = cmd.Facing, Embarked = "", Activated = true };
-        next = next with { Units = next.Units.Append(arriving).Select(u => parent != null && u.Id == parent.Id ? u with { Launches = u.Launches + 1 } : u).ToList() };
+        next = next with { Reinforce = frame with { Arrival = arriving.Id }, Units = next.Units.Append(arriving).Select(u => parent != null && u.Id == parent.Id ? u with { Launches = u.Launches + 1 } : u).ToList() };
         next = FleetRuleTools.DamageControl(c, next, arriving.Id, cmd.Repair, out var repair);
         return FleetTerrain.Activation(c, s, next, [arriving.Id], "reinforce", $"Unit placed: {FleetPresentation.UnitName(c, next, arriving)}. " + repair);
     }
@@ -117,8 +122,8 @@ public static class FleetLogistics
             return (straight ? FleetMovement.StraightPath(geometry, s, unit, goal, parent.Id) : FleetMovement.Path(geometry, s, unit, goal, embark: parent.Id)) != null;
         }).ToArray();
     }
-    internal static BattleState Embark(BattleState s, BattleUnit unit, string parent) => s with { Units = s.Units.Where(u => u.Id != unit.Id).ToList(),
-        Reserves = (s.Reserves ?? []).Append(unit with { Q = -1, R = -1, Embarked = parent, Patrol = "", Activated = true }).ToList() };
+    internal static BattleState Embark(BattleState s, BattleUnit unit, string parent, bool preserveActivation = false) => s with { Units = s.Units.Where(u => u.Id != unit.Id).ToList(),
+        Reserves = (s.Reserves ?? []).Append(unit with { Q = -1, R = -1, Embarked = parent, Patrol = "", Activated = preserveActivation ? unit.Activated : true }).ToList() };
     internal static void ValidatePlacements(ContentCatalog c, FleetDefinition fleet, bool tabletop)
     {
         for (int i = 0; i < fleet.Units.Length; i++)
@@ -143,11 +148,14 @@ public static class FleetLogistics
                 || u.Embarked != "" && (!FleetRuleTools.Strike(ship) || !all.Any(p => p.Id == u.Embarked && p.Embarked == "" && p.Side == u.Side) || Children(s, u.Embarked).Length > c.Ships[all.Single(p => p.Id == u.Embarked).Definition].Bays))
                 throw new InvalidDataException("Invalid off-board unit.");
         if (s.Reinforce is not { } frame) return;
-        if (!FleetRuleTools.Enabled(c, s) || s.Finished || frame.Side != s.ActiveSide || s.Cards is not { Phase: "orders", Pending: null, Response: null } cards || !cards.Discard.Contains(frame.Card)
-            || (frame.Side == 0 ? s.Orders0 : s.Orders1) < 1 || frame.Mode is not ("deploy" or "launch" or "build") || s.Overrun != null || s.CapEntry != null
-            || !all.Any(u => u.Id == frame.Source && u.Side == frame.Side) && !(frame.Mode == "deploy" && s.Hazard?.Job.Unit == frame.Source)) throw new InvalidDataException("Invalid pending Reinforce.");
-        var source = all.Single(u => u.Id == frame.Source);
-        if (frame.Mode == "deploy" ? source.Embarked != "" || FleetRuleTools.Class(c.Ships[source.Definition]) is not ("frigate" or "capital") || s.Hazard == null && s.Repairs?.Any(p => p.Unit == source.Id) != true && !offboard.Contains(source)
+        bool lostArrival = frame.Mode == "deploy" && s.Cards?.Response is { Command.Kind: "reinforce" } arrival && arrival.Command.Unit == frame.Source
+            && (s.Combat is { Kind: "collision", Ghost: { } ghost } && ghost.Id == frame.Source || s.Overrun is { Interrupt: true });
+        if (!FleetRuleTools.Enabled(c, s) || s.Finished || frame.Side != s.ActiveSide || s.Cards is not { Phase: "orders", Pending: null } cards || cards.Response != null && cards.Response.Command.Kind != "reinforce" || !cards.Discard.Contains(frame.Card)
+            || (frame.Side == 0 ? s.Orders0 : s.Orders1) < 1 || frame.Mode is not ("deploy" or "launch" or "build") || (s.Overrun != null || s.CapEntry != null) && cards.Response == null || frame.Arrival == null || frame.Arrival.Length > 80
+            || !all.Any(u => u.Id == frame.Source && u.Side == frame.Side) && !(frame.Mode == "deploy" && s.Hazard?.Job.Unit == frame.Source) && !lostArrival) throw new InvalidDataException("Invalid pending Reinforce.");
+        var source = all.FirstOrDefault(u => u.Id == frame.Source); if (source == null && lostArrival) return;
+        if (source == null) throw new InvalidDataException("Missing reinforcement source.");
+        if (frame.Mode == "deploy" ? source.Embarked != "" || FleetRuleTools.Class(c.Ships[source.Definition]) is not ("frigate" or "capital") || s.Hazard == null && s.Repairs?.Any(p => p.Unit == source.Id) != true && !offboard.Contains(source) && cards.Response?.Command.Kind != "reinforce"
             : !s.Units.Contains(source) || source.Hulk || source.Patrol != "" || (frame.Mode == "build" ? (c.Ships[source.Definition].Factory ?? []).Length == 0 : c.Ships[source.Definition].Bays == 0)) throw new InvalidDataException("Invalid reinforcement source.");
     }
 }

@@ -47,6 +47,7 @@ public static class FleetTerrain
     {
         var jobs = Jobs(c, next, units, resume);
         if (jobs.Length == 0 && resume == "reinforce" && next.Repairs is not { Length: > 0 }) return FleetLogistics.Resume(c, before, next, message);
+        if (jobs.Length == 0 && resume == "launch-order" && next.Repairs is not { Length: > 0 }) return FleetLaunchOrders.Resume(c, before, next, message);
         if (jobs.Length == 0) return next.Repairs is not { Length: > 0 } && next.Cards?.Pending?.Deferred != null ? FleetTransfers.Complete(c, before, next, message) : new(true, message, next);
         return StartQueued(c, before, next with { Hazards = jobs }, message);
     }
@@ -92,6 +93,7 @@ public static class FleetTerrain
     internal static CommandResult Resume(ContentCatalog c, BattleState before, BattleState next, string resume, string message)
     {
         if (resume == "reinforce") return FleetLogistics.Resume(c, before, next, message);
+        if (resume == "launch-order") return FleetLaunchOrders.Resume(c, before, next, message);
         if (resume != "order") return InterruptRules.ResumeTerrain(c, before, next, message, resume == "response-start");
         var order = next.Cards?.Pending;
         if (order == null) return new(true, message, next with { Sequence = before.Sequence + 1 });
@@ -124,7 +126,7 @@ public static class FleetTerrain
         if (s.Mines?.Any(p => p.Key < 0 || p.Key >= map.Objects.Length || Kind(c.Objects[map.Objects[p.Key].Definition]) != "mine" || p.Value is not (0 or 3 or 5)) == true) throw new InvalidDataException("Invalid mine tokens.");
         if (s.Hazards == null && s.Hazard == null) return;
         if (!FleetRuleTools.Enabled(c, s) || s.Finished || s.Hazards is not { Length: > 0 } jobs || jobs.Length > 10000 || s.CapEntry != null || s.Overrun != null
-            || jobs.Any(j => j == null || j.Object < 0 || j.Object >= map.Objects.Length || j.Resume is not ("order" or "movement" or "response-start" or "reinforce") || Attack(c.Objects[map.Objects[j.Object].Definition]) is not { Dice: > 0 })
+            || jobs.Any(j => j == null || j.Object < 0 || j.Object >= map.Objects.Length || j.Resume is not ("order" or "movement" or "response-start" or "reinforce" or "launch-order") || Attack(c.Objects[map.Objects[j.Object].Definition]) is not { Dice: > 0 })
             || s.Reinforce == null && s.Cards?.Pending == null && s.Cards?.Response == null) throw new InvalidDataException("Invalid pending terrain attacks.");
         if (s.Hazard is not { } h) { if (s.Repairs is not { Length: > 0 }) throw new InvalidDataException("Unstarted terrain queue."); return; }
         if (h.Job == null || h.Job != jobs[0]) throw new InvalidDataException("Invalid active terrain job.");

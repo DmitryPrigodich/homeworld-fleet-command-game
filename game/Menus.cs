@@ -48,7 +48,7 @@ public partial class Main
         Button(box, "RULES / DEVELOPMENT MODE", () => { StartBattle(BasicCardBattle.TabletopMapId, true); QueueBot(); });
         Button(box, "COMMAND ORDERS AND EFFECTS", () => { StartBattle(BasicCardBattle.OrdersMapId, true); QueueBot(); });
         Button(box, "LAUNCH ORDERS", () => { StartBattle(BasicCardBattle.LaunchOrdersMapId, true); QueueBot(); });
-        Text(box, "Supported command deck. Interrupt Move is still pending.", 13, _colors.Muted);
+        Text(box, "Base command deck: 54 cards / 20 types.", 13, _colors.Muted);
         Button(box, "OBJECTIVES AND MEDALS", () => { StartBattle(BasicCardBattle.ObjectivesMapId, true); QueueBot(); });
         Button(box, "BAYS AND REINFORCEMENTS", () => { StartBattle(BasicCardBattle.LogisticsMapId, true); QueueBot(); });
         Button(box, "SURVEY AND HARVEST", () => { StartBattle(BasicCardBattle.EconomyMapId, true); QueueBot(); });
@@ -56,7 +56,7 @@ public partial class Main
         Button(box, "SKIRMISH / GENERATOR", GeneratorMenu);
         Button(box, "RESUME SKIRMISH", () => LoadGame(false), !System.IO.File.Exists(SavePath(false)));
         Button(box, "BACK", MainMenu);
-        Text(box, "The prototype opponent uses simple heuristics. Full command cards and interrupts are still in progress.", 15, _colors.Muted);
+        Text(box, "The prototype opponent uses simple heuristics. Heroic abilities and exact published profiles are still in progress.", 15, _colors.Muted);
         MenuScene();
     }
     private void CampaignMenu()

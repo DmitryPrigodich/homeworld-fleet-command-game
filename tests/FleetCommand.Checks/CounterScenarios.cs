@@ -11,6 +11,7 @@ internal static class CounterScenarios
         {
             C = ContentCatalog.Load([Path.Combine(root, "content", "base")]); BasicCardBattle.Register(C);
             foreach (string id in new[] { "practice:orders-kushan-boarder", "practice:orders-taiidan-boarder" }) C.Ships[id] = C.Ships[id] with { Armor = 50, Move = 3, Weapons = [new("gun", "Counter test gun", 2, 5)] };
+            foreach (var ship in C.Ships.Values.Where(d => d.Id.StartsWith("practice:orders-") && d.Faction == "taiidan").ToArray()) C.Ships[ship.Id] = ship with { Move = 0 };
             E = new(C); S = E.Create(BasicCardBattle.OrdersMapId, 17);
             string[] a = [Counter, "core:all-ahead-full#1"], b = [Attack, "core:interrupt-attack#2"];
             S = S with { Cards = S.Cards! with { Phase = "orders", Hand0 = a, Hand1 = b, Discard = [], Deck = CommandCards.Instances(CommandCards.Deck(C, S)).Keys.Except(a).Except(b).ToArray() },

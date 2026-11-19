@@ -5,7 +5,7 @@ public sealed record CardRound(string[] Deck, string[] Hand0, string[] Hand1, st
     bool IsView = false, int HiddenHandCount = 0, int DeckCount = 0, PendingOrder? Pending = null,
     string[]? Interrupts0 = null, string[]? Interrupts1 = null, PendingResponse? Response = null,
     int HandLimit0 = 2, int HandLimit1 = 2, int PlayLimit0 = 1, int PlayLimit1 = 1, string[]? Bids0 = null, string[]? Bids1 = null,
-    PendingCounter? Counter = null, string[]? UsedInterrupts0 = null, string[]? UsedInterrupts1 = null);
+    PendingCounter? Counter = null, string[]? UsedInterrupts0 = null, string[]? UsedInterrupts1 = null, PendingMoveInterrupt? MoveInterrupt = null);
 
 public static class BasicCardBattle
 {
@@ -131,7 +131,7 @@ public sealed class BasicCardRules : IRuleModule
         return state with { RandomState = random, Cards = new(deck.ToArray(), hands[0].ToArray(), hands[1].ToArray(), discard.ToArray(), HandLimit0: cards.HandLimit0, HandLimit1: cards.HandLimit1, PlayLimit0: cards.PlayLimit0, PlayLimit1: cards.PlayLimit1) };
     }
     public UnitActions GetActions(ContentCatalog c, BattleState state, int side, string unitId) =>
-        state.Cards?.Counter != null || state.Reinforce != null || state.Hazard != null || state.Hazards is { Length: > 0 } || state.Combat != null || state.Defense != null || state.CapEntry != null || state.Overrun != null || state.Repairs is { Length: > 0 } ? UnitActions.Empty :
+        state.Cards?.Counter != null || state.Reinforce != null && state.Cards?.Response == null || state.Hazard != null || state.Hazards is { Length: > 0 } || state.Combat != null || state.Defense != null || state.CapEntry != null || state.Overrun != null || state.Repairs is { Length: > 0 } ? UnitActions.Empty :
         state.Cards?.Response != null ? InterruptRules.Actions(c, state, side, unitId) :
         state.Cards?.Pending != null ? SpecialOrders.Actions(c, state, side, unitId) :
         state.Cards is { Phase: "orders" } cards && (side == 0 ? cards.Hand0 : cards.Hand1).Length > 0
@@ -147,6 +147,7 @@ public sealed class BasicCardRules : IRuleModule
         if (state.Overrun != null) return FleetClose.Apply(c, state, side, command);
         if (state.Combat != null) return FleetCombat.Apply(c, state, side, command);
         if (state.Defense != null) return FleetDefense.Apply(c, state, side, command);
+        if (cards.Response?.Command.Kind == "reinforce") return InterruptRules.Apply(c, state, side, command);
         if (state.Reinforce != null) return FleetLogistics.Apply(c, state, side, command);
         if (state.CapEntry != null) return FleetCap.ApplyEntry(c, state, side, command);
         if (cards.Response != null) return InterruptRules.Apply(c, state, side, command);

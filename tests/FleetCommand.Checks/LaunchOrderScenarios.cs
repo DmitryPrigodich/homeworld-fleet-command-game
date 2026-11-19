@@ -66,7 +66,7 @@ internal static class LaunchOrderScenarios
         Case("launch-order-lightning-then-real-attack", s =>
         {
             s.S = s.S with { Units = s.S.Units.Select(u => u.Id == "s1-9" ? u with { Q = 4, R = 2, Facing = 3 } : u).ToList(), ValorOwner = 0 };
-            s.Begin(); s.Launch(new(2, 2)); s.Do(new("move", "s0-1", Q: 3, R: 2)); s.Settle();
+            s.Begin(); s.Launch(new(2, 2)); s.Settle(); s.Do(new("move", "s0-1", Q: 3, R: 2)); s.Settle();
             Check(s.S.Cards!.Pending!.Step == 2 && s.E.GetActions(s.S, 0, "s0-1").AttackTargets.Contains("s1-9"), "Launched squadron lost attack action");
             s.Do(new("attack", "s0-1", "s1-9")); s.Settle(); Check(s.S.Cards.Pending == null, "Attack did not finish launch order");
         });

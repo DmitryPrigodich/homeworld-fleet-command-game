@@ -17,9 +17,9 @@ public static class FleetLargeMovement
         }
         return (End(0), End(1));
     }
-    private static (Dictionary<Pose, Pose> Previous, Pose Start) Search(ContentCatalog c, BattleState s, BattleUnit u, bool straight = false)
+    private static (Dictionary<Pose, Pose> Previous, Pose Start) Search(ContentCatalog c, BattleState s, BattleUnit u, bool straight = false, int frontSpent = 0, int rearSpent = 0)
     {
-        var start = new Pose(new(u.Q, u.R), u.Facing, 0, 0); int limit = Limit(c, u);
+        var start = new Pose(new(u.Q, u.R), u.Facing, frontSpent, rearSpent); int limit = Limit(c, u);
         var previous = new Dictionary<Pose, Pose> { [start] = start }; var queue = new Queue<Pose>(); queue.Enqueue(start);
         while (queue.TryDequeue(out var p))
         {
@@ -41,11 +41,11 @@ public static class FleetLargeMovement
         }
         return (previous, start);
     }
-    public static Hex[] Destinations(ContentCatalog c, BattleState s, BattleUnit u) => Search(c, s, u).Previous.Keys
+    public static Hex[] Destinations(ContentCatalog c, BattleState s, BattleUnit u, int frontSpent = 0, int rearSpent = 0) => Search(c, s, u, frontSpent: frontSpent, rearSpent: rearSpent).Previous.Keys
         .Where(p => p.Bow != new Hex(u.Q, u.R) && FleetFootprint.CanPlace(c, s, u, p.Bow, p.Facing)).Select(p => p.Bow).Distinct().OrderBy(h => h.Q).ThenBy(h => h.R).ToArray();
-    public static MovementStep[]? Path(ContentCatalog c, BattleState s, BattleUnit u, Hex goal, int facing = -1, bool straight = false)
+    public static MovementStep[]? Path(ContentCatalog c, BattleState s, BattleUnit u, Hex goal, int facing = -1, bool straight = false, int frontSpent = 0, int rearSpent = 0)
     {
-        var (previous, start) = Search(c, s, u, straight);
+        var (previous, start) = Search(c, s, u, straight, frontSpent, rearSpent);
         var options = previous.Keys.Where(p => p != start && p.Bow == goal && (facing < 0 || p.Facing == facing) && FleetFootprint.CanPlace(c, s, u, p.Bow, p.Facing))
             .OrderBy(p => Math.Max(p.Front, p.Rear)).ThenBy(p => p.Front + p.Rear).ThenBy(p => p.Facing).ToArray();
         foreach (var destination in options)

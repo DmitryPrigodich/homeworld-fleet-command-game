@@ -1,7 +1,7 @@
 namespace FleetCommand.Core;
 
 public sealed record PendingOrder(string Card, int Side, string[] Units, int Step, int Direction = -1, string BasicAction = "", BattleCommand? Deferred = null,
-    string Choice = "", string FirstTarget = "", bool Moved = false);
+    string Choice = "", string FirstTarget = "", bool Moved = false, bool LaunchArrival = false);
 public static partial class SpecialOrders
 {
     public static bool Formation(ContentCatalog c, BattleState? state, string card) => CommandCards.Find(c, state, card)?.Lines?.Length == 2;
@@ -171,7 +171,7 @@ public static partial class SpecialOrders
         }
         return new(true, message, next with { Cards = next.Cards! with { Pending = order }, Sequence = original.Sequence + 1 });
     }
-    public static void Validate(ContentCatalog c, BattleState state)
+    public static void Validate(ContentCatalog c, BattleState state, bool suspended = false)
     {
         var order = state.Cards!.Pending;
         if (order == null) return;
@@ -182,11 +182,12 @@ public static partial class SpecialOrders
             || order.Choice is not ("" or "move" or "attack") || order.Choice != "" && (order.BasicAction != "" || Step(c, state, order).Action != "choice")
             || order.FirstTarget == null || order.FirstTarget.Length > 80 || order.FirstTarget != "" && (order.BasicAction != "" || !CommandCards.Find(c, state, order.Card)!.SameTarget))
             throw new InvalidDataException("Invalid pending special order.");
+        if (order.LaunchArrival && (order.BasicAction != "" || order.Step != 1 || !FleetLaunchOrders.IsLaunch(CommandCards.Find(c, state, order.Card)!))) throw new InvalidDataException("Invalid pending launch arrival.");
         if (Action(c, state, order) == "launch")
         {
             var child = state.Reserves?.Find(u => u.Id == Actor(c, state, order));
             if (child == null || child.Side != order.Side || !child.Activated || !FleetLaunchOrders.IsLaunch(CommandCards.Find(c, state, order.Card)!) || child.Embarked == "") throw new InvalidDataException("Invalid pending launch order.");
         }
-        else if (!state.Units.Any(u => u.Id == Actor(c, state, order)) && state.Hazards is not { Length: > 0 }) throw new InvalidDataException("Pending actor is missing.");
+        else if (!suspended && !state.Units.Any(u => u.Id == Actor(c, state, order)) && state.Hazards is not { Length: > 0 }) throw new InvalidDataException("Pending actor is missing.");
     }
 }

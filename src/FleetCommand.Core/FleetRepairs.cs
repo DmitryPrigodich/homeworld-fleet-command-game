@@ -22,6 +22,7 @@ public static class FleetRepairs
         string message = cmd.Kind == "repair-stop" ? "Remaining repair successes skipped." : "Damage Control: removed " + cmd.Repair + ".";
         if (queue.Length == 0 && next.Hazards is { Length: > 0 }) return FleetTerrain.StartQueued(c, s, next, message);
         if (queue.Length == 0 && next.Reinforce != null) return FleetLogistics.Resume(c, s, next, message);
+        if (queue.Length == 0 && next.Cards?.Pending?.LaunchArrival == true) return FleetLaunchOrders.Resume(c, s, next, message);
         if (queue.Length == 0 && next.Cards?.Pending?.Deferred != null) return FleetTransfers.Complete(c, s, next, message);
         return queue.Length == 0 && pending.Advance ? SpecialOrders.Advance(c, s, next, side, message) : new(true, message, next);
     }

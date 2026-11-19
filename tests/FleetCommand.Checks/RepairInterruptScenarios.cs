@@ -51,7 +51,7 @@ internal static class RepairInterruptScenarios
         Case("repair-interrupt-cannot-exceed-profile-models", s => { s.S = s.S with { Units = s.S.Units.Select(u => u.Id == "s0-2" ? u with { Models = 3 } : u).ToList() }; s.Do(0, new("interrupt-repairs", "s0-2", Card: RepairCard, Repair: "fighter"), false); });
         Case("repair-interrupt-during-post-roll-choice", s =>
         {
-            s.S = s.S with { ValorOwner = 0 }; s.Do(0, new("attack", "s0-0", "s1-3", Card: "core:all-ahead-full#1")); s.Do(1, new("decline"));
+            s.S = s.S with { ValorOwner = 0 }; s.Do(0, new("attack", "s0-0", "s1-3", Card: "core:all-ahead-full#1")); if (s.S.Combat == null) s.Do(1, new("decline"));
             var rolls = s.S.Combat!.Rolls.ToArray(); uint rng = s.S.RandomState; s.Repair("s0-0", "focus");
             Check(s.S.Combat!.Rolls.SequenceEqual(rolls) && s.S.RandomState == rng && s.Unit("s0-0").FocusFire == 2, "Repair rerolled or resolved incoming combat"); s.Settle();
         });
@@ -75,7 +75,7 @@ internal static class RepairInterruptScenarios
         {
             foreach (string id in new[] { "practice:orders-kushan-wing", "practice:orders-taiidan-wing" }) s.C.Ships[id] = s.C.Ships[id] with { Success = 2, Armor = 50, Weapons = [new("gun", "CAP test gun", 1, 5)], Abilities = [] };
             s.S = s.S with { ActiveSide = 1, ValorOwner = 0, Units = s.S.Units.Select(u => u.Id == "s0-0" ? u with { Q = 2, R = 2, FocusFire = 0 } : u.Id == "s0-2" ? u with { Q = 2, R = 2, Patrol = "s0-0" } : u.Id == "s1-5" ? u with { Q = 3, R = 2, FocusFire = 0 } : u.Id == "s1-3" ? u with { Q = 7, R = 1 } : u).ToList() };
-            s.Do(1, new("attack", "s1-5", "s0-0", Card: "core:all-ahead-full#2")); s.Do(0, new("decline")); s.Do(0, new("cap", Card: "core:all-ahead-full#1", Weapon: "gun"));
+            s.Do(1, new("attack", "s1-5", "s0-0", Card: "core:all-ahead-full#2")); if (s.S.Defense == null && s.S.Combat == null) s.Do(0, new("decline")); s.Do(0, new("cap", Card: "core:all-ahead-full#1", Weapon: "gun"));
             s.Do(FleetCombat.DecisionSide(s.S.Combat!), new("resolve"));
             Check(s.S.Defense!.CapVolley?.Ghost?.Id == "s0-2", "CAP fixture did not reach stored volley");
             var rolls = s.S.Combat!.Rolls.ToArray(); s.Repair();
