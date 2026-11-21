@@ -6,7 +6,7 @@ public sealed record CardDefinition(string Id, string Name, string Kind, string 
     CardLine[]? Lines = null, bool StraightCourse = false, bool AdjacentOnLightning = false,
     string Interrupt = "", bool SameTarget = false, string SelfBuff = "", bool RepairAtStart = false,
     string AttackEffect = "", bool ExcludeFighters = false, bool RequireAfterburners = false, int BoardingDice = 0,
-    bool BoardAfterMove = false, string[]? InterruptTriggers = null, int InterruptRange = 0, string HeroicOwner = "", bool CrewRepairAtStart = false);
+    bool BoardAfterMove = false, string[]? InterruptTriggers = null, int InterruptRange = 0, string HeroicOwner = "", bool CrewRepairAtStart = false, bool PilotMovement = false, bool LaunchFromHero = false);
 public sealed record DeckEntry(string Card, int Copies = 1, string[]? Instances = null);
 public sealed record DeckDefinition(string Id, string Name, DeckEntry[] Entries);
 
@@ -43,7 +43,7 @@ public static class CommandCards
                 || (card.Kind == "order" ? lines.Length is < 1 or > 2 || card.Interrupt != "" : lines.Length != 0)
                 || lines.Any(l => l == null || l.Actions == null || l.Actions.Length is < 1 or > 8 || l.Actions.Any(a => a is not ("move" or "attack" or "lightning" or "power" or "choice" or "board" or "launch")))
                 || lines.Any(l => l.Classes != null && (l.Classes.Length == 0 || l.Classes.Distinct().Count() != l.Classes.Length || l.Classes.Any(cls => !FleetRuleTools.Classes.Contains(cls))))
-                || lines.SelectMany(l => l.Actions).Contains("launch") && (lines.Length != 1 || !lines[0].Actions.SequenceEqual(["launch", "lightning", "attack"]) || card.SelfBuff != "" || card.RepairAtStart || card.CrewRepairAtStart || card.AttackEffect != "")
+                || lines.SelectMany(l => l.Actions).Contains("launch") && (!FleetLaunchOrders.IsLaunch(card) || card.SelfBuff != "" || card.RepairAtStart || card.CrewRepairAtStart || card.AttackEffect != "")
                 || (card.Kind == "interrupt" ? card.Interrupt is not ("attack" or "counter" or "repairs" or "move") : card.Interrupt != "")
                 || card.InterruptTriggers != null && (card.Kind != "interrupt" || card.Interrupt is not ("attack" or "move") || card.InterruptTriggers.Length is < 1 or > 4 || card.InterruptTriggers.Distinct().Count() != card.InterruptTriggers.Length || card.InterruptTriggers.Any(a => a is not ("move" or "lightning" or "attack" or "reinforce")))
                 || card.InterruptRange < 0 || card.InterruptRange > 100
@@ -53,6 +53,8 @@ public static class CommandCards
                 || card.AdjacentOnLightning && (lines.Length != 2 || lines[0].Actions.Contains("lightning") || !lines[1].Actions.Contains("lightning"))
                 || card.SameTarget && (lines.Length != 2 || lines.Any(l => l.Actions.Count(a => a is "attack" or "power" or "board") != 1))
                 || card.HeroicOwner == null || card.HeroicOwner != "" && (card.Kind != "order" || !c.Leaders.TryGetValue(card.HeroicOwner, out var owner) || owner.HeroicCommand != card.Id)
+                || card.LaunchFromHero && (card.HeroicOwner == "" || lines.Length != 2 || !FleetLaunchOrders.IsLaunch(card) || lines.Any(l => l.Classes is not ["fighter"]))
+                || card.PilotMovement && (card.HeroicOwner == "" || lines is not [{ Actions: ["move", "lightning", "attack"] }])
                 || card.CrewRepairAtStart && (card.HeroicOwner == "" || card.RepairAtStart || lines.Length != 1)
                 || card.SelfBuff == "hero-evasive" && card.HeroicOwner == ""
                 || card.SelfBuff != "" && !FleetRuleTools.Buffs.Contains(card.SelfBuff)

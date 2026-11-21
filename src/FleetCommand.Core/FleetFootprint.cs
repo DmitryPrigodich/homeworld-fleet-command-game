@@ -10,11 +10,13 @@ public static class FleetFootprint
     public static int Distance(ContentCatalog c, BattleUnit a, BattleUnit b) => Cells(c, a).Min(h => Distance(c, b, h));
     public static int Distance(ContentCatalog c, BattleUnit u, Hex h) => Cells(c, u).Min(p => p.Distance(h));
     public static Hex[] Adjacent(ContentCatalog c, BattleUnit u) => Cells(c, u).SelectMany(h => Enumerable.Range(0, 6).Select(h.Neighbor)).Except(Cells(c, u)).Distinct().ToArray();
+    public static bool CanTransit(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit other) => !other.Hulk
+        && (other.Side == unit.Side ? c.Rules[c.Maps[s.Map].Rules].FriendlyPassThrough : SpecialOrders.PilotMovement(c, s, unit.Id));
     public static bool CanPlace(ContentCatalog c, BattleState s, BattleUnit unit, Hex bow, int facing, bool transit = false, string docking = "")
     {
         var map = c.Maps[s.Map]; var cells = Cells(c.Ships[unit.Definition], bow, facing);
         return cells.All(h => Inside(map, h) && !SkirmishGeometry.Blocked(c, map, h, s) && !s.Units.Any(other => other.Patrol == "" && other.Id != unit.Id && other.Id != docking
-            && Contains(c, other, h) && (!transit || other.Side != unit.Side || other.Hulk || !c.Rules[map.Rules].FriendlyPassThrough)));
+            && Contains(c, other, h) && (!transit || !CanTransit(c, s, unit, other))));
     }
     public static (Hex From, Hex To)[] Nearest(ContentCatalog c, BattleUnit a, BattleUnit b)
     {

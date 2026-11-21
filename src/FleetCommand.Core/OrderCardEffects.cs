@@ -8,13 +8,15 @@ public static partial class SpecialOrders
     private static BattleState ChooseAction(ContentCatalog c, BattleState s, PendingOrder order, string action) =>
         order.BasicAction == "" && Step(c, s, order).Action == "choice" ? s with { Cards = s.Cards! with { Pending = order with { Choice = action } } } : s;
     public static bool CanAssign(ContentCatalog c, BattleState s, CardDefinition card, BattleUnit? unit, int line = 0) => unit != null
-        && (FleetLaunchOrders.IsLaunch(card) ? FleetLaunchOrders.CanAssign(c, s, unit) : unit.Embarked == "")
-        && (card.HeroicOwner == "" || line != 0 || FleetRuleTools.LeaderIds(unit).Contains(card.HeroicOwner))
+        && (FleetLaunchOrders.IsLaunch(card) ? FleetLaunchOrders.CanAssign(c, s, unit) && FleetLaunchOrders.FromOwner(c, s, card, unit) : unit.Embarked == "")
+        && (card.HeroicOwner == "" || card.LaunchFromHero || line != 0 || FleetRuleTools.LeaderIds(unit).Contains(card.HeroicOwner))
         && (card.Lines == null || line >= 0 && line < card.Lines.Length && (card.Lines[line].Classes == null || card.Lines[line].Classes!.Contains(FleetRuleTools.Class(c.Ships[unit.Definition]))))
         && (!card.ExcludeFighters || FleetRuleTools.Class(c.Ships[unit.Definition]) != "fighter")
         && (!card.RequireAfterburners || Lightning(c.Ships[unit.Definition]) > 0)
         && (FleetRuleTools.Enabled(c, s) || card.SelfBuff == "" && card.AttackEffect == "" && !card.RepairAtStart && !card.CrewRepairAtStart
             && !(card.Lines ?? []).SelectMany(l => l.Actions).Any(a => a is "power" or "choice" or "board"));
+    public static bool PilotMovement(ContentCatalog c, BattleState s, string actor) => s.Cards?.Pending is { BasicAction: "" } order
+        && Actor(c, s, order) == actor && Action(c, s, order) is "move" or "lightning" && CommandCards.Find(c, s, order.Card)!.PilotMovement;
     private static string CardRepair(BattleUnit unit, string choice) => choice == "auto"
         ? unit.FocusFire > 0 ? "focus" : FleetRuleTools.Debuffs.FirstOrDefault(e => FleetRuleTools.Has(unit, e)) ?? "" : choice;
     private static bool ValidCardRepair(BattleUnit unit, string choice)

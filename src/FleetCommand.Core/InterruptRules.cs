@@ -189,7 +189,13 @@ public static partial class InterruptRules
         var pause = next.Cards!.Response!;
         if (pause.ReactionMove) return FinishMoveInterrupt(c, original, next, message);
         next = next with { Cards = next.Cards with { Response = null } };
-        if (pause.Command.Kind == "reinforce") return next.Reinforce != null ? FleetLogistics.Resume(c, original, next, message) : new(true, message, next with { Sequence = original.Sequence + 1 });
+        if (pause.Command.Kind == "reinforce")
+        {
+            if (next.Reinforce != null) return FleetLogistics.Resume(c, original, next, message);
+            if (next.Cards.Pending is { } launchOrder && !next.Units.Any(u => u.Id == SpecialOrders.Actor(c, next, launchOrder) && !u.Hulk && u.Side == launchOrder.Side))
+                return SpecialOrders.Advance(c, original, next, launchOrder.Side, message, next.Finished);
+            return new(true, message, next with { Sequence = original.Sequence + 1 });
+        }
         if (!pause.Basic && pause.Command.Kind == "move" && next.Cards.Pending is { } order && next.Units.Any(u => u.Id == pause.Command.Unit))
             next = next with { Cards = next.Cards with { Pending = order with { Moved = true } } };
         if (!pause.Basic) return SpecialOrders.Advance(c, original, next, pause.Side, message);
@@ -259,7 +265,7 @@ public static partial class InterruptRules
         if (pause.MoveBudget is < -1 or > 100000 || pause.MoveSpent < 0 || pause.MoveBudget >= 0 && pause.MoveSpent > pause.MoveBudget
             || (pause.Replan || pause.ReplanAfterResponse) && (pause.Command.Kind != "move" || pause.RemainingPath.Length != 0 || pause.Transit != null)
             || pause.Replan && (state.Combat != null || state.Defense != null || state.Hazard != null)) throw new InvalidDataException("Invalid remaining movement state.");
-        if (pause.Command.Kind == "reinforce" && (state.Reinforce == null && !(cards.Pending is { Step: 1 } launch && FleetLaunchOrders.IsLaunch(CommandCards.Find(c, state, launch.Card)!)) || pause.Replan || pause.ReplanAfterResponse)) throw new InvalidDataException("Invalid reinforcement response.");
+        if (pause.Command.Kind == "reinforce" && (state.Reinforce == null && !(cards.Pending is { } launch && FleetLaunchOrders.ArrivalStep(c, state, launch)) || pause.Replan || pause.ReplanAfterResponse)) throw new InvalidDataException("Invalid reinforcement response.");
         if (pause.PathFacings != null && (pause.PathFacings.Length != pause.RemainingPath.Length || pause.PathFacings.Any(f => f is < 0 or > 5))) throw new InvalidDataException("Invalid movement facing path.");
     }
     internal static void ValidateGeometry(ContentCatalog c, BattleState state)

@@ -4,6 +4,8 @@ namespace FleetCommand.Core;
 public static class HeroicBattle
 {
     public const string MapId = "practice:heroes";
+    public const string PilotLaunchSoloMapId = "practice:pilot-launch-heroes-solo";
+    public const string PilotLaunchMapId = "practice:pilot-launch-heroes";
     public const string AdvancedMapId = "practice:advanced-heroes";
     public static void Register(ContentCatalog c)
     {
@@ -31,6 +33,20 @@ public static class HeroicBattle
             new("practice:taiidan-carrier", 8, 1, 3, "core:hero-taiidan-hunter"),
             new("practice:hero-frigate", 8, 3, 3, "core:hero-taiidan-veteran-captain"),
             new("practice:hero-frigate", 8, 5, 3)]);
+        c.Ships["practice:hero-pilot-corvette"] = c.Ships["practice:orders-taiidan-boarder"] with { Id = "practice:hero-pilot-corvette", Name = "Hero drill: pilot corvette", Label = "Hero drill: pilot corvette", Class = "corvette", Move = 3, Afterburners = 2, Tabs = null };
+        c.Ships["practice:hero-launch-fighter"] = c.Ships["practice:taiidan-wing"] with { Id = "practice:hero-launch-fighter", Name = "Hero drill: launch fighter", Label = "Hero drill: launch fighter", Afterburners = 2 };
+        c.Fleets["practice:pilot-launch-kushan"] = new("practice:pilot-launch-kushan", "Pilot and launch targets", [new("practice:orders-kushan-boarder", 6, 2), new("practice:orders-kushan-boarder", 5, 5)]);
+        c.Fleets["practice:pilot-launch-taiidan"] = new("practice:pilot-launch-taiidan", "Pilot and launch Heroes", [
+            new("practice:taiidan-carrier", 8, 5, 3, "core:hero-taiidan-launch-commander"),
+            new("practice:hero-pilot-corvette", 8, 2, 3, "core:hero-taiidan-veteran-commander"),
+            new("practice:hero-launch-fighter", -1, -1, 3, EmbarkedOn: 0),
+            new("practice:hero-launch-fighter", -1, -1, 3, EmbarkedOn: 0),
+            new("practice:taiidan-carrier", 10, 5, 3),
+            new("practice:hero-pilot-corvette", -1, -1, 3, EmbarkedOn: 0)]);
+        c.Objects["practice:hero-asteroid"] = c.Objects["core:asteroids"] with { Id = "practice:hero-asteroid", Kind = "asteroid", MoveCost = 1 };
+        c.Maps[PilotLaunchMapId] = c.Maps[MapId] with { Id = PilotLaunchMapId, Name = "Pilot and launch Heroes", Width = 12, Height = 8,
+            Fleets = ["practice:pilot-launch-kushan", "practice:pilot-launch-taiidan"], Objects = [new("practice:hero-asteroid", 7, 2), new("practice:mines", 5, 2), new("practice:hero-asteroid", 4, 2)] };
+        c.Maps[PilotLaunchSoloMapId] = c.Maps[PilotLaunchMapId] with { Id = PilotLaunchSoloMapId, Fleets = ["practice:pilot-launch-taiidan", "practice:pilot-launch-kushan"] };
         c.Maps[AdvancedMapId] = c.Maps[MapId] with { Id = AdvancedMapId, Name = "More Heroic commands", Width = 12, Height = 8,
             Fleets = ["practice:advanced-hero-kushan", "practice:advanced-hero-taiidan"] };
     }

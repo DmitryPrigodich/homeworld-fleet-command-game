@@ -19,12 +19,13 @@ public static class FleetRuleTools
     {
         var ids = leaders.ToArray(); return unit with { Leader = ids.FirstOrDefault() ?? "", AdditionalLeaders = ids.Length <= 1 ? null : ids.Skip(1).ToArray() };
     }
+    public static bool CanLead(LeaderDefinition leader, ShipDefinition ship) => leader.Classes.Contains(Class(ship)) && (!leader.CarrierOnly || ship.Bays > 0 && ship.LaunchTubes > 0);
     public static bool ValidLeader(ContentCatalog c, BattleUnit unit)
     {
         if (unit.Leader == null || (unit.AdditionalLeaders ?? []).Any(id => string.IsNullOrWhiteSpace(id))) return false;
         var ids = LeaderIds(unit);
         return ids.Distinct().Count() == ids.Length && c.Ships.TryGetValue(unit.Definition, out var ship)
-            && ids.All(id => c.Leaders.TryGetValue(id, out var leader) && leader.Faction == ship.Faction && leader.Classes.Contains(Class(ship)))
+            && ids.All(id => c.Leaders.TryGetValue(id, out var leader) && leader.Faction == ship.Faction && CanLead(leader, ship))
             && (!ids.Any(id => c.Leaders[id].Staff) || ids.Any(id => !c.Leaders[id].Staff))
             && (!ids.Any(id => c.Leaders[id].HeroicCommand != "") || ids.Count(id => !c.Leaders[id].Staff) <= 1);
     }
@@ -44,6 +45,7 @@ public static class FleetRuleTools
     public static int Roll(ref uint random) { random ^= random << 13; random ^= random >> 17; random ^= random << 5; return (int)(random % 6) + 1; }
     public static int AttackAura(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit target) => s.Units.Where(u => u.Side == unit.Side && !u.Hulk)
         .SelectMany(u => AssignedLeaders(c, u).Where(l => l.AttackAura > 0 && FleetFootprint.Distance(c, u, unit) <= l.AttackAuraRange
+            && (l.AttackAuraUnits == null || l.AttackAuraUnits.Contains(Class(c.Ships[unit.Definition])))
             && (l.AttackAuraTargets == null || l.AttackAuraTargets.Contains(Class(c.Ships[target.Definition]))))).Sum(l => l.AttackAura);
     internal static BattleState Medic(ContentCatalog c, BattleState s, string id, out string message)
     {

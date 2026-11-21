@@ -53,6 +53,7 @@ public static class FleetTerrain
     }
     internal static CommandResult? Entry(ContentCatalog c, BattleState before, BattleState next, string unit, Hex cell, string message, Hex[]? entered = null)
     {
+        if (SpecialOrders.PilotMovement(c, next, unit)) return null;
         var jobs = Jobs(c, next, [unit], "movement", entered ?? [cell]);
         return jobs.Length == 0 ? null : StartQueued(c, before, next with { Hazards = jobs }, message);
     }

@@ -55,7 +55,7 @@ public static class ForceBuilder
         foreach (var choice in plan.Leaders)
         {
             var leader = c.Leaders[choice.Leader]; var assigned = units.FirstOrDefault(u => u.Entry.Id == choice.Unit);
-            if (leader.Faction != plan.Faction || assigned == null || !leader.Classes.Contains(FleetRuleTools.Class(c.Ships[assigned.Entry.Ship]))) errors.Add($"{leader.Name}: assign the leader to a compatible unit of its faction.");
+            if (leader.Faction != plan.Faction || assigned == null || !FleetRuleTools.CanLead(leader, c.Ships[assigned.Entry.Ship])) errors.Add($"{leader.Name}: assign the leader to a compatible unit of its faction.");
             if (limit?.Leaders != null && !limit.Leaders.Contains(leader.Id)) errors.Add($"{leader.Name}: unavailable in this scenario.");
             foreach (var tab in leader.Tabs ?? []) slots.Add(new("leader:" + leader.Id + ":" + tab.Id, leader.Name, tab));
         }

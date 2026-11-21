@@ -162,7 +162,8 @@ public static partial class SpecialOrders
     {
         var order = next.Cards!.Pending!;
         order = order with { Step = finish ? Steps(c, next, order) : order.Step + 1, Choice = "" };
-        while (order.Step < Steps(c, next, order) && !next.Units.Any(u => u.Id == Actor(c, next, order) && u.Patrol == "")) order = order with { Step = order.Step + 1 };
+        while (order.Step < Steps(c, next, order) && !next.Units.Any(u => u.Id == Actor(c, next, order) && u.Patrol == "")
+            && !(Action(c, next, order) == "launch" && next.Reserves?.Any(u => u.Id == Actor(c, next, order) && u.Embarked != "") == true)) order = order with { Step = order.Step + 1 };
         if (next.Finished || order.Step >= Steps(c, next, order))
         {
             next = next with { Cards = next.Cards! with { Pending = null } };
@@ -178,6 +179,7 @@ public static partial class SpecialOrders
         if (order == null) return;
         if ((order.BasicAction == "" ? !Supported(c, state, order.Card) : order.BasicAction is not ("move" or "attack" or "harvest" or "transfer-crew" or "transfer-stars")) || order.Side is < 0 or > 1 || state.ActiveSide != order.Side || state.Cards.Phase != "orders" || state.Finished
             || order.Units == null || order.Units.Length != (order.BasicAction == "" && Formation(c, state, order.Card) ? 2 : 1) || order.Units.Distinct().Count() != order.Units.Length
+            || order.Units.Any(id => (state.Reserves ?? []).Any(u => u.Id == id && (u.Side != order.Side || !u.Activated)))
             || order.Units.Any(id => state.Units.Any(u => u.Id == id && (u.Side != order.Side || !u.Activated)))
             || order.Step < 0 || order.Step >= Steps(c, state, order) || order.Direction is < -1 or > 5 || !HeroicCommands.Spent(state.Cards, order.Card)
             || order.Choice is not ("" or "move" or "attack") || order.Choice != "" && (order.BasicAction != "" || Step(c, state, order).Action != "choice")
@@ -186,12 +188,12 @@ public static partial class SpecialOrders
         if (order.BasicAction == "")
         {
             var definition = CommandCards.Find(c, state, order.Card)!;
-            if (order.Units.Where((id, line) => state.Units.Find(u => u.Id == id) is { } actor
+            if (order.Units.Where((id, line) => state.Units.Concat(state.Reserves ?? []).FirstOrDefault(u => u.Id == id) is { } actor
                 && (definition.Lines![line].Classes is { } classes && !classes.Contains(FleetRuleTools.Class(c.Ships[actor.Definition]))
-                    || line == 0 && definition.HeroicOwner != "" && !FleetRuleTools.LeaderIds(actor).Contains(definition.HeroicOwner))).Any())
+                    || line == 0 && !definition.LaunchFromHero && definition.HeroicOwner != "" && !FleetRuleTools.LeaderIds(actor).Contains(definition.HeroicOwner))).Any())
                 throw new InvalidDataException("Invalid assigned unit for a printed action line.");
         }
-        if (order.LaunchArrival && (order.BasicAction != "" || order.Step != 1 || !FleetLaunchOrders.IsLaunch(CommandCards.Find(c, state, order.Card)!))) throw new InvalidDataException("Invalid pending launch arrival.");
+        if (order.LaunchArrival && (order.BasicAction != "" || !FleetLaunchOrders.ArrivalStep(c, state, order))) throw new InvalidDataException("Invalid pending launch arrival.");
         if (Action(c, state, order) == "launch")
         {
             var child = state.Reserves?.Find(u => u.Id == Actor(c, state, order));

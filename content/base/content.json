@@ -1281,6 +1281,56 @@
         }
       ],
       "heroicCommand": "core:hero-lightning-strike"
+    },
+    {
+      "id": "core:hero-taiidan-veteran-commander",
+      "name": "Veteran Commander",
+      "faction": "taiidan",
+      "classes": [
+        "corvette"
+      ],
+      "stars": 2,
+      "hand": 2,
+      "play": 1,
+      "coolUnderPressure": 1,
+      "attackAura": 1,
+      "attackAuraTargets": [
+        "fighter",
+        "corvette",
+        "platform"
+      ],
+      "heroicCommand": "core:hero-supreme-pilot"
+    },
+    {
+      "id": "core:hero-taiidan-launch-commander",
+      "name": "Launch Commander",
+      "faction": "taiidan",
+      "classes": [
+        "capital"
+      ],
+      "carrierOnly": true,
+      "stars": 3,
+      "hand": 2,
+      "play": 1,
+      "coolUnderPressure": 1,
+      "attackAura": 1,
+      "attackAuraRange": 2,
+      "attackAuraUnits": [
+        "fighter",
+        "corvette",
+        "platform"
+      ],
+      "tabs": [
+        {
+          "id": "slot1",
+          "color": "yellow",
+          "required": true,
+          "classes": [
+            "capital"
+          ]
+        }
+      ],
+      "heroicCommand": "core:hero-launch-all-fighters"
     }
   ],
   "cards": [
@@ -1775,6 +1825,53 @@
       ],
       "boardingDice": 2,
       "boardAfterMove": true
+    },
+    {
+      "id": "core:hero-supreme-pilot",
+      "name": "Supreme Pilot",
+      "kind": "order",
+      "heroicOwner": "core:hero-taiidan-veteran-commander",
+      "pilotMovement": true,
+      "description": "Move, Lightning Move and Attack. During these movements pass through enemy units and ignore asteroid and minefield attacks. End in a free hex; ordinary enemy reactions still apply.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "lightning",
+            "attack"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "core:hero-launch-all-fighters",
+      "name": "Launch All Fighters",
+      "kind": "order",
+      "heroicOwner": "core:hero-taiidan-launch-commander",
+      "launchFromHero": true,
+      "description": "Assign up to two ready fighters in the Hero's bay. Each launches, makes a Lightning Move and attacks. One card and Play; the carrier keeps its activation state. Normal Launch Tubes and bay restrictions apply.",
+      "lines": [
+        {
+          "actions": [
+            "launch",
+            "lightning",
+            "attack"
+          ],
+          "classes": [
+            "fighter"
+          ]
+        },
+        {
+          "actions": [
+            "launch",
+            "lightning",
+            "attack"
+          ],
+          "classes": [
+            "fighter"
+          ]
+        }
+      ]
     }
   ],
   "decks": [

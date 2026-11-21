@@ -1,6 +1,6 @@
 # Heroes and Heroic commands
 
-**SINGLE PLAYER → HEROES AND HEROIC COMMANDS** opens `practice:heroes`. **MORE HEROIC COMMANDS** opens `practice:advanced-heroes` with six additional command/owner pairs. The network menu offers both maps for PvP and shared-fleet co-op. Ships in this drill have synthetic training profiles. The following leaders and command faces are transcribed from supplied references; they do not establish that the remaining expansion is complete.
+**SINGLE PLAYER → HEROES AND HEROIC COMMANDS** opens `practice:heroes`. **MORE HEROIC COMMANDS** opens `practice:advanced-heroes` with six additional command/owner pairs. **PILOT AND LAUNCH HEROES** adds Supreme Pilot and Launch All Fighters. Its solo variant `practice:pilot-launch-heroes-solo` gives the player both Taiidan Heroes; the network variant `practice:pilot-launch-heroes` is available for PvP/shared co-op. Ships in this drill have synthetic training profiles. The following leaders and command faces are transcribed from supplied references; they do not establish that the remaining expansion is complete.
 
 | Command | Owner | Implemented special sequence |
 | --- | --- | --- |
@@ -14,6 +14,8 @@
 | Lead the Attack | Kushan Fighter Ace | Hero: Move → Power Attack; second fighter: Lightning Move → Attack against the same target |
 | Frigate Attack | Taiidan Veteran Captain | Hero: Move → Power Attack; second frigate: Move → Attack |
 | Lightning Strike | Kushan Grizzled Veteran | Move → optional boarding +2 dice → Lightning Move → optional boarding +2 dice |
+| Supreme Pilot | Taiidan Veteran Commander | Move → Lightning Move → Attack; enemy transit and asteroid/mine entry immunity during these movements |
+| Launch All Fighters | Taiidan Launch Commander | Up to two fighters from Hero's bay, each Launch → Lightning Move → Attack |
 
 ## Lifecycle and controls
 
@@ -21,7 +23,7 @@ Campaign Expansion p.7 supplies the shared lifecycle: each unique purchased Hero
 
 Heroic commands have a separate heading in the ordinary hand panel. Select the card and the matching Hero's ready unit, then **SPECIAL ORDER**. A basic use can instead command another ready friendly unit and grants none of the special effect. Special orders spend one card and one Play, activate the assigned unit and retain the usual optional actions, Damage Control, responses and terrain. The right panel displays active effects.
 
-Used cards remain in a public once-per-scenario ledger. Opponent hands, normal draw-pile order and authoritative RNG remain hidden. Public Hero identities and their granted command registry are visible, as their presence is already known from fleet setup. Mid-order and post-roll saves retain the Heroic card, effect, spending and continuation. Protocol `fleet-cards-v9` rejects older clients.
+Used cards remain in a public once-per-scenario ledger. Opponent hands, normal draw-pile order and authoritative RNG remain hidden. Public Hero identities and their granted command registry are visible, as their presence is already known from fleet setup. Mid-order and post-roll saves retain the Heroic card, effect, spending and continuation. Protocol `fleet-cards-v10` rejects older clients.
 
 ## Published leader profiles
 
@@ -37,6 +39,8 @@ Used cards remain in a public once-per-scenario ledger. Opponent hands, normal d
 | Fighter Ace | Fighter | 3 | 2 | 1 | Ace Pilot 3; Lead by Example: +1 Evasive level |
 | Veteran Captain | Frigate | 3 | 3 | 2 | Cool Under Pressure 1; Capital Killer as above; mandatory frigate tab |
 | Grizzled Veteran | Frigate | 3 | 2 | 1 | Cool Under Pressure 1; Marines 2: +2 boarding dice; mandatory frigate tab |
+| Veteran Commander | Corvette | 2 | 2 | 1 | Cool Under Pressure 1; Strike Command: self/adjacent allies +1 attack die against fighters/corvettes/platforms |
+| Launch Commander | Carrier | 3 | 2 | 1 | Cool Under Pressure 1; allied strike craft within 2 hexes +1 attack die; mandatory capital tab |
 
 These printed Hand/Play values contribute through the existing faction-plus-leader budget rules. No statistics are mirrored to an unpictured faction counterpart. Multiple eligible defensive auras add independently; they grant dice only to defensive fire, not ordinary attacks. Lead by Example and Best of the Best add separate Evasive levels.
 
@@ -50,8 +54,16 @@ Patch removes its guaranteed Crew token before Medic rolls the remaining tokens,
 
 Lightning Strike requires completed movement immediately before its optional boarding step. Skipping Move/Lightning grants no boarding; actual Afterburners and engine conditions still govern Lightning. It retains the normal once-per-order boarding limit. The card's +2 dice stack with the owner's Marines 2 bonus. Attack auras stack for eligible living friendly sources using nearest-hull distance and target class. They do not use a missile launcher's class to boost defensive fire against the missile. Leader ability summaries appear in unit details and fleet preparation.
 
+## Pilot and carrier orders
+
+Supreme Pilot uses the corrected face: asteroids **and minefields** cause no entry attacks during its Move and Lightning Move. This is a scoped order permission, not a permanent effect or blanket damage immunity. It permits transit through live enemy units but still requires a free final hex and respects planets, drifting hulks, movement costs, engine damage and actual Afterburners. Ordinary enemy responses still occur at legal free positions; their saved remaining paths retain the permission. Paying for a basic order with the card grants no special movement. Activating while already in terrain retains the normal activation attack; the exception applies to moving through it.
+
+Launch All Fighters assigns up to two different ready fighter units embarked on the living Hero's carrier. Each assigned fighter is activated when the order starts, and its line resolves sequentially. Either line may be omitted or skipped. Both lines together spend one card/Play; the carrier keeps its activation state and buffs. Each actual launch uses one Launch Tube for the round and requires functioning bays and a free adjacent exit. Assigning two lines does not guarantee a later exit or unused tube. A blocked second launch may be skipped. Terrain and arrival responses finish before that fighter's Lightning Move; death of the first fighter advances to the unlaunched second line. The same engine handles ordinary Ready to Launch. The bay picker filters by fighter class and matching Hero's carrier.
+
+Launch Commander requires a capital profile with bays and Launch Tubes, rather than any capital ship. Strike Coordination filters the **attacking friendly unit's** class (fighter/corvette/platform) within two nearest-hull hexes; it does not boost its capital carrier. Veteran Commander's Strike Command instead filters the **enemy target's** strike-craft class at range one. Both use the existing additive aura calculation.
+
 ## Source priority and limits
 
 Use the corrected five-card leader/command photos, the Taiidan original Master Engineer face, Campaign Expansion p.7, Errata 1.7 and the supplied mini-Euro replacement catalogue. Corrected Best of the Best lasts until a **new order**, retaining Evading through Focus Fire/Crew Damage. Its marker is distinct from the normal Evasive buff. Corrected Prepare to Be Boarded ends on a new order, Crew Damage or Focus Fire. Brace/Lockdown use their existing normal removal rules. Errata 1.7 places the relevant Heroic start effects before the action sequence. I Can Fix It removes one complete selected token permanently and does not replace normal activation Damage Control. Staff's original “Crew Card” wording means “Leader Card.”
 
-The remaining four photographed Heroic command types are separate implementation work: Supreme Pilot, Launch All Fighters, Rapid Reaction and Planetary Overwatch. They need movement immunity, multiple launch sequences or specialized reaction continuations; they are received sources, not missing photographs. Hunter does not receive the unrelated Hunter unit ability (Errata 1.7). Their received faces are recorded in [CARD_INPUTS.md](CARD_INPUTS.md). Upgrades, facilities, remaining Heroic profiles, campaign purchases and the full official solo command-bank policy are not supplied by these sets. Artwork remains optional and no source photographs are distributed.
+The remaining two photographed Heroic command types are separate implementation work: Rapid Reaction and Planetary Overwatch. They need specialized Heroic reaction continuations and planet/facility ownership; they are received sources, not missing photographs. Hunter does not receive the unrelated Hunter unit ability (Errata 1.7). Their received faces are recorded in [CARD_INPUTS.md](CARD_INPUTS.md). Upgrades, facilities, remaining Heroic profiles, campaign purchases and the full official solo command-bank policy are not supplied by these sets. Artwork remains optional and no source photographs are distributed.

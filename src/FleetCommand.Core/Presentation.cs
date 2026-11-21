@@ -17,6 +17,8 @@ public static class FleetPresentation
         if (leader.BoardingDice > 0) parts.Add($"Boarding dice +{leader.BoardingDice}");
         if (leader.CloseDice > 0) parts.Add($"Close attack dice +{leader.CloseDice}");
         if (leader.Evasive > 0) parts.Add($"Evasive +{leader.Evasive}");
+        if (leader.CarrierOnly) parts.Add("Requires a carrier with bays and Launch Tubes");
+        if (leader.AttackAuraUnits != null) parts.Add("Aura recipients: " + string.Join(", ", leader.AttackAuraUnits));
         if (leader.AttackAura > 0) parts.Add($"Attack aura +{leader.AttackAura} / range {leader.AttackAuraRange}: " + (leader.AttackAuraTargets == null ? "any target" : string.Join(", ", leader.AttackAuraTargets)));
         if (leader.DefensiveAura > 0) parts.Add($"Defensive aura +{leader.DefensiveAura} / range 1");
         return string.Join("\n", parts);

@@ -32,13 +32,14 @@ public partial class Main
         var tabletop = new CheckBox { Text = "Rulebook mechanics (development mode)" }; box.AddChild(tabletop);
         var orders = new CheckBox { Text = "Command orders and effects" }; box.AddChild(orders);
         var heroes = new CheckBox { Text = "Heroes and Heroic commands" }; box.AddChild(heroes);
+        var pilotLaunch = new CheckBox { Text = "Pilot and launch Heroes" }; box.AddChild(pilotLaunch);
         var moreHeroes = new CheckBox { Text = "More Heroic commands" }; box.AddChild(moreHeroes);
         var launches = new CheckBox { Text = "Launch orders" }; box.AddChild(launches);
         var address = new LineEdit { Text = "127.0.0.1", PlaceholderText = "Host address", CustomMinimumSize = new(0, 40) }; box.AddChild(address);
         Text(box, "Prototype: direct ENet connection, UDP port 24560. Invitation rooms and relay are planned.", 15, _colors.Muted);
         Button(box, "PREPARE FLEETS FOR MULTIPLAYER", () => ForceMenu(true));
         Button(box, "HOST SAVED SKIRMISH", () => { LoadGame(false); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); }, !System.IO.File.Exists(SavePath(false)));
-        Button(box, "HOST SKIRMISH", () => { StartBattle(moreHeroes.ButtonPressed ? HeroicBattle.AdvancedMapId : heroes.ButtonPressed ? HeroicBattle.MapId : firstContact.ButtonPressed ? "core:first-contact" : launches.ButtonPressed ? BasicCardBattle.LaunchOrdersMapId : orders.ButtonPressed ? BasicCardBattle.OrdersMapId : objectives.ButtonPressed ? BasicCardBattle.ObjectivesMapId : logistics.ButtonPressed ? BasicCardBattle.LogisticsMapId : economy.ButtonPressed ? BasicCardBattle.EconomyMapId : tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
+        Button(box, "HOST SKIRMISH", () => { StartBattle(pilotLaunch.ButtonPressed ? HeroicBattle.PilotLaunchMapId : moreHeroes.ButtonPressed ? HeroicBattle.AdvancedMapId : heroes.ButtonPressed ? HeroicBattle.MapId : firstContact.ButtonPressed ? "core:first-contact" : launches.ButtonPressed ? BasicCardBattle.LaunchOrdersMapId : orders.ButtonPressed ? BasicCardBattle.OrdersMapId : objectives.ButtonPressed ? BasicCardBattle.ObjectivesMapId : logistics.ButtonPressed ? BasicCardBattle.LogisticsMapId : economy.ButtonPressed ? BasicCardBattle.EconomyMapId : tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
         var campaignChoices = _content.Campaigns.Values.ToArray(); var campaignPicker = new OptionButton(); foreach (var definition in campaignChoices) campaignPicker.AddItem("Campaign: " + definition.Name); box.AddChild(campaignPicker);
         Button(box, "HOST CO-OP CAMPAIGN", () =>
         {
@@ -61,7 +62,7 @@ public partial class Main
         if (host) InitializeCommanders();
         if (!_networkSignalsBound)
         {
-            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-cards-v9:" + _content.Fingerprint,
+            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-cards-v10:" + _content.Fingerprint,
                 JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
             Multiplayer.ConnectionFailed += () => { _status = "Failed to connect."; StopNetwork(); DrawBattle(); };
             Multiplayer.ServerDisconnected += () => { _status = "Host disconnected. Resume from the host's save."; StopNetwork(); DrawBattle(); };
@@ -82,7 +83,7 @@ public partial class Main
     {
         if (!_networkActive || !_isHost) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (fingerprint != "fleet-cards-v9:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        if (fingerprint != "fleet-cards-v10:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
         PlayerProfile profile;
         try { profile = FleetPresentation.Normalize(JsonSerializer.Deserialize<PlayerProfile>(profileJson, JsonData.Options)); }
         catch (JsonException) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
@@ -96,7 +97,7 @@ public partial class Main
         }
         if (_campaign != null) _campaign = _campaign with { Participants = (_campaign.Participants ?? []).Append("peer-" + sender).Distinct().ToArray() };
         DrawBattle(); Broadcast(); SaveGame();
-        if (_args.Contains("--smoke-heroes") || _args.Contains("--smoke-more-heroes")) return;
+        if (_args.Contains("--smoke-heroes") || _args.Contains("--smoke-more-heroes") || _args.Contains("--smoke-pilot-launch")) return;
         if (_args.Contains("--smoke-move-interrupt")) { ApplyCommand(0, new("move", "s0-0", Q: 4, R: 1, Card: "core:all-ahead-full#1")); return; }
         if (_args.Contains("--smoke-counters")) { ApplyCommand(0, new("move", "s0-0", Q: 3, R: 1, Card: "core:all-ahead-full#1")); return; }
         if (_args.Contains("--smoke-data-cards") || _args.Contains("--smoke-repair-interrupt")) return;
@@ -150,6 +151,7 @@ public partial class Main
             if (_args.Contains("--smoke-counters")) { CounterNetworkHost(command); return; }
             if (_args.Contains("--smoke-repair-interrupt")) { RepairInterruptNetworkHost(command); return; }
             if (_args.Contains("--smoke-move-interrupt")) { MoveInterruptNetworkHost(command); return; }
+            if (_args.Contains("--smoke-pilot-launch")) { PilotLaunchNetworkHost(command); return; }
             if (_args.Contains("--smoke-more-heroes")) { MoreHeroicNetworkHost(command); return; }
             if (_args.Contains("--smoke-heroes")) { HeroicNetworkHost(command); return; }
             if (_args.Contains("--smoke-objectives"))
@@ -329,7 +331,7 @@ public partial class Main
     private void ReceiveCommandFeedback(string message)
     {
         if (_isHost || !_networkActive || message.Length > 4096) return;
-        if (_args.Contains("--smoke-published-orders") || _args.Contains("--smoke-ready-launch") || _args.Contains("--smoke-counters") || _args.Contains("--smoke-repair-interrupt") || _args.Contains("--smoke-move-interrupt") || _args.Contains("--smoke-heroes") || _args.Contains("--smoke-more-heroes")) { GD.PushError("PUBLISHED_ORDER_COMMAND_REJECTED " + message); GetTree().Quit(1); }
+        if (_args.Contains("--smoke-published-orders") || _args.Contains("--smoke-ready-launch") || _args.Contains("--smoke-counters") || _args.Contains("--smoke-repair-interrupt") || _args.Contains("--smoke-move-interrupt") || _args.Contains("--smoke-heroes") || _args.Contains("--smoke-more-heroes") || _args.Contains("--smoke-pilot-launch")) { GD.PushError("PUBLISHED_ORDER_COMMAND_REJECTED " + message); GetTree().Quit(1); }
         _status = message; DrawBattle();
     }
     [Rpc(MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
@@ -361,6 +363,7 @@ public partial class Main
                 if (_args.Contains("--smoke-counters")) { CounterNetworkClient(); return; }
                 if (_args.Contains("--smoke-repair-interrupt")) { RepairInterruptNetworkClient(); return; }
                 if (_args.Contains("--smoke-move-interrupt")) { MoveInterruptNetworkClient(); return; }
+                if (_args.Contains("--smoke-pilot-launch")) { PilotLaunchNetworkClient(); return; }
                 if (_args.Contains("--smoke-more-heroes")) { MoreHeroicNetworkClient(); return; }
                 if (_args.Contains("--smoke-heroes")) { HeroicNetworkClient(); return; }
                 if (_args.Contains("--smoke-scenario") || _args.Contains("--smoke-large")) { FeatureNetworkClient(); return; }
