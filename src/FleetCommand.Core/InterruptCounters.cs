@@ -24,6 +24,7 @@ public static partial class InterruptRules
         CommandResult Reject(string why) => new(false, why, s);
         if (side != 1 - frame.Side) return Reject("The opponent decides whether to counter the declared interrupt.");
         var next = s with { Cards = cards with { Counter = null } };
+        if (command.Kind == "decline-counter" && frame.Command.Kind == "heroic-interrupt") return ExecuteHeroic(c, s, next, frame.Side, frame.Command);
         if (command.Kind == "decline-counter") return frame.Command.Kind == "interrupt-repairs" ? ExecuteRepair(c, next, frame.Command)
             : frame.Command.Kind == "interrupt-move" ? ExecuteMoveInterrupt(c, s, next, frame.Side, frame.Command) : ExecuteInterruptAttack(c, s, next, frame.Side, frame.Command);
         if (command.Kind != "counter" || !IsCounter(c, s, command.Card) || !Available(c, s, side, "counter")
@@ -32,16 +33,21 @@ public static partial class InterruptRules
         next = next with { Cards = used with { Counter = null,
             Hand0 = cards.Hand0.Where(id => id != command.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != command.Card).ToArray(),
             Interrupts0 = Played(cards, 0).Where(id => id != frame.Command.Card).ToArray(), Interrupts1 = Played(cards, 1).Where(id => id != frame.Command.Card).ToArray(),
-            Discard = cards.Discard.Append(frame.Command.Card).Append(command.Card).ToArray() } };
-        const string cancelled = "Counterintelligence: both cards discarded; the interrupt has no effect.";
+            Discard = cards.Discard.Concat(HeroicCommands.IsHeroic(s, frame.Command.Card) ? [] : new[] { frame.Command.Card }).Append(command.Card).ToArray() } };
+        string cancelled = HeroicCommands.IsHeroic(s, frame.Command.Card) ? "Counterintelligence: Heroic card spent for the scenario; the reaction has no effect." : "Counterintelligence: both cards discarded; the interrupt has no effect.";
         return frame.Command.Kind == "interrupt-repairs" ? new(true, cancelled, next with { Sequence = s.Sequence + 1 }) : AfterInterrupt(c, s, next, cancelled);
     }
     private static void ValidateCounter(ContentCatalog c, BattleState s)
     {
         if (s.Cards?.Counter is not { } frame) return;
         var cards = s.Cards; var command = frame.Command;
-        if (s.Finished || frame.Side is < 0 or > 1 || command == null || !Played(cards, frame.Side).Contains(command.Card) || !CanOfferCounter(c, s, 1 - frame.Side))
+        if (s.Finished || frame.Side is < 0 or > 1 || command == null || !(command.Kind == "heroic-interrupt" ? (cards.HeroicUsed ?? []).Contains(command.Card) : Played(cards, frame.Side).Contains(command.Card)) || !CanOfferCounter(c, s, 1 - frame.Side))
             throw new InvalidDataException("Invalid Counterintelligence opportunity.");
+        if (command.Kind == "heroic-interrupt")
+        {
+            if (!HeroicInterrupts.CanDeclare(c, s, frame.Side, command, spent: true) || s.Combat != null || s.Defense != null || s.Hazard != null) throw new InvalidDataException("Invalid countered Heroic reaction.");
+            return;
+        }
         if (command.Kind == "interrupt-repairs")
         {
             if (cards.Phase != "orders" || !IsRepair(c, s, command.Card) || !Used(cards, frame.Side).Contains("repairs") || !RepairTargetAllowed(c, s, frame.Side, command)) throw new InvalidDataException("Invalid countered repair.");

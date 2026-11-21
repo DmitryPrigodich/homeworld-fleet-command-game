@@ -108,7 +108,7 @@ public partial class Main
             Text(parent, "INTERRUPT WINDOW", 15, _colors.Highlight);
             Text(parent, "Target: " + FleetPresentation.UnitName(_content, _state, _state.Units.Single(u => u.Id == pause.Command.Unit)), 13);
             if (LocalCommandSide != responder) { Text(parent, "Waiting for response: " + SideName(responder), 14); return; }
-            var responseHand = (responder == 0 ? cards.Hand0 : cards.Hand1).Where(id => (InterruptRules.IsAttack(_content, _state, id) && InterruptRules.Available(_content, _state, responder)
+            var responseHand = (responder == 0 ? cards.Hand0 : cards.Hand1).Where(id => HeroicInterrupts.IsHeroic(_content, _state, id) && HeroicCommands.CanUse(_content, _state, responder, id) && InterruptRules.Eligible(_content, _state, id, pause) || (InterruptRules.IsAttack(_content, _state, id) && InterruptRules.Available(_content, _state, responder)
                 || InterruptRules.IsMove(_content, _state, id) && InterruptRules.Available(_content, _state, responder, "move")) && InterruptRules.Eligible(_content, _state, id, pause)).ToArray();
             if (!responseHand.Contains(_selectedCard)) _selectedCard = responseHand.FirstOrDefault() ?? "";
             _action = InterruptRules.IsMove(_content, _state, _selectedCard) ? "move" : "attack";
@@ -118,6 +118,12 @@ public partial class Main
                 string card = id;
                 var b = Button(parent, (_selectedCard == card ? "▶ " : "") + SpecialOrders.Name(_content, _state, card), () => { _selectedCard = card; DrawBattle(); });
                 b.CustomMinimumSize = new(0, 30); b.AddThemeFontSizeOverride("font_size", 13);
+            }
+            if (HeroicInterrupts.IsHeroic(_content, _state, _selectedCard))
+            {
+                var proposal = new BattleCommand("heroic-interrupt", _selected, pause.Command.Unit, Card: _selectedCard);
+                Text(parent, "Select the matching Hero, then begin its saved Move and Attack reaction. The attack must target the moving enemy.", 12, _colors.Muted);
+                Button(parent, "BEGIN HEROIC REACTION", () => Submit(proposal), !HeroicInterrupts.CanDeclare(_content, _state, responder, proposal));
             }
             Button(parent, "SKIP WINDOW", () => Submit(new("decline")));
             Text(parent, "One interrupt of each type per round. The original action resumes afterwards.", 12, _colors.Muted);

@@ -116,7 +116,7 @@ public static class FleetLogistics
         return s.Units.Where(parent => CanEmbark(c, s, unit, parent)).Where(parent =>
         {
             var goal = new Hex(parent.Q, parent.R);
-            if (order != null && SpecialOrders.Action(c, s, order) == "lightning" && (FleetRuleTools.Has(unit, "engines") || SpecialOrders.Lightning(c.Ships[unit.Definition]) == 0 || SpecialOrders.AdjacentOnLightning(c, s, order) && !s.Units.Any(first => first.Id == order.Units[0] && goal.Distance(new(first.Q, first.R)) == 1))) return false;
+            if (order != null && SpecialOrders.Action(c, s, order) == "lightning" && (FleetRuleTools.Has(unit, "engines") || SpecialOrders.Lightning(c, unit) == 0 || SpecialOrders.AdjacentOnLightning(c, s, order) && !s.Units.Any(first => first.Id == order.Units[0] && goal.Distance(new(first.Q, first.R)) == 1))) return false;
             bool straight = order != null && SpecialOrders.StraightCourse(c, s, order);
             if (straight && order!.Direction >= 0 && SpecialOrders.StraightDirection(new(unit.Q, unit.R), goal) != order.Direction) return false;
             return (straight ? FleetMovement.StraightPath(geometry, s, unit, goal, parent.Id) : FleetMovement.Path(geometry, s, unit, goal, embark: parent.Id)) != null;

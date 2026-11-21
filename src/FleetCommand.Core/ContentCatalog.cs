@@ -116,7 +116,7 @@ public sealed class ContentCatalog
                 throw new InvalidDataException($"Invalid weapons: {s.Id}");
         }
         foreach (var leader in Leaders.Values)
-            if (leader.Hand < 0 || leader.Play < 0 || leader.Stars < 0 || leader.CoolUnderPressure < 0 || leader.AttackDice < 0 || leader.CloseDice < 0 || leader.Evasive is < 0 or > 20 || leader.DefensiveAura is < 0 or > 20 || leader.BoardingDice is < 0 or > 20 || leader.Medic != 0 && leader.Medic is < 2 or > 6
+            if (leader.Hand < 0 || leader.Play < 0 || leader.Stars < 0 || leader.CoolUnderPressure < 0 || leader.AttackDice < 0 || leader.CloseDice < 0 || leader.Evasive is < 0 or > 20 || leader.DefensiveAura is < 0 or > 20 || leader.Afterburners is < 0 or > 20 || leader.BoardingDice is < 0 or > 20 || leader.Medic != 0 && leader.Medic is < 2 or > 6
                 || leader.AttackAura is < 0 or > 20 || leader.AttackAuraRange is < 0 or > 20 || leader.AttackAuraTargets != null && (leader.AttackAuraTargets.Length == 0 || leader.AttackAuraTargets.Distinct().Count() != leader.AttackAuraTargets.Length || leader.AttackAuraTargets.Any(t => !FleetRuleTools.Classes.Contains(t))) || leader.HeroicCommand == null
                 || leader.AttackAuraUnits != null && (leader.AttackAuraUnits.Length == 0 || leader.AttackAuraUnits.Distinct().Count() != leader.AttackAuraUnits.Length || leader.AttackAuraUnits.Any(t => !FleetRuleTools.Classes.Contains(t)))
                 || leader.HeroicCommand != "" && (!Cards.TryGetValue(leader.HeroicCommand, out var hero) || hero.HeroicOwner != leader.Id) || leader.Classes == null

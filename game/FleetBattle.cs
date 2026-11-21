@@ -192,7 +192,7 @@ public partial class Main
             var other = new OptionButton(); foreach (string r in repairs) other.AddItem(r == "" ? "Second: no Damage Control" : "Second repair: " + r);
             other.Select(Math.Max(0, Array.IndexOf(repairs, _repairOtherChoice))); other.ItemSelected += i => _repairOtherChoice = repairs[(int)i]; parent.AddChild(other);
         }
-        if (_state.Cards?.Pending is { } order && (SpecialOrders.IsAttackAction(SpecialOrders.Action(_content, _state!, order)) || SpecialOrders.Action(_content, _state!, order) == "choice") && FleetRuleTools.Has(unit, "weapons"))
+        if (_state.Cards?.Pending is { } order && !HeroicInterrupts.Active(_state, order) && (SpecialOrders.IsAttackAction(SpecialOrders.Action(_content, _state!, order)) || SpecialOrders.Action(_content, _state!, order) == "choice") && FleetRuleTools.Has(unit, "weapons"))
             Button(parent, "REPAIR INSTEAD OF ATTACK", () => Submit(new("damage-control", Repair: _repairChoice)), _repairChoice == "");
         if (_content.Ships[unit.Definition].Faction == "kushan")
             Button(parent, "KUSHAN ABILITY", () => Submit(new("faction", unit.Id, Repair: _repairChoice)), _repairChoice is "" or "ask" || _state.Cards?.Pending != null || _state.Cards?.Response != null || (unit.Side == 0 ? _state.FactionUsed0 : _state.FactionUsed1));

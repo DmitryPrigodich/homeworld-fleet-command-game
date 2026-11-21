@@ -1331,6 +1331,20 @@
         }
       ],
       "heroicCommand": "core:hero-launch-all-fighters"
+    },
+    {
+      "id": "core:hero-kushan-recon-commander",
+      "name": "Recon Commander",
+      "faction": "kushan",
+      "classes": [
+        "corvette"
+      ],
+      "stars": 2,
+      "hand": 2,
+      "play": 1,
+      "coolUnderPressure": 2,
+      "afterburners": 1,
+      "heroicCommand": "core:hero-rapid-reaction"
     }
   ],
   "cards": [
@@ -1872,6 +1886,25 @@
           ]
         }
       ]
+    },
+    {
+      "id": "core:hero-rapid-reaction",
+      "name": "Rapid Reaction",
+      "kind": "interrupt",
+      "interrupt": "heroic",
+      "heroicOwner": "core:hero-kushan-recon-commander",
+      "interruptTriggers": [
+        "move"
+      ],
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "attack"
+          ]
+        }
+      ],
+      "description": "During an enemy Move, the Hero may Move and then Attack only that moving enemy. No Play, activation or activation repair is spent. The Heroic card is used once per scenario."
     }
   ],
   "decks": [

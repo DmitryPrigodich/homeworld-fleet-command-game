@@ -44,7 +44,7 @@ public static partial class InterruptRules
         var geometry = pendingOrder == null ? c : SpecialOrders.Geometry(c, state, pendingOrder);
         bool embarking = command.Embark != "";
         if (embarking && (command.Kind != "move" || !tabletop || acting == null || !state.Units.Any(p => p.Id == command.Embark && FleetLogistics.CanEmbark(c, state, acting, p)))) return new(false, "Cannot embark in this bay.", state);
-        if (embarking && pendingOrder != null && SpecialOrders.Action(c, state, pendingOrder) == "lightning" && (FleetRuleTools.Has(acting!, "engines") || SpecialOrders.Lightning(c.Ships[acting!.Definition]) == 0
+        if (embarking && pendingOrder != null && SpecialOrders.Action(c, state, pendingOrder) == "lightning" && (FleetRuleTools.Has(acting!, "engines") || SpecialOrders.Lightning(c, acting!) == 0
             || SpecialOrders.AdjacentOnLightning(c, state, pendingOrder) && !state.Units.Any(first => first.Id == pendingOrder.Units[0] && new Hex(first.Q, first.R).Distance(new(command.Q, command.R)) == 1))) return new(false, "Lightning Move must end adjacent to the first unit.", state);
         MovementStep[]? steps = null;
         if (tabletop && command.Kind == "move" && acting != null)
@@ -56,7 +56,7 @@ public static partial class InterruptRules
         var options = new BasicCardRules().GetActions(c, state, side, command.Unit);
         bool turning = tabletop && command.Kind == "move" && acting != null && command.Q == acting.Q && command.R == acting.R && !command.AutoFacing && steps != null && (basic || pendingOrder!.BasicAction != "" || !SpecialOrders.StraightCourse(c, state, pendingOrder));
         if (turning && pendingOrder != null && SpecialOrders.Action(c, state, pendingOrder) == "lightning")
-            turning = !FleetRuleTools.Has(acting!, "engines") && SpecialOrders.Lightning(c.Ships[acting!.Definition]) > 0
+            turning = !FleetRuleTools.Has(acting!, "engines") && SpecialOrders.Lightning(c, acting!) > 0
                 && (!SpecialOrders.AdjacentOnLightning(c, state, pendingOrder) || state.Units.Any(u => u.Id == pendingOrder.Units[0] && new Hex(u.Q, u.R).Distance(new(command.Q, command.R)) == 1));
         if (command.Kind == "move" ? (!options.MoveCells.Contains(new(command.Q, command.R)) && !turning && !embarking) || tabletop && steps == null : !options.AttackTargets.Contains(command.Target)
             || tabletop && !FleetCombat.Allowed(c, state, acting!, state.Units.Find(u => u.Id == command.Target), command))
@@ -89,6 +89,7 @@ public static partial class InterruptRules
             else path = SkirmishGeometry.MovementPath(pending == null ? c : SpecialOrders.Geometry(c, state, pending), state, unit, new(command.Q, command.R));
         }
         if (tabletop && command.Kind == "move") path = steps!.Select(p => p.Cell).ToArray();
+        if (command.Kind == "move" && HeroicInterrupts.Active(next, next.Cards?.Pending)) next = next with { Cards = next.Cards! with { HeroicInterrupt = next.Cards!.HeroicInterrupt! with { Moved = true } } };
         var response = new PendingResponse(side, command, basic, path, steps?.Select(p => p.Facing).ToArray(), MoveStart: c.Ships[unit.Definition].Footprint == 2 && command.Kind == "move" ? new(new(unit.Q, unit.R), unit.Facing) : null,
             MoveBudget: tabletop && command.Kind == "move" ? FleetMovement.Allowance(geometry, unit) : -1);
         next = next with { Cards = next.Cards! with { Response = response } };
@@ -116,7 +117,7 @@ public static partial class InterruptRules
             Winner = finished ? units.Any(u => u.Side == 0) ? 0 : 1 : null } };
     }
     private static bool Offer(ContentCatalog c, BattleState state, PendingResponse pause) => !pause.Replan &&
-        (Available(c, state, 1 - pause.Side) && HasTrigger(c, state, "attack", pause)
+        (HeroicInterrupts.Offer(c, state, pause) || Available(c, state, 1 - pause.Side) && HasTrigger(c, state, "attack", pause)
             && state.Units.Any(u => u.Side == 1 - pause.Side && CanShoot(c, state, u, pause.Command.Unit)) || OfferMove(c, state, pause));
     private static CommandResult Paused(BattleState original, BattleState next, string message) => new(true,
         message + " Interrupt window: the opponent may respond or decline.", next with { Sequence = original.Sequence + 1 });
@@ -213,6 +214,7 @@ public static partial class InterruptRules
         CommandResult Reject(string text) => new(false, text, state);
         var cards = state.Cards!; var pause = cards.Response!;
         if (pause.Replan) return Replan(c, state, side, command);
+        if (command.Kind == "heroic-interrupt") return BeginHeroic(c, state, side, command);
         if (command.Kind == "interrupt-move") return BeginMoveInterrupt(c, state, side, command);
         if (side != 1 - pause.Side) return Reject("Waiting for the opponent's interrupt response.");
         if (command.Kind == "decline") return Continue(c, state, state, "Interrupt opportunity declined.");
@@ -243,10 +245,11 @@ public static partial class InterruptRules
         }
         ValidateCounter(c, state);
         ValidateMoveInterrupt(c, state);
+        HeroicInterrupts.Validate(c, state);
         if (cards.Response is not { } pause) return;
         if (state.Finished || cards.Phase != "orders" || pause.Side != state.ActiveSide || pause.Command == null || pause.Command.Kind is not ("move" or "attack" or "reinforce")
             || pause.RemainingPath == null || pause.RemainingPath.Length > 2500 || pause.Command.Facing is < 0 or > 5
-            || !state.Units.Any(u => u.Id == pause.Command.Unit && u.Side == pause.Side && (u.Activated || pause.ReactionMove)) && state.Combat == null && state.Overrun == null
+            || !state.Units.Any(u => u.Id == pause.Command.Unit && u.Side == pause.Side && (u.Activated || pause.ReactionMove || HeroicInterrupts.Active(state, cards.Pending))) && state.Combat == null && state.Overrun == null
             || pause.ReactionMove != (cards.MoveInterrupt != null)
             || !pause.ReactionMove && (pause.Basic ? cards.Pending != null || !HeroicCommands.Spent(cards, pause.Command.Card) : cards.Pending == null || SpecialOrders.Actor(c, state, cards.Pending) != pause.Command.Unit))
             throw new InvalidDataException("Invalid response window.");

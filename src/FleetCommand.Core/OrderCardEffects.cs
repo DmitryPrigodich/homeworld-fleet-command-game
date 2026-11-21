@@ -3,7 +3,7 @@ namespace FleetCommand.Core;
 public static partial class SpecialOrders
 {
     public static bool IsAttackAction(string action) => action is "attack" or "power" or "board";
-    private static bool RestrictedTarget(ContentCatalog c, BattleState s, PendingOrder order) => order.BasicAction == ""
+    private static bool RestrictedTarget(ContentCatalog c, BattleState s, PendingOrder order) => HeroicInterrupts.Active(s, order) || order.BasicAction == ""
         && CommandCards.Find(c, s, order.Card)!.SameTarget && Step(c, s, order).Line == 1;
     private static BattleState ChooseAction(ContentCatalog c, BattleState s, PendingOrder order, string action) =>
         order.BasicAction == "" && Step(c, s, order).Action == "choice" ? s with { Cards = s.Cards! with { Pending = order with { Choice = action } } } : s;
@@ -12,7 +12,7 @@ public static partial class SpecialOrders
         && (card.HeroicOwner == "" || card.LaunchFromHero || line != 0 || FleetRuleTools.LeaderIds(unit).Contains(card.HeroicOwner))
         && (card.Lines == null || line >= 0 && line < card.Lines.Length && (card.Lines[line].Classes == null || card.Lines[line].Classes!.Contains(FleetRuleTools.Class(c.Ships[unit.Definition]))))
         && (!card.ExcludeFighters || FleetRuleTools.Class(c.Ships[unit.Definition]) != "fighter")
-        && (!card.RequireAfterburners || Lightning(c.Ships[unit.Definition]) > 0)
+        && (!card.RequireAfterburners || Lightning(c, unit) > 0)
         && (FleetRuleTools.Enabled(c, s) || card.SelfBuff == "" && card.AttackEffect == "" && !card.RepairAtStart && !card.CrewRepairAtStart
             && !(card.Lines ?? []).SelectMany(l => l.Actions).Any(a => a is "power" or "choice" or "board"));
     public static bool PilotMovement(ContentCatalog c, BattleState s, string actor) => s.Cards?.Pending is { BasicAction: "" } order

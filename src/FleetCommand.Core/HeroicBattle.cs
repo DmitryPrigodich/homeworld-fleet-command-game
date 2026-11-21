@@ -4,6 +4,8 @@ namespace FleetCommand.Core;
 public static class HeroicBattle
 {
     public const string MapId = "practice:heroes";
+    public const string ReactionNetworkMapId = "practice:heroic-reaction-network";
+    public const string ReactionMapId = "practice:heroic-reaction";
     public const string PilotLaunchSoloMapId = "practice:pilot-launch-heroes-solo";
     public const string PilotLaunchMapId = "practice:pilot-launch-heroes";
     public const string AdvancedMapId = "practice:advanced-heroes";
@@ -47,6 +49,11 @@ public static class HeroicBattle
         c.Maps[PilotLaunchMapId] = c.Maps[MapId] with { Id = PilotLaunchMapId, Name = "Pilot and launch Heroes", Width = 12, Height = 8,
             Fleets = ["practice:pilot-launch-kushan", "practice:pilot-launch-taiidan"], Objects = [new("practice:hero-asteroid", 7, 2), new("practice:mines", 5, 2), new("practice:hero-asteroid", 4, 2)] };
         c.Maps[PilotLaunchSoloMapId] = c.Maps[PilotLaunchMapId] with { Id = PilotLaunchSoloMapId, Fleets = ["practice:pilot-launch-taiidan", "practice:pilot-launch-kushan"] };
+        c.Ships["practice:hero-recon-corvette"] = c.Ships["practice:orders-kushan-boarder"] with { Id = "practice:hero-recon-corvette", Name = "Hero drill: recon corvette", Label = "Hero drill: recon corvette", Class = "corvette", Move = 3, Afterburners = 1, Tabs = null };
+        c.Fleets["practice:reaction-kushan"] = new("practice:reaction-kushan", "Heroic reaction / Kushan", [new("practice:hero-recon-corvette", 2, 3, Leader: "core:hero-kushan-recon-commander"), new("practice:orders-kushan-boarder", 2, 5)]);
+        c.Fleets["practice:reaction-taiidan"] = new("practice:reaction-taiidan", "Heroic reaction / Taiidan", [new("practice:orders-taiidan-boarder", 6, 3, 3), new("practice:orders-taiidan-boarder", 6, 5, 3)]);
+        c.Maps[ReactionMapId] = c.Maps[MapId] with { Id = ReactionMapId, Name = "Heroic reaction", Width = 10, Height = 8, Fleets = ["practice:reaction-kushan", "practice:reaction-taiidan"] };
+        c.Maps[ReactionNetworkMapId] = c.Maps[ReactionMapId] with { Id = ReactionNetworkMapId, Fleets = ["practice:reaction-taiidan", "practice:reaction-kushan"] };
         c.Maps[AdvancedMapId] = c.Maps[MapId] with { Id = AdvancedMapId, Name = "More Heroic commands", Width = 12, Height = 8,
             Fleets = ["practice:advanced-hero-kushan", "practice:advanced-hero-taiidan"] };
     }

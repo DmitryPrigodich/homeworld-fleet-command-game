@@ -5,7 +5,7 @@ public sealed record CardRound(string[] Deck, string[] Hand0, string[] Hand1, st
     bool IsView = false, int HiddenHandCount = 0, int DeckCount = 0, PendingOrder? Pending = null,
     string[]? Interrupts0 = null, string[]? Interrupts1 = null, PendingResponse? Response = null,
     int HandLimit0 = 2, int HandLimit1 = 2, int PlayLimit0 = 1, int PlayLimit1 = 1, string[]? Bids0 = null, string[]? Bids1 = null,
-    PendingCounter? Counter = null, string[]? UsedInterrupts0 = null, string[]? UsedInterrupts1 = null, PendingMoveInterrupt? MoveInterrupt = null, HeroicCard[]? HeroicCards = null, string[]? HeroicUsed = null);
+    PendingCounter? Counter = null, string[]? UsedInterrupts0 = null, string[]? UsedInterrupts1 = null, PendingMoveInterrupt? MoveInterrupt = null, HeroicCard[]? HeroicCards = null, string[]? HeroicUsed = null, PendingHeroicInterrupt? HeroicInterrupt = null);
 
 public static class BasicCardBattle
 {

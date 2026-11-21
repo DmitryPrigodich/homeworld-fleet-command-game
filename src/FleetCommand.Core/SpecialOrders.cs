@@ -25,6 +25,7 @@ public static partial class SpecialOrders
     public static string ActionName(ContentCatalog c, BattleState state, PendingOrder order) => Action(c, state, order) switch { "launch" => "Launch", "attack" => "Attack", "power" => "Power Attack", "board" => "Boarding", "choice" => "Move or Attack", "lightning" => "Lightning Move", "harvest" => "Resource harvesting", _ => "Movement" };
     public static int Steps(ContentCatalog c, BattleState state, PendingOrder order) => order.BasicAction == "harvest" ? 2 : order.BasicAction != "" ? 1 : CommandCards.Find(c, state, order.Card)!.Lines!.Sum(l => l.Actions.Length);
     public static int Lightning(ShipDefinition ship) => ship.Afterburners >= 0 ? ship.Afterburners : ship.Id is "core:kushan-interceptor" or "core:taiidan-interceptor" ? 2 : 0;
+    public static int Lightning(ContentCatalog c, BattleUnit unit) => Lightning(c.Ships[unit.Definition]) + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.Afterburners);
     private static BattleState Sandbox(ContentCatalog c, BattleState state, PendingOrder order) => state with
     { Orders0 = FleetRuleTools.Enabled(c, state) ? state.Orders0 : 0, Orders1 = FleetRuleTools.Enabled(c, state) ? state.Orders1 : 0,
         Cards = FleetRuleTools.Enabled(c, state) ? state.Cards! with { PlayLimit0 = state.Orders0 + 1, PlayLimit1 = state.Orders1 + 1 } : state.Cards,
@@ -33,7 +34,7 @@ public static partial class SpecialOrders
     {
         if (Action(content, state, order) != "lightning") return content;
         var copy = content.CopyForRuntime(); var unit = state.Units.Single(u => u.Id == Actor(content, state, order)); var ship = copy.Ships[unit.Definition];
-        copy.Ships[ship.Id] = ship with { Move = Lightning(ship), Abilities = (ship.Abilities ?? []).Where(id => copy.Abilities[id].Handler != "move-bonus").ToArray() };
+        copy.Ships[ship.Id] = ship with { Move = Lightning(content, unit), Abilities = (ship.Abilities ?? []).Where(id => copy.Abilities[id].Handler != "move-bonus").ToArray() };
         return copy;
     }
     internal static int StraightDirection(Hex start, Hex end)
@@ -65,13 +66,13 @@ public static partial class SpecialOrders
         if (Action(c, state, order) == "harvest") return new([], [], FleetEconomy.Targets(c, state, side, id));
         if (Action(c, state, order) == "board" && CommandCards.Find(c, state, order.Card)!.BoardAfterMove && !order.Moved) return UnitActions.Empty;
         var unit = state.Units.Single(u => u.Id == id);
-        if (Action(c, state, order) == "lightning" && (Lightning(c.Ships[unit.Definition]) == 0 || FleetRuleTools.Enabled(c, state) && FleetRuleTools.Has(unit, "engines"))) return UnitActions.Empty;
+        if (Action(c, state, order) == "lightning" && (Lightning(c, unit) == 0 || FleetRuleTools.Enabled(c, state) && FleetRuleTools.Has(unit, "engines"))) return UnitActions.Empty;
         var geometry = Geometry(c, state, order);
         var options = new SkirmishRules().GetActions(geometry, Sandbox(c, state, order), side, id);
         string action = Action(c, state, order);
         var targets = options.AttackTargets.Where(id =>
             (action != "board" || FleetClose.Allowed(c, state, unit, state.Units.Find(u => u.Id == id), "board"))
-            && (!RestrictedTarget(c, state, order) || id == order.FirstTarget)).ToArray();
+            && (!RestrictedTarget(c, state, order) || id == (HeroicInterrupts.Active(state, order) ? state.Cards!.HeroicInterrupt!.Target : order.FirstTarget))).ToArray();
         if (IsAttackAction(action)) return new([], targets);
         if (order.BasicAction != "") return new(options.MoveCells, []);
         var moves = options.MoveCells.Where(h => StraightCourse(c, state, order) ? Straight(c, state, unit, h, order) :
@@ -123,7 +124,7 @@ public static partial class SpecialOrders
         if (order.Side != side) return Reject("Wait for the special order to finish.");
         if (Action(c, state, order) == "launch" && command.Kind == "launch") return FleetLaunchOrders.Place(c, state, side, command);
         BattleState next = state; string message;
-        if (command.Kind == "damage-control" && FleetRuleTools.Enabled(c, state) && (IsAttackAction(Action(c, state, order)) || Action(c, state, order) == "choice") && FleetRuleTools.Has(state.Units.Single(u => u.Id == Actor(c, state, order)), "weapons"))
+        if (command.Kind == "damage-control" && !HeroicInterrupts.Active(state, order) && FleetRuleTools.Enabled(c, state) && (IsAttackAction(Action(c, state, order)) || Action(c, state, order) == "choice") && FleetRuleTools.Has(state.Units.Single(u => u.Id == Actor(c, state, order)), "weapons"))
         {
             if (command.Repair != "ask" && command.Repair != "focus" && !FleetRuleTools.Debuffs.Contains(command.Repair)) return Reject("Choose an effect for Damage Control.");
             next = FleetRuleTools.DamageControl(c, state, Actor(c, state, order), command.Repair, out message, advance: true);
@@ -166,6 +167,7 @@ public static partial class SpecialOrders
             && !(Action(c, next, order) == "launch" && next.Reserves?.Any(u => u.Id == Actor(c, next, order) && u.Embarked != "") == true)) order = order with { Step = order.Step + 1 };
         if (next.Finished || order.Step >= Steps(c, next, order))
         {
+            if (HeroicInterrupts.Active(next, order)) return InterruptRules.FinishHeroic(c, original, next, message + " Heroic reaction complete.");
             next = next with { Cards = next.Cards! with { Pending = null } };
             var result = SkirmishRules.FinishOrder(c, original, next, side, message + " Order complete.");
             return result with { State = result.State.Round != original.Round && !result.State.Finished ? BasicCardRules.NextRound(c, result.State) : result.State };
@@ -177,10 +179,10 @@ public static partial class SpecialOrders
     {
         var order = state.Cards!.Pending;
         if (order == null) return;
-        if ((order.BasicAction == "" ? !Supported(c, state, order.Card) : order.BasicAction is not ("move" or "attack" or "harvest" or "transfer-crew" or "transfer-stars")) || order.Side is < 0 or > 1 || state.ActiveSide != order.Side || state.Cards.Phase != "orders" || state.Finished
+        if ((order.BasicAction == "" ? !Supported(c, state, order.Card) && !HeroicInterrupts.Active(state, order) : order.BasicAction is not ("move" or "attack" or "harvest" or "transfer-crew" or "transfer-stars")) || order.Side is < 0 or > 1 || state.ActiveSide != order.Side || state.Cards.Phase != "orders" || state.Finished
             || order.Units == null || order.Units.Length != (order.BasicAction == "" && Formation(c, state, order.Card) ? 2 : 1) || order.Units.Distinct().Count() != order.Units.Length
-            || order.Units.Any(id => (state.Reserves ?? []).Any(u => u.Id == id && (u.Side != order.Side || !u.Activated)))
-            || order.Units.Any(id => state.Units.Any(u => u.Id == id && (u.Side != order.Side || !u.Activated)))
+            || order.Units.Any(id => (state.Reserves ?? []).Any(u => u.Id == id && (u.Side != order.Side || !u.Activated && !HeroicInterrupts.Active(state, order))))
+            || order.Units.Any(id => state.Units.Any(u => u.Id == id && (u.Side != order.Side || !u.Activated && !HeroicInterrupts.Active(state, order))))
             || order.Step < 0 || order.Step >= Steps(c, state, order) || order.Direction is < -1 or > 5 || !HeroicCommands.Spent(state.Cards, order.Card)
             || order.Choice is not ("" or "move" or "attack") || order.Choice != "" && (order.BasicAction != "" || Step(c, state, order).Action != "choice")
             || order.FirstTarget == null || order.FirstTarget.Length > 80 || order.FirstTarget != "" && (order.BasicAction != "" || !CommandCards.Find(c, state, order.Card)!.SameTarget))

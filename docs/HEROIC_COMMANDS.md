@@ -1,6 +1,6 @@
 # Heroes and Heroic commands
 
-**SINGLE PLAYER → HEROES AND HEROIC COMMANDS** opens `practice:heroes`. **MORE HEROIC COMMANDS** opens `practice:advanced-heroes` with six additional command/owner pairs. **PILOT AND LAUNCH HEROES** adds Supreme Pilot and Launch All Fighters. Its solo variant `practice:pilot-launch-heroes-solo` gives the player both Taiidan Heroes; the network variant `practice:pilot-launch-heroes` is available for PvP/shared co-op. Ships in this drill have synthetic training profiles. The following leaders and command faces are transcribed from supplied references; they do not establish that the remaining expansion is complete.
+**SINGLE PLAYER → HEROES AND HEROIC COMMANDS** opens `practice:heroes`. **MORE HEROIC COMMANDS** opens `practice:advanced-heroes` with six additional command/owner pairs. **PILOT AND LAUNCH HEROES** adds Supreme Pilot and Launch All Fighters. Its solo variant `practice:pilot-launch-heroes-solo` gives the player both Taiidan Heroes; the network variant `practice:pilot-launch-heroes` is available for PvP/shared co-op. **HEROIC REACTION** opens `practice:heroic-reaction` with Kushan Recon Commander/Rapid Reaction on the human side; a mirrored `practice:heroic-reaction-network` is used by the remote-response check. Ships in these drills have synthetic training profiles. The following leaders and command faces are transcribed from supplied references; they do not establish that the remaining expansion is complete.
 
 | Command | Owner | Implemented special sequence |
 | --- | --- | --- |
@@ -16,6 +16,7 @@
 | Lightning Strike | Kushan Grizzled Veteran | Move → optional boarding +2 dice → Lightning Move → optional boarding +2 dice |
 | Supreme Pilot | Taiidan Veteran Commander | Move → Lightning Move → Attack; enemy transit and asteroid/mine entry immunity during these movements |
 | Launch All Fighters | Taiidan Launch Commander | Up to two fighters from Hero's bay, each Launch → Lightning Move → Attack |
+| Rapid Reaction | Kushan Recon Commander | During an enemy Move: Hero Move → Attack only that mover; no Play or activation |
 
 ## Lifecycle and controls
 
@@ -23,7 +24,7 @@ Campaign Expansion p.7 supplies the shared lifecycle: each unique purchased Hero
 
 Heroic commands have a separate heading in the ordinary hand panel. Select the card and the matching Hero's ready unit, then **SPECIAL ORDER**. A basic use can instead command another ready friendly unit and grants none of the special effect. Special orders spend one card and one Play, activate the assigned unit and retain the usual optional actions, Damage Control, responses and terrain. The right panel displays active effects.
 
-Used cards remain in a public once-per-scenario ledger. Opponent hands, normal draw-pile order and authoritative RNG remain hidden. Public Hero identities and their granted command registry are visible, as their presence is already known from fleet setup. Mid-order and post-roll saves retain the Heroic card, effect, spending and continuation. Protocol `fleet-cards-v10` rejects older clients.
+Used cards remain in a public once-per-scenario ledger. Opponent hands, normal draw-pile order and authoritative RNG remain hidden. Public Hero identities and their granted command registry are visible, as their presence is already known from fleet setup. Mid-order and post-roll saves retain the Heroic card, effect, spending and continuation. Protocol `fleet-cards-v11` rejects older clients.
 
 ## Published leader profiles
 
@@ -41,6 +42,7 @@ Used cards remain in a public once-per-scenario ledger. Opponent hands, normal d
 | Grizzled Veteran | Frigate | 3 | 2 | 1 | Cool Under Pressure 1; Marines 2: +2 boarding dice; mandatory frigate tab |
 | Veteran Commander | Corvette | 2 | 2 | 1 | Cool Under Pressure 1; Strike Command: self/adjacent allies +1 attack die against fighters/corvettes/platforms |
 | Launch Commander | Carrier | 3 | 2 | 1 | Cool Under Pressure 1; allied strike craft within 2 hexes +1 attack die; mandatory capital tab |
+| Recon Commander | Corvette | 2 | 2 | 1 | Corrected Cool Under Pressure 2; Fastest in the Fleet: +1 Afterburners level; no old Ace Pilot 2 bonus |
 
 These printed Hand/Play values contribute through the existing faction-plus-leader budget rules. No statistics are mirrored to an unpictured faction counterpart. Multiple eligible defensive auras add independently; they grant dice only to defensive fire, not ordinary attacks. Lead by Example and Best of the Best add separate Evasive levels.
 
@@ -62,8 +64,16 @@ Launch All Fighters assigns up to two different ready fighter units embarked on 
 
 Launch Commander requires a capital profile with bays and Launch Tubes, rather than any capital ship. Strike Coordination filters the **attacking friendly unit's** class (fighter/corvette/platform) within two nearest-hull hexes; it does not boost its capital carrier. Veteran Commander's Strike Command instead filters the **enemy target's** strike-craft class at range one. Both use the existing additive aura calculation.
 
+## Heroic reaction timing
+
+Rapid Reaction is a Heroic interrupt, triggered by the printed enemy **Move**. It does not trigger on Lightning Move, Reinforce or ordinary Attack. Select its card and matching live on-board Recon Commander during a response, then **BEGIN HEROIC REACTION**. Both actions can be skipped; the Attack may target only the interrupted mover. The opponent may Counterintelligence before either action. Cancellation spends the Heroic card for the scenario without putting it into normal discard.
+
+An already activated Hero can react. Neither declaration nor movement runs activation Damage Control, Medic or NewOrder buff removal, spends Play, or changes the Hero's activation state. Replacement repair in place of Attack is not granted. Terrain entry and ordinary enemy response windows still apply. Its once-per-scenario ledger is independent of the four normal per-round interrupt types. It can still pay for an ordinary/basic order or initiative, without this reaction sequence.
+
+The enemy's paid order/response, movement budget and paused pose are saved separately. A reaction Move can require the enemy to select its remaining route afterwards, preserving spent movement. Nested ordinary Move reactions restore the Hero's sequence first, then the original order. Death of the original mover cancels its remaining actions. Public registry/used-ledger data determine whether a Heroic window is offered, independently of hidden hands.
+
 ## Source priority and limits
 
 Use the corrected five-card leader/command photos, the Taiidan original Master Engineer face, Campaign Expansion p.7, Errata 1.7 and the supplied mini-Euro replacement catalogue. Corrected Best of the Best lasts until a **new order**, retaining Evading through Focus Fire/Crew Damage. Its marker is distinct from the normal Evasive buff. Corrected Prepare to Be Boarded ends on a new order, Crew Damage or Focus Fire. Brace/Lockdown use their existing normal removal rules. Errata 1.7 places the relevant Heroic start effects before the action sequence. I Can Fix It removes one complete selected token permanently and does not replace normal activation Damage Control. Staff's original “Crew Card” wording means “Leader Card.”
 
-The remaining two photographed Heroic command types are separate implementation work: Rapid Reaction and Planetary Overwatch. They need specialized Heroic reaction continuations and planet/facility ownership; they are received sources, not missing photographs. Hunter does not receive the unrelated Hunter unit ability (Errata 1.7). Their received faces are recorded in [CARD_INPUTS.md](CARD_INPUTS.md). Upgrades, facilities, remaining Heroic profiles, campaign purchases and the full official solo command-bank policy are not supplied by these sets. Artwork remains optional and no source photographs are distributed.
+The remaining photographed Heroic type is Planetary Overwatch. Its Power Attack needs real planet/facility ownership and a Battery Coordinator attached to the firing facility. That infrastructure remains implementation work; its face and owner have already been received. A generic ship or station is not substituted for this planet requirement. Hunter does not receive the unrelated Hunter unit ability (Errata 1.7). Their received faces are recorded in [CARD_INPUTS.md](CARD_INPUTS.md). Upgrades, facilities, remaining Heroic profiles, campaign purchases and the full official solo command-bank policy are not supplied by these sets. Artwork remains optional and no source photographs are distributed.

@@ -90,7 +90,7 @@ public static partial class InterruptRules
         embark = s.Units.FirstOrDefault(p => FleetFootprint.Contains(c, p, cell) && FleetLogistics.CanEmbark(c, s, unit, p))?.Id ?? "";
         bool straight = order != null && SpecialOrders.StraightCourse(c, s, order);
         if (straight && order!.Direction >= 0 && SpecialOrders.StraightDirection(new(unit.Q, unit.R), cell) != order.Direction) return null;
-        if (order != null && SpecialOrders.Action(c, s, order) == "lightning" && (FleetRuleTools.Has(unit, "engines") || SpecialOrders.Lightning(c.Ships[unit.Definition]) == 0
+        if (order != null && SpecialOrders.Action(c, s, order) == "lightning" && (FleetRuleTools.Has(unit, "engines") || SpecialOrders.Lightning(c, unit) == 0
             || SpecialOrders.AdjacentOnLightning(c, s, order) && !s.Units.Any(first => first.Id == order.Units[0] && cell.Distance(new(first.Q, first.R)) == 1))) return null;
         return c.Ships[unit.Definition].Footprint == 2 ? FleetLargeMovement.Path(geometry, s, unit, cell, facing, straight, pause.FrontSpent, pause.RearSpent)
             : straight ? FleetMovement.StraightPath(geometry, s, unit, cell, embark) : FleetMovement.Path(geometry, s, unit, cell, facing, embark);

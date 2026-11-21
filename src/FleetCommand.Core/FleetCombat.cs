@@ -63,7 +63,7 @@ public static class FleetCombat
         if (cmd.AttackKind == "ranged") dice -= FleetWeapons.Attack(c, s, unit, target, weapon.Id).Cover;
         dice += FleetRuleTools.AttackAura(c, s, unit, target);
         if (cmd.AttackKind == "board") dice += SpecialOrders.BoardingBonus(c, s, unit.Id) + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.BoardingDice) - unit.CrewDamage;
-        if (cmd.AttackKind == "ram" && FleetRuleTools.Strike(ship)) dice += SpecialOrders.Lightning(ship);
+        if (cmd.AttackKind == "ram" && FleetRuleTools.Strike(ship)) dice += SpecialOrders.Lightning(c, unit);
         return Math.Max(1, dice);
     }
     internal static CommandResult RollAttack(ContentCatalog c, BattleState s, int side, BattleCommand cmd, bool interrupt, int reduction = 0)
