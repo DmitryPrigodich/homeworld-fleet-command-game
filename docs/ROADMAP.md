@@ -35,7 +35,8 @@ Keep future native tablet and browser clients possible through plain rule/data/c
 - [x] Six additional Heroic commands/owners: Medic and Crew repair, system crippling, two-unit typed lines, Marines, attack auras, UI/save/ENet. Ten of fourteen photographed command types are functional.
 - [x] Supreme Pilot and Launch All Fighters: scoped movement immunity/enemy transit, sequential bay launches, printed owners/auras, solo/PvP drills, UI/save/ENet. Twelve of fourteen photographed types are functional.
 - [x] Rapid Reaction and corrected Recon Commander: saved Heroic Move/Attack reaction, fixed target, Counter, nested normal Move, unchanged Play/activation, UI/save/ENet. Thirteen of fourteen received types are functional.
-- [ ] Planetary Overwatch with Battery Coordinator: requires actual planet/facility ownership and activation/destruction rules; remaining attachment/leader profiles. Initiative and leader budgets already have shared handlers.
+- [x] Planetary Overwatch/Battery Coordinator: real military planet and physical token, Ion/Missile/Hardened facilities, per-facility activations/leaders/damage, UI/save/ENet. All fourteen received Heroic types now have handlers.
+- [ ] Remaining facility types and individual purchase/attachment editor, campaign planet ownership/purchases/capture, remaining exact attachment and leader profiles. See PLANET_FACILITIES.md for the implemented boundary.
 
 - [x] Freeze US Digital + Errata 1.7 reference priority and record timing interpretations in RULES_COVERAGE.md.
 - [x] Leader/faction budgets, multi-card bids, cleanup, post-roll decisions and repair; remaining Heroic/attachment/profile data still incomplete.

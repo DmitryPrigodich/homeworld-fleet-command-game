@@ -16,7 +16,7 @@ public partial class Main
         {
             if (_content.Ships[selected.Definition].Footprint == 2 && _facingChoice >= 0)
                 _unitActions = _unitActions with { MoveCells = _unitActions.MoveCells.Where(h => FleetMovement.Path(_content, _state, selected, h, _facingChoice) != null).ToArray() };
-            string weapon = FleetWeapons.Weapons(_content, _content.Ships[selected.Definition]).Any(w => w.Id == _weaponChoice) ? _weaponChoice : "";
+            string weapon = FleetWeapons.Weapons(_content, selected).Any(w => w.Id == _weaponChoice) ? _weaponChoice : "";
             _unitActions = _unitActions with { AttackTargets = _unitActions.AttackTargets.Where(id => FleetCombat.Allowed(_content, _state, selected, _state.Units.Find(u => u.Id == id), new("attack", Weapon: weapon, AttackKind: _attackKindChoice))).ToArray() };
         }
         if (_tutorial != null)

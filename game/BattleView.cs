@@ -73,7 +73,7 @@ public partial class Main
             var size = def.BlocksMovement ? new Vector3(1.1f, 1.2f, 1.1f) : new Vector3(0.75f, 0.35f, 0.75f);
             var position = World(new(placement.Q, placement.R));
             AddFootprint(position, new(size.X + 0.12f, size.Z + 0.12f), 0, C(FleetPresentation.NeutralColor));
-            _world.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = size },
+            _world.AddChild(new MeshInstance3D { Mesh = placement.Definition == "core:planet" || def.Kind == "planet" ? new SphereMesh { Radius = 0.65f, Height = 1.3f } : new BoxMesh { Size = size },
                 Position = position + Vector3.Up * (size.Y * 0.5f + 0.25f),
                 MaterialOverride = new StandardMaterial3D { AlbedoColor = C(def.Color), Roughness = 0.9f } });
             ObjectAnnotation(placement, def, size.Y);
@@ -82,6 +82,13 @@ public partial class Main
         {
             var def = _content.Ships[unit.Definition]; var point = World(new(unit.Q, unit.R));
             if (unit.Patrol != "") { UnitAnnotation(unit, def, 3.0f); continue; }
+            if (FleetPlanets.IsPlanet(_content, unit))
+            {
+                AddFootprint(point, new(1.4f, 1.4f), 0, C(Commander(unit.Side).Color));
+                UnitAnnotation(unit, def, 2.1f);
+                if (unit.Id == _selected) HighlightHexes([new(unit.Q, unit.R)], C(_colors.Highlight), "SelectedFootprint");
+                continue;
+            }
             float size = def.VisualSize;
             if (def.Footprint == 2)
             {
@@ -109,7 +116,7 @@ public partial class Main
         }
         DrawTutorialMarker();
         var top = Panel(30, 22, 1380, 68);
-        Text(top, $"{map.Name.ToUpperInvariant()}     /     ROUND {_state.Round}     /     " + (_state.Cards?.Counter is { } counterChoice ? "COUNTER: " + SideName(1 - counterChoice.Side) : _state.Combat != null ? "ROLL: " + SideName(_state.Combat.Side) : _state.Cards?.Response is { Replan: true } route ? "RESUME: " + SideName(route.Side) : _state.Cards?.Response != null ? "RESPONSE: " + SideName(InterruptRules.Responder(_state)) : "TURN: " + SideName(_state.ActiveSide)), 22, _colors.Accent);
+        Text(top, $"{map.Name.ToUpperInvariant()}     /     ROUND {_state.Round}     /     " + (_state.Cards?.Counter is { } counterChoice ? "COUNTER: " + SideName(1 - counterChoice.Side) : _state.PlanetDamage != null ? "FACILITY DAMAGE: " + SideName(_state.PlanetDamage.Side) : _state.Combat != null ? "ROLL: " + SideName(_state.Combat.Side) : _state.Cards?.Response is { Replan: true } route ? "RESUME: " + SideName(route.Side) : _state.Cards?.Response != null ? "RESPONSE: " + SideName(InterruptRules.Responder(_state)) : "TURN: " + SideName(_state.ActiveSide)), 22, _colors.Accent);
         var left = ScrollBattlePanel(Panel(30, 112, 260, 610));
         Text(left, _tutorial != null ? "TUTORIAL" : _campaign == null ? "SKIRMISH" : "CAMPAIGN", 18, _colors.Highlight);
         Text(left, _tutorial != null ? "BLUE — OUR SIDE / RED — ENEMY" : _generation == null ? "Data-defined scenario" : $"Seed: {_generation.Seed}", 13, _colors.Muted);
@@ -144,13 +151,14 @@ public partial class Main
             Text(right, "NEUTRAL OBJECT", 13, FleetPresentation.NeutralColor);
             Text(right, TerrainEffects(_inspectedObject), 16);
         }
-        if (selected != null && _tutorial == null)
+        if (selected != null && _tutorial == null && _state.PlanetDamage == null)
         {
             var def = _content.Ships[selected.Definition];
             Text(right, $"Move {def.Move} / Range {def.Range}\nArmor {def.Armor} / Dice {def.DicePerModel} × {selected.Models}\nFocus Fire: {selected.FocusFire}", 15);
             if (def.Footprint == 2) Text(right, "The hull occupies 2 hexes. Click to place the bow; each end can travel at most 2 hexes. Choose facing below.", 13, _colors.Muted);
             if (_state.Scenario?.Tokens.Any(t => t.Unit == selected.Id) == true) Text(right, "ON BOARD: INTELLIGENCE", 14, _colors.Highlight);
-            foreach (var leader in FleetRuleTools.AssignedLeaders(_content, selected))
+            DrawPlanetFacilities(right, selected);
+            foreach (var leader in FleetPlanets.IsPlanet(_content, selected) ? [] : FleetRuleTools.AssignedLeaders(_content, selected))
             { Text(right, "Leader: " + leader.Name, 14, _colors.Highlight); string abilities = FleetPresentation.LeaderAbilities(leader); if (abilities != "") Text(right, abilities, 12, _colors.Muted); }
             if (selected.Effects is { Length: > 0 }) Text(right, "Active effects: " + string.Join(", ", selected.Effects.Select(FleetPresentation.EffectName)), 13, _colors.Highlight);
         }
@@ -223,6 +231,7 @@ public partial class Main
     private void BotTurn()
     {
         if (_state == null || !_bot || _state.Finished) return;
+        if (_state.PlanetDamage is { Side: 1 } planet) { ApplyCommand(1, new("planet-facility", planet.Target, FleetPlanets.DamageChoices(_content, _state).First())); return; }
         if (_state.Cards?.Counter is { } counter)
         {
             if (counter.Side != 0) return;
@@ -241,7 +250,7 @@ public partial class Main
         {
             var repair = _state.Repairs[0]; if (repair.Side != 1) return;
             var unit = _state.Units.Single(u => u.Id == repair.Unit);
-            string choice = (unit.Effects ?? []).FirstOrDefault(FleetRuleTools.Debuffs.Contains) ?? (unit.FocusFire > 0 ? "focus" : "");
+            string choice = FleetPlanets.Crippled(unit, unit.ActiveFacility) ? "weapons" : (unit.Effects ?? []).FirstOrDefault(FleetRuleTools.Debuffs.Contains) ?? (unit.FocusFire > 0 ? "focus" : "");
             ApplyCommand(1, choice == "" ? new("repair-stop") : new("repair-choice", Repair: choice)); return;
         }
         if (_state.Combat is { } combat)

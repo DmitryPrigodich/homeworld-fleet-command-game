@@ -1,9 +1,10 @@
 # Heroes and Heroic commands
 
-**SINGLE PLAYER → HEROES AND HEROIC COMMANDS** opens `practice:heroes`. **MORE HEROIC COMMANDS** opens `practice:advanced-heroes` with six additional command/owner pairs. **PILOT AND LAUNCH HEROES** adds Supreme Pilot and Launch All Fighters. Its solo variant `practice:pilot-launch-heroes-solo` gives the player both Taiidan Heroes; the network variant `practice:pilot-launch-heroes` is available for PvP/shared co-op. **HEROIC REACTION** opens `practice:heroic-reaction` with Kushan Recon Commander/Rapid Reaction on the human side; a mirrored `practice:heroic-reaction-network` is used by the remote-response check. Ships in these drills have synthetic training profiles. The following leaders and command faces are transcribed from supplied references; they do not establish that the remaining expansion is complete.
+**SINGLE PLAYER → HEROES AND HEROIC COMMANDS** opens `practice:heroes`. **MORE HEROIC COMMANDS** opens `practice:advanced-heroes` with six additional command/owner pairs. **PILOT AND LAUNCH HEROES** adds Supreme Pilot and Launch All Fighters. Its solo variant `practice:pilot-launch-heroes-solo` gives the player both Taiidan Heroes; the network variant `practice:pilot-launch-heroes` is available for PvP/shared co-op. **HEROIC REACTION** opens `practice:heroic-reaction` with Kushan Recon Commander/Rapid Reaction on the human side; a mirrored `practice:heroic-reaction-network` is used by the remote-response check. **PLANETARY OVERWATCH AND FACILITIES** opens `practice:planetary-overwatch` with a Taiidan military planet and a Coordinator bound to its Ion Batteries. Its printed planet/facility combat values coexist with synthetic opposing training ships. The following leaders and command faces are transcribed from supplied references; they do not establish that the remaining expansion is complete.
 
 | Command | Owner | Implemented special sequence |
 | --- | --- | --- |
+| Planetary Overwatch | Taiidan Battery Coordinator | Enemy Move/Lightning Move/Attack → assigned facility Power Attack against that enemy |
 | Best of the Best | Taiidan Hot Shot Pilot | Evading at activation start → Move → Power Attack |
 | Fire and Maneuver | Kushan Strategist | Braced at activation start → Move → Power Attack |
 | Prepare to Be Boarded | Kushan Station Overseer | Lockdown at activation start → Power Attack |
@@ -24,7 +25,7 @@ Campaign Expansion p.7 supplies the shared lifecycle: each unique purchased Hero
 
 Heroic commands have a separate heading in the ordinary hand panel. Select the card and the matching Hero's ready unit, then **SPECIAL ORDER**. A basic use can instead command another ready friendly unit and grants none of the special effect. Special orders spend one card and one Play, activate the assigned unit and retain the usual optional actions, Damage Control, responses and terrain. The right panel displays active effects.
 
-Used cards remain in a public once-per-scenario ledger. Opponent hands, normal draw-pile order and authoritative RNG remain hidden. Public Hero identities and their granted command registry are visible, as their presence is already known from fleet setup. Mid-order and post-roll saves retain the Heroic card, effect, spending and continuation. Protocol `fleet-cards-v11` rejects older clients.
+Used cards remain in a public once-per-scenario ledger. Opponent hands, normal draw-pile order and authoritative RNG remain hidden. Public Hero identities and their granted command registry are visible, as their presence is already known from fleet setup. Mid-order and post-roll saves retain the Heroic card, effect, spending and continuation. Protocol `fleet-cards-v12` rejects older clients.
 
 ## Published leader profiles
 
@@ -72,8 +73,14 @@ An already activated Hero can react. Neither declaration nor movement runs activ
 
 The enemy's paid order/response, movement budget and paused pose are saved separately. A reaction Move can require the enemy to select its remaining route afterwards, preserving spent movement. Nested ordinary Move reactions restore the Hero's sequence first, then the original order. Death of the original mover cancels its remaining actions. Public registry/used-ledger data determine whether a Heroic window is offered, independently of hidden hands.
 
+## Planetary Overwatch
+
+During an enemy Move, Lightning Move or Attack response, the Taiidan Battery Coordinator may use its once-per-scenario Heroic card for a single Power Attack against only the acting enemy. The weapon is fixed to the living facility carrying the Coordinator, including its +1 attack die. No Play, activation token, activation repair or new-order buff removal is spent. An already activated battery may still react. A crippled/destroyed bound battery cannot declare it; Counter spends the Heroic card without firing. Nested enemy responses can destroy the firing battery/owner and cancel its pending shot while the original paid order still resumes or cancels normally.
+
+The received original Coordinator profile is 3 stars, Hand 3, Play 2, Planet, Open Fire All Batteries +1 attack die only for its assigned facility. See [PLANET_FACILITIES.md](PLANET_FACILITIES.md) for activation, damage and the current three-facility scope. This completes functional handlers for all fourteen received Heroic types; it does not complete all expansion rules/profiles.
+
 ## Source priority and limits
 
 Use the corrected five-card leader/command photos, the Taiidan original Master Engineer face, Campaign Expansion p.7, Errata 1.7 and the supplied mini-Euro replacement catalogue. Corrected Best of the Best lasts until a **new order**, retaining Evading through Focus Fire/Crew Damage. Its marker is distinct from the normal Evasive buff. Corrected Prepare to Be Boarded ends on a new order, Crew Damage or Focus Fire. Brace/Lockdown use their existing normal removal rules. Errata 1.7 places the relevant Heroic start effects before the action sequence. I Can Fix It removes one complete selected token permanently and does not replace normal activation Damage Control. Staff's original “Crew Card” wording means “Leader Card.”
 
-The remaining photographed Heroic type is Planetary Overwatch. Its Power Attack needs real planet/facility ownership and a Battery Coordinator attached to the firing facility. That infrastructure remains implementation work; its face and owner have already been received. A generic ship or station is not substituted for this planet requirement. Hunter does not receive the unrelated Hunter unit ability (Errata 1.7). Their received faces are recorded in [CARD_INPUTS.md](CARD_INPUTS.md). Upgrades, facilities, remaining Heroic profiles, campaign purchases and the full official solo command-bank policy are not supplied by these sets. Artwork remains optional and no source photographs are distributed.
+All fourteen photographed Heroic types now have functional handlers and received owner profiles. Hunter does not receive the unrelated Hunter unit ability (Errata 1.7). Their received faces are recorded in [CARD_INPUTS.md](CARD_INPUTS.md). Remaining upgrades/leader profiles, other facility types, campaign purchases and the full official solo command-bank policy remain separate implementation work. Artwork remains optional and no source photographs are distributed.

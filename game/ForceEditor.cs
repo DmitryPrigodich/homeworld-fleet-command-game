@@ -89,7 +89,7 @@ public partial class Main
         if (network) Field(left, "Host address / UDP 24560", _forceAddress, v => _forceAddress = v);
         Text(middle, "UNITS", 16, _colors.Highlight);
         var ships = _content.Ships.Values.Where(s => s.Faction == CurrentForce.Faction && s.Stars > 0).OrderBy(s => s.Name).ThenBy(s => s.Id).ToArray(); int shipIndex = 0;
-        Picker(middle, "Buy a unit", ships.Select(s => $"{s.Name} · {s.Stars} ★ · {ForceClass(FleetRuleTools.Class(s))}").ToArray(), 0, i => shipIndex = i);
+        Picker(middle, "Buy a unit", ships.Select(s => $"{s.Name} · {s.Stars + (s.Facilities ?? []).Sum(f => f.Stars)} ★ · {ForceClass(FleetRuleTools.Class(s))}").ToArray(), 0, i => shipIndex = i);
         Button(middle, "ADD SHIP", () =>
         {
             int index = 1; while (CurrentForce.Units.Any(u => u.Id == "u" + index)) index++;
@@ -137,7 +137,14 @@ public partial class Main
             string abilities = FleetPresentation.LeaderAbilities(leader); if (abilities != "") Text(middle, abilities, 13, _colors.Muted);
             var targets = expanded.Where(u => FleetRuleTools.CanLead(leader, _content.Ships[u.Entry.Ship])).ToArray();
             Picker(middle, "Assign to a unit", new[] { "Unassigned" }.Concat(targets.Select(u => u.Entry.Id + (u.Free ? " · assigned" : ""))).ToArray(), Array.FindIndex(targets, u => u.Entry.Id == choice.Unit) + 1,
-                i => ChangeForce(p => p with { Leaders = p.Leaders.Select(l => l.Leader == choice.Leader ? l with { Unit = i == 0 ? "" : targets[i - 1].Entry.Id } : l).ToArray() }));
+                i => ChangeForce(p => p with { Leaders = p.Leaders.Select(l => l.Leader == choice.Leader ? l with { Unit = i == 0 ? "" : targets[i - 1].Entry.Id, Facility = "" } : l).ToArray() }));
+            var planetTarget = targets.FirstOrDefault(u => u.Entry.Id == choice.Unit);
+            if (planetTarget != null && FleetRuleTools.Class(_content.Ships[planetTarget.Entry.Ship]) == "planet")
+            {
+                var facilities = _content.Ships[planetTarget.Entry.Ship].Facilities ?? [];
+                Picker(middle, "Assigned planet facility", new[] { "Choose a facility" }.Concat(facilities.Select(f => f.Name)).ToArray(), Array.FindIndex(facilities, f => f.Id == choice.Facility) + 1,
+                    i => ChangeForce(p => p with { Leaders = p.Leaders.Select(l => l.Leader == choice.Leader ? l with { Facility = i == 0 ? "" : facilities[i - 1].Id } : l).ToArray() }));
+            }
             Button(middle, "REMOVE: " + leader.Name, () => { ChangeForce(p => p with { Leaders = p.Leaders.Where(l => l.Leader != choice.Leader).ToArray() }); ForceMenu(network); });
         }
         Text(right, "FLEET VALIDATION", 16, _colors.Highlight); _forceReport = new VBoxContainer(); right.AddChild(_forceReport);

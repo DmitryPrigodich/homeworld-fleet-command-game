@@ -5,7 +5,7 @@ public static class FleetClose
     public static string Window(BattleState s) => $"{s.Round}:{s.ActiveSide}:{(s.ActiveSide == 0 ? s.Orders0 : s.Orders1)}";
     public static bool Allowed(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit? target, string kind)
     {
-        if (kind is not ("ram" or "board") || target == null || unit.Hulk || FleetRuleTools.Has(unit, "weapons") || target.Side == unit.Side || FleetFootprint.Distance(c, unit, target) != 1
+        if (kind == "board" && target != null && FleetPlanets.IsPlanet(c, target) || kind is not ("ram" or "board") || target == null || unit.Hulk || FleetRuleTools.Has(unit, "weapons") || target.Side == unit.Side || FleetFootprint.Distance(c, unit, target) != 1
             || FleetRuleTools.Class(c.Ships[target.Definition]) == "fighter" || unit.AttackWindow == Window(s)) return false;
         var ship = c.Ships[unit.Definition];
         return kind == "board" ? ship.Crew > 0 : ship.Ram > 0 && (FleetRuleTools.Class(ship) == "fighter" || FleetFootprint.Contains(c, target, new Hex(unit.Q, unit.R).Neighbor(unit.Facing)));

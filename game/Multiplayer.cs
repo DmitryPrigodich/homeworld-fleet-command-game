@@ -15,7 +15,7 @@ public partial class Main
     private int _economyNetworkStep;
     private int _logisticsNetworkStep;
     private int _objectiveNetworkStep;
-    private int LocalCommandSide => _networkActive ? _localSide : _bot || _tutorial != null ? 0 : _state?.Cards?.Counter is { } counter ? 1 - counter.Side : _state?.CapEntry is { } entry ? entry.Side : _state?.Overrun is { } overrun ? overrun.Side : _state?.Repairs is { Length: > 0 } ? _state.Repairs[0].Side : _state?.Combat is { } combat ? FleetCombat.DecisionSide(combat) : _state?.Defense is { } defense ? 1 - defense.Side : _state?.Cards?.Response is { } pause ? InterruptRules.Responder(_state)
+    private int LocalCommandSide => _networkActive ? _localSide : _bot || _tutorial != null ? 0 : _state?.Cards?.Counter is { } counter ? 1 - counter.Side : _state?.CapEntry is { } entry ? entry.Side : _state?.Overrun is { } overrun ? overrun.Side : _state?.Repairs is { Length: > 0 } ? _state.Repairs[0].Side : _state?.PlanetDamage is { } planet ? planet.Side : _state?.Combat is { } combat ? FleetCombat.DecisionSide(combat) : _state?.Defense is { } defense ? 1 - defense.Side : _state?.Cards?.Response is { } pause ? InterruptRules.Responder(_state)
         : _state?.Cards is { Phase: "initiative" or "cleanup" } phase ? phase.Ready0 ? 1 : 0 : _state?.ActiveSide ?? 0;
     private readonly Dictionary<long, int> _sideByPeer = [];
     private void NetworkMenu()
@@ -32,6 +32,7 @@ public partial class Main
         var tabletop = new CheckBox { Text = "Rulebook mechanics (development mode)" }; box.AddChild(tabletop);
         var orders = new CheckBox { Text = "Command orders and effects" }; box.AddChild(orders);
         var heroes = new CheckBox { Text = "Heroes and Heroic commands" }; box.AddChild(heroes);
+        var planets = new CheckBox { Text = "Planetary Overwatch and facilities" }; box.AddChild(planets);
         var heroReaction = new CheckBox { Text = "Heroic reaction" }; box.AddChild(heroReaction);
         var pilotLaunch = new CheckBox { Text = "Pilot and launch Heroes" }; box.AddChild(pilotLaunch);
         var moreHeroes = new CheckBox { Text = "More Heroic commands" }; box.AddChild(moreHeroes);
@@ -40,7 +41,7 @@ public partial class Main
         Text(box, "Prototype: direct ENet connection, UDP port 24560. Invitation rooms and relay are planned.", 15, _colors.Muted);
         Button(box, "PREPARE FLEETS FOR MULTIPLAYER", () => ForceMenu(true));
         Button(box, "HOST SAVED SKIRMISH", () => { LoadGame(false); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); }, !System.IO.File.Exists(SavePath(false)));
-        Button(box, "HOST SKIRMISH", () => { StartBattle(heroReaction.ButtonPressed ? HeroicBattle.ReactionMapId : pilotLaunch.ButtonPressed ? HeroicBattle.PilotLaunchMapId : moreHeroes.ButtonPressed ? HeroicBattle.AdvancedMapId : heroes.ButtonPressed ? HeroicBattle.MapId : firstContact.ButtonPressed ? "core:first-contact" : launches.ButtonPressed ? BasicCardBattle.LaunchOrdersMapId : orders.ButtonPressed ? BasicCardBattle.OrdersMapId : objectives.ButtonPressed ? BasicCardBattle.ObjectivesMapId : logistics.ButtonPressed ? BasicCardBattle.LogisticsMapId : economy.ButtonPressed ? BasicCardBattle.EconomyMapId : tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
+        Button(box, "HOST SKIRMISH", () => { StartBattle(planets.ButtonPressed ? PlanetBattle.MapId : heroReaction.ButtonPressed ? HeroicBattle.ReactionMapId : pilotLaunch.ButtonPressed ? HeroicBattle.PilotLaunchMapId : moreHeroes.ButtonPressed ? HeroicBattle.AdvancedMapId : heroes.ButtonPressed ? HeroicBattle.MapId : firstContact.ButtonPressed ? "core:first-contact" : launches.ButtonPressed ? BasicCardBattle.LaunchOrdersMapId : orders.ButtonPressed ? BasicCardBattle.OrdersMapId : objectives.ButtonPressed ? BasicCardBattle.ObjectivesMapId : logistics.ButtonPressed ? BasicCardBattle.LogisticsMapId : economy.ButtonPressed ? BasicCardBattle.EconomyMapId : tabletop.ButtonPressed ? BasicCardBattle.TabletopMapId : cardMode.ButtonPressed ? BasicCardBattle.MapId : "core:training", cooperative.ButtonPressed); StartNetwork(true, address.Text, 24560, cooperative.ButtonPressed); QueueBot(); });
         var campaignChoices = _content.Campaigns.Values.ToArray(); var campaignPicker = new OptionButton(); foreach (var definition in campaignChoices) campaignPicker.AddItem("Campaign: " + definition.Name); box.AddChild(campaignPicker);
         Button(box, "HOST CO-OP CAMPAIGN", () =>
         {
@@ -63,7 +64,7 @@ public partial class Main
         if (host) InitializeCommanders();
         if (!_networkSignalsBound)
         {
-            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-cards-v11:" + _content.Fingerprint,
+            Multiplayer.ConnectedToServer += () => RpcId(1, nameof(RegisterPeer), "fleet-cards-v12:" + _content.Fingerprint,
                 JsonSerializer.Serialize(FleetPresentation.Normalize(_settings.Player), JsonData.Options));
             Multiplayer.ConnectionFailed += () => { _status = "Failed to connect."; StopNetwork(); DrawBattle(); };
             Multiplayer.ServerDisconnected += () => { _status = "Host disconnected. Resume from the host's save."; StopNetwork(); DrawBattle(); };
@@ -84,7 +85,7 @@ public partial class Main
     {
         if (!_networkActive || !_isHost) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (fingerprint != "fleet-cards-v11:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
+        if (fingerprint != "fleet-cards-v12:" + _content.Fingerprint || profileJson.Length > 2048) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
         PlayerProfile profile;
         try { profile = FleetPresentation.Normalize(JsonSerializer.Deserialize<PlayerProfile>(profileJson, JsonData.Options)); }
         catch (JsonException) { Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender); return; }
@@ -98,6 +99,7 @@ public partial class Main
         }
         if (_campaign != null) _campaign = _campaign with { Participants = (_campaign.Participants ?? []).Append("peer-" + sender).Distinct().ToArray() };
         DrawBattle(); Broadcast(); SaveGame();
+        if (_args.Contains("--smoke-planets")) { StartPlanetNetwork(); return; }
         if (_args.Contains("--smoke-hero-reaction")) { StartHeroicReactionNetwork(); return; }
         if (_args.Contains("--smoke-heroes") || _args.Contains("--smoke-more-heroes") || _args.Contains("--smoke-pilot-launch")) return;
         if (_args.Contains("--smoke-move-interrupt")) { ApplyCommand(0, new("move", "s0-0", Q: 4, R: 1, Card: "core:all-ahead-full#1")); return; }
@@ -153,6 +155,7 @@ public partial class Main
             if (_args.Contains("--smoke-counters")) { CounterNetworkHost(command); return; }
             if (_args.Contains("--smoke-repair-interrupt")) { RepairInterruptNetworkHost(command); return; }
             if (_args.Contains("--smoke-move-interrupt")) { MoveInterruptNetworkHost(command); return; }
+            if (_args.Contains("--smoke-planets")) { PlanetNetworkHost(command); return; }
             if (_args.Contains("--smoke-hero-reaction")) { HeroicReactionNetworkHost(command); return; }
             if (_args.Contains("--smoke-pilot-launch")) { PilotLaunchNetworkHost(command); return; }
             if (_args.Contains("--smoke-more-heroes")) { MoreHeroicNetworkHost(command); return; }
@@ -334,7 +337,7 @@ public partial class Main
     private void ReceiveCommandFeedback(string message)
     {
         if (_isHost || !_networkActive || message.Length > 4096) return;
-        if (_args.Contains("--smoke-published-orders") || _args.Contains("--smoke-ready-launch") || _args.Contains("--smoke-counters") || _args.Contains("--smoke-repair-interrupt") || _args.Contains("--smoke-move-interrupt") || _args.Contains("--smoke-heroes") || _args.Contains("--smoke-more-heroes") || _args.Contains("--smoke-pilot-launch") || _args.Contains("--smoke-hero-reaction")) { GD.PushError("PUBLISHED_ORDER_COMMAND_REJECTED " + message); GetTree().Quit(1); }
+        if (_args.Contains("--smoke-published-orders") || _args.Contains("--smoke-ready-launch") || _args.Contains("--smoke-counters") || _args.Contains("--smoke-repair-interrupt") || _args.Contains("--smoke-move-interrupt") || _args.Contains("--smoke-heroes") || _args.Contains("--smoke-more-heroes") || _args.Contains("--smoke-pilot-launch") || _args.Contains("--smoke-hero-reaction") || _args.Contains("--smoke-planets")) { GD.PushError("PUBLISHED_ORDER_COMMAND_REJECTED " + message); GetTree().Quit(1); }
         _status = message; DrawBattle();
     }
     [Rpc(MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
@@ -366,6 +369,7 @@ public partial class Main
                 if (_args.Contains("--smoke-counters")) { CounterNetworkClient(); return; }
                 if (_args.Contains("--smoke-repair-interrupt")) { RepairInterruptNetworkClient(); return; }
                 if (_args.Contains("--smoke-move-interrupt")) { MoveInterruptNetworkClient(); return; }
+                if (_args.Contains("--smoke-planets")) { PlanetNetworkClient(); return; }
                 if (_args.Contains("--smoke-hero-reaction")) { HeroicReactionNetworkClient(); return; }
                 if (_args.Contains("--smoke-pilot-launch")) { PilotLaunchNetworkClient(); return; }
                 if (_args.Contains("--smoke-more-heroes")) { MoreHeroicNetworkClient(); return; }

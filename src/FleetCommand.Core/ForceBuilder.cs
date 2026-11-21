@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 namespace FleetCommand.Core;
 
 public sealed record ForceEntry(string Id, string Ship, string Placement = "board", int Column = 0, int Row = 0, string Parent = "", int Facing = -1);
-public sealed record ForceLeader(string Leader, string Unit = "");
+public sealed record ForceLeader(string Leader, string Unit = "", string Facility = "");
 public sealed record ForcePlan(string Id, string Name, string Faction, int Budget, ForceEntry[] Units, ForceLeader[] Leaders, int ReserveStars = 0, bool CheckTabs = true);
 public sealed record ForceLimit(int Budget = 0, string[]? Ships = null, string[]? Leaders = null, int ReserveStars = -1, bool AllowReserve = true);
 public sealed record ForceUnit(ForceEntry Entry, bool Free = false);
@@ -35,7 +35,7 @@ public static class ForceBuilder
                 units.Add(new(new(entry.Id + "~" + tab.Id, tab.GrantedUnit, "bay", Parent: entry.Id), true));
         }
         if (units.Count > 128) errors.Add("Too many units including assigned units.");
-        long spent = plan.Units.Sum(u => (long)c.Ships[u.Ship].Stars) + plan.Leaders.Sum(l => (long)c.Leaders[l.Leader].Stars) + plan.ReserveStars;
+        long spent = plan.Units.Sum(u => (long)c.Ships[u.Ship].Stars + (c.Ships[u.Ship].Facilities ?? []).Sum(f => f.Stars)) + plan.Leaders.Sum(l => (long)c.Leaders[l.Leader].Stars) + plan.ReserveStars;
         if (spent > plan.Budget) errors.Add($"Budget exceeded by {spent - plan.Budget} ★.");
         foreach (var item in units)
         {
@@ -51,18 +51,25 @@ public static class ForceBuilder
                 else if (units.Count(p => p.Entry.Placement == "bay" && p.Entry.Parent == u.Parent) > c.Ships[parent.Entry.Ship].Bays) errors.Add($"{parent.Entry.Id}: insufficient bay capacity.");
             }
         }
+        if (units.Any(u => FleetRuleTools.Class(c.Ships[u.Entry.Ship]) == "planet" && u.Entry.Placement != "board")) errors.Add("Planets must be deployed on the board.");
         if (units.Where(u => u.Entry.Placement == "board").GroupBy(u => (u.Entry.Column, u.Entry.Row)).Any(g => g.Count() > 1)) errors.Add("Two units occupy the same deployment hex.");
         foreach (var choice in plan.Leaders)
         {
             var leader = c.Leaders[choice.Leader]; var assigned = units.FirstOrDefault(u => u.Entry.Id == choice.Unit);
             if (leader.Faction != plan.Faction || assigned == null || !FleetRuleTools.CanLead(leader, c.Ships[assigned.Entry.Ship])) errors.Add($"{leader.Name}: assign the leader to a compatible unit of its faction.");
+            if (assigned != null && (FleetRuleTools.Class(c.Ships[assigned.Entry.Ship]) == "planet" ? !(c.Ships[assigned.Entry.Ship].Facilities ?? []).Any(f => f.Id == choice.Facility) : choice.Facility != "")) errors.Add("Assign planet leaders to an existing facility.");
             if (limit?.Leaders != null && !limit.Leaders.Contains(leader.Id)) errors.Add($"{leader.Name}: unavailable in this scenario.");
             foreach (var tab in leader.Tabs ?? []) slots.Add(new("leader:" + leader.Id + ":" + tab.Id, leader.Name, tab));
         }
         foreach (var group in plan.Leaders.GroupBy(l => l.Unit))
         {
             var assigned = units.FirstOrDefault(u => u.Entry.Id == group.Key);
-            if (assigned != null && !FleetRuleTools.ValidLeader(c, FleetRuleTools.WithLeaders(new("", assigned.Entry.Ship, 0, 0, 0, 0, 1), group.Select(l => l.Leader))))
+            bool planet = assigned != null && FleetRuleTools.Class(c.Ships[assigned.Entry.Ship]) == "planet";
+            if (planet)
+            {
+                if (group.GroupBy(l => l.Facility).Any(g => g.Count() > 1) || group.Any(l => c.Leaders[l.Leader].Staff)) errors.Add("Each planet facility supports one non-Staff leader.");
+            }
+            else if (assigned != null && !FleetRuleTools.ValidLeader(c, FleetRuleTools.WithLeaders(new("", assigned.Entry.Ship, 0, 0, 0, 0, 1), group.Select(l => l.Leader))))
                 errors.Add("Staff requires an existing non-Staff leader; a Hero does not allow additional ordinary leaders.");
         }
         foreach (var item in units.Where(u => !u.Free)) foreach (var tab in c.Ships[item.Entry.Ship].Tabs ?? [])

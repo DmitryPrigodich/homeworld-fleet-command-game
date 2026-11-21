@@ -53,7 +53,8 @@ public static class CommandCards
                 || card.AdjacentOnLightning && (lines.Length != 2 || lines[0].Actions.Contains("lightning") || !lines[1].Actions.Contains("lightning"))
                 || card.SameTarget && (lines.Length != 2 || lines.Any(l => l.Actions.Count(a => a is "attack" or "power" or "board") != 1))
                 || card.HeroicOwner == null || card.HeroicOwner != "" && (card.Kind != "order" && card.Interrupt != "heroic" || !c.Leaders.TryGetValue(card.HeroicOwner, out var owner) || owner.HeroicCommand != card.Id)
-                || card.Interrupt == "heroic" && (card.HeroicOwner == "" || lines is not [{ Actions: ["move", "attack"] }] || card.InterruptTriggers is not ["move"])
+                || card.Interrupt == "heroic" && (card.HeroicOwner == "" || !(lines is [{ Actions: ["move", "attack"] }] && card.InterruptTriggers is ["move"] || lines is [{ Actions: ["power"] }] && card.InterruptTriggers is ["move", "lightning", "attack"]))
+                || card.Interrupt == "heroic" && lines is [{ Actions: ["power"] }] && c.Leaders[card.HeroicOwner].Classes is not ["planet"]
                 || card.LaunchFromHero && (card.HeroicOwner == "" || lines.Length != 2 || !FleetLaunchOrders.IsLaunch(card) || lines.Any(l => l.Classes is not ["fighter"]))
                 || card.PilotMovement && (card.HeroicOwner == "" || lines is not [{ Actions: ["move", "lightning", "attack"] }])
                 || card.CrewRepairAtStart && (card.HeroicOwner == "" || card.RepairAtStart || lines.Length != 1)

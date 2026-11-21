@@ -56,6 +56,7 @@ public partial class Main
                 }
                 command = command with { Deployments = deployments.ToArray() };
             }
+            if (command.Kind is "begin-order" or "special" && _state!.Units.Find(u => u.Id == command.Unit) is { } selected && FleetPlanets.IsPlanet(_content, selected)) command = command with { Weapon = _weaponChoice };
             if (command.Kind is "attack" or "interrupt") command = command with { Weapon = _weaponChoice, AttackKind = _attackKindChoice };
             if (command.Kind == "move" && command.AutoFacing) command = command with { AutoFacing = _facingChoice < 0, Facing = Math.Max(0, _facingChoice) };
         }

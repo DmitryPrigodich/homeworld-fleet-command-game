@@ -6,7 +6,7 @@ public static class FleetCap
     public static bool Host(ShipDefinition ship) => FleetRuleTools.Class(ship) is "frigate" or "capital";
     public static BattleUnit? Patrol(BattleState s, string parent) => s.Units.Find(u => u.Patrol == parent);
     public static bool Available(BattleState s, string parent) => Patrol(s, parent) is { CapUsed: false, Hulk: false };
-    public static WeaponDefinition[] Weapons(ContentCatalog c, BattleUnit unit) => FleetRuleTools.Has(unit, "weapons") ? [] : FleetWeapons.Weapons(c, c.Ships[unit.Definition]);
+    public static WeaponDefinition[] Weapons(ContentCatalog c, BattleUnit unit) => FleetRuleTools.Has(unit, "weapons") ? [] : FleetWeapons.Weapons(c, unit);
     internal static CommandResult Activate(ContentCatalog c, BattleState s, int side, BattleCommand command)
     {
         var frame = s.Defense!; var unit = Patrol(s, frame.Attack.Target);
@@ -76,7 +76,7 @@ public static class FleetCap
         if (s.Defense is not { CapActive: true } frame) return false;
         string actor = volley.Kind == "cap" ? frame.Patroller : frame.Attack.Unit, target = volley.Kind == "cap" ? frame.Attack.Unit : frame.Patroller;
         var unit = FleetTerrain.Find(s, actor);
-        return unit != null && volley.Side == unit.Side && volley.Attacker == actor && volley.Target == target && FleetWeapons.Weapons(c, c.Ships[unit.Definition]).Any(w => w.Id == volley.Weapon);
+        return unit != null && volley.Side == unit.Side && volley.Attacker == actor && volley.Target == target && FleetWeapons.Weapons(c, unit).Any(w => w.Id == volley.Weapon);
     }
     public static BattleUnit[] Hosts(ContentCatalog c, BattleState s, BattleUnit unit) => unit.Patrol != "" || FleetRuleTools.Class(c.Ships[unit.Definition]) != "fighter" ? []
         : s.Units.Where(u => u.Side == unit.Side && u.Id != unit.Id && u.Patrol == "" && Host(c.Ships[u.Definition])

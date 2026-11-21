@@ -83,7 +83,7 @@ internal static class SkirmishGeometry
             {
                 var next = h.Neighbor(direction);
                 if (!Inside(next) || next.Distance(end) != h.Distance(end) - 1) continue;
-                if (Blocked(content, map, next, state)) return memo[h] = 100000;
+                if (Blocked(content, map, next, state) && !(next == end && FleetPlanets.IsPlanet(content, target))) return memo[h] = 100000;
                 int penalty = next == end ? 0 : state.Units.Any(u => u.Patrol == "" && u.Id != unit.Id && u.Id != target.Id && FleetFootprint.Contains(content, u, next)) ? 1 : 0;
                 penalty += FleetTerrain.Objects(content, state).Where(o => o.Q == next.Q && o.R == next.R && (!ignoreNebula || content.Objects[o.Definition].Kind != "nebula")).Sum(o => content.Objects[o.Definition].AttackPenalty);
                 worst = Math.Max(worst, penalty + Cover(next));

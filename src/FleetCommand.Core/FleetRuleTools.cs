@@ -2,7 +2,7 @@ namespace FleetCommand.Core;
 
 public static class FleetRuleTools
 {
-    public static readonly string[] Classes = ["fighter", "corvette", "platform", "frigate", "capital", "station"];
+    public static readonly string[] Classes = ["fighter", "corvette", "platform", "frigate", "capital", "station", "planet"];
     public static readonly string[] DamageBuffs = ["brace", "evasive", "lockdown"];
     public static readonly string[] Buffs = [.. DamageBuffs, "hero-evasive"];
     public static readonly string[] Debuffs = ["engines", "weapons", "bays"];
@@ -13,7 +13,7 @@ public static class FleetRuleTools
     public static bool Strike(ShipDefinition ship) => Class(ship) is "fighter" or "corvette" or "platform";
     public static bool Has(BattleUnit unit, string effect) => (unit.Effects ?? []).Contains(effect);
     public static bool ValidEffects(string[]? effects) => effects == null || effects.Distinct().Count() == effects.Length && effects.All(e => Buffs.Contains(e) || Debuffs.Contains(e));
-    public static string[] LeaderIds(BattleUnit unit) => (unit.Leader == "" ? Array.Empty<string>() : new[] { unit.Leader }).Concat(unit.AdditionalLeaders ?? []).ToArray();
+    public static string[] LeaderIds(BattleUnit unit) => (unit.Leader == "" ? Array.Empty<string>() : new[] { unit.Leader }).Concat(unit.AdditionalLeaders ?? []).Concat((unit.FacilityLeaders ?? []).Values).ToArray();
     public static IEnumerable<LeaderDefinition> AssignedLeaders(ContentCatalog c, BattleUnit unit) => LeaderIds(unit).Select(id => c.Leaders[id]);
     public static BattleUnit WithLeaders(BattleUnit unit, IEnumerable<string> leaders)
     {
@@ -23,6 +23,7 @@ public static class FleetRuleTools
     public static bool ValidLeader(ContentCatalog c, BattleUnit unit)
     {
         if (unit.Leader == null || (unit.AdditionalLeaders ?? []).Any(id => string.IsNullOrWhiteSpace(id))) return false;
+        if (c.Ships.TryGetValue(unit.Definition, out var planetary) && Class(planetary) == "planet") return FleetPlanets.ValidLeaders(c, unit);
         var ids = LeaderIds(unit);
         return ids.Distinct().Count() == ids.Length && c.Ships.TryGetValue(unit.Definition, out var ship)
             && ids.All(id => c.Leaders.TryGetValue(id, out var leader) && leader.Faction == ship.Faction && CanLead(leader, ship))
@@ -64,9 +65,9 @@ public static class FleetRuleTools
     {
         message = ""; var unit = s.Units.Single(u => u.Id == id);
         if (unit.Hulk || choice == "" || choice != "ask" && choice != "focus" && !Debuffs.Contains(choice)) return s;
-        if (choice == "ask" && unit.FocusFire == 0 && !(unit.Effects ?? []).Any(Debuffs.Contains)) return s;
+        if (choice == "ask" && unit.FocusFire == 0 && !(unit.Effects ?? []).Any(Debuffs.Contains) && !FleetPlanets.Crippled(unit, unit.ActiveFacility)) return s;
         var ship = c.Ships[unit.Definition]; uint random = s.RandomState;
-        int dice = 1 + AssignedLeaders(c, unit).Sum(l => l.CoolUnderPressure);
+        int dice = 1 + FleetPlanets.ActivationLeaders(c, unit).Sum(l => l.CoolUnderPressure);
         var rolls = new int[dice]; for (int i = 0; i < dice; i++) rolls[i] = Roll(ref random);
         int successes = rolls.Count(d => d >= ship.Success);
         if (choice == "ask")
@@ -74,6 +75,7 @@ public static class FleetRuleTools
             message = $"Damage Control [{string.Join(", ", rolls)}]: successes {successes}. ";
             return s with { RandomState = random, Repairs = successes == 0 ? s.Repairs : (s.Repairs ?? []).Append(new(id, unit.Side, successes, rolls, advance)).ToArray() };
         }
+        if (choice == "weapons" && successes > 0 && FleetPlanets.IsPlanet(c, unit)) unit = FleetPlanets.RepairWeapons(unit);
         unit = choice == "focus" ? unit with { FocusFire = Math.Max(0, unit.FocusFire - successes) }
             : successes > 0 ? unit with { Effects = (unit.Effects ?? []).Where(e => e != choice).ToArray() } : unit;
         message = $"Damage Control [{string.Join(", ", rolls)}]: successes {successes}. ";

@@ -7,6 +7,7 @@ public static class FleetWeapons
             Penetrating: (ship.Abilities ?? []).Select(id => c.Abilities[id]).Where(a => a.Handler == "penetrating").Sum(a => a.Value),
             RapidFire: (ship.Abilities ?? []).Select(id => c.Abilities[id]).Where(a => a.Handler == "rapid-fire").Sum(a => a.Value),
             RapidTargets: ship.Id is "core:kushan-interceptor" or "core:taiidan-interceptor" ? ["fighter", "corvette", "platform"] : null)]);
+    public static WeaponDefinition[] Weapons(ContentCatalog c, BattleUnit unit) => Weapons(c, c.Ships[unit.Definition]).Concat(FleetPlanets.FacilityWeapons(c, unit)).ToArray();
     public static bool Arc(BattleUnit attacker, BattleUnit target, string arc)
     {
         var start = new Hex(attacker.Q, attacker.R); var end = new Hex(target.Q, target.R);
@@ -19,7 +20,7 @@ public static class FleetWeapons
     {
         if (target == null || target.Side == unit.Side) return (false, 0, "Select an enemy.");
         if (FleetRuleTools.Has(unit, "weapons")) return (false, 0, "Weapons are crippled.");
-        var choices = Weapons(c, c.Ships[unit.Definition]).Where(w => (weapon == "" || w.Id == weapon)
+        var choices = Weapons(c, unit).Where(w => !w.DefenseOnly && FleetPlanets.CanUseWeapon(c, s, unit, w.Id) && (weapon == "" || w.Id == weapon)
             && ((w.Targets?.Length ?? 0) == 0 || w.Targets!.Contains(FleetRuleTools.Class(c.Ships[target.Definition]))));
         foreach (var w in choices)
         {
@@ -33,5 +34,5 @@ public static class FleetWeapons
         return (false, 0, "No suitable weapon: check range, arc, target type and firing line.");
     }
     public static WeaponDefinition? Select(ContentCatalog c, BattleState s, BattleUnit u, BattleUnit target, string id) =>
-        Weapons(c, c.Ships[u.Definition]).FirstOrDefault(w => (id == "" || w.Id == id) && Attack(c, s, u, target, w.Id).Allowed);
+        Weapons(c, u).FirstOrDefault(w => (id == "" || w.Id == id) && Attack(c, s, u, target, w.Id).Allowed);
 }

@@ -9,7 +9,7 @@ public static class FleetCombat
     private static WeaponDefinition Weapon(ContentCatalog c, BattleState s, PendingCombat combat)
     {
         var ship = c.Ships[Actor(s, combat).Definition];
-        return combat.Kind is "ranged" or "defense" or "cap" or "dogfight" or "terrain" or "terrain-dogfight" ? FleetWeapons.Weapons(c, ship).Single(w => w.Id == combat.Weapon)
+        return combat.Kind is "ranged" or "defense" or "cap" or "dogfight" or "terrain" or "terrain-dogfight" ? FleetWeapons.Weapons(c, Actor(s, combat)).Single(w => w.Id == combat.Weapon)
             : new(combat.Kind, combat.Kind, combat.Kind == "board" ? ship.Crew : ship.Ram, 1, Kind: "close");
     }
     private static int[] Roll(int dice, ref uint random)
@@ -59,7 +59,7 @@ public static class FleetCombat
         var ship = c.Ships[unit.Definition];
         var weapon = cmd.AttackKind == "ranged" ? FleetWeapons.Select(c, s, unit, target!, cmd.Weapon)!
             : new WeaponDefinition(cmd.AttackKind, cmd.AttackKind, cmd.AttackKind == "board" ? ship.Crew : ship.Ram, 1, Kind: "close");
-        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + (cmd.Power ? weapon.PowerDice : 0) + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.AttackDice + (cmd.AttackKind is "ram" or "board" || CloseWeapon(c, unit, weapon) ? l.CloseDice : 0));
+        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + (cmd.Power ? weapon.PowerDice : 0) + FleetPlanets.CombatLeaders(c, unit, weapon.Id).Sum(l => l.AttackDice + (cmd.AttackKind is "ram" or "board" || CloseWeapon(c, unit, weapon) ? l.CloseDice : 0));
         if (cmd.AttackKind == "ranged") dice -= FleetWeapons.Attack(c, s, unit, target, weapon.Id).Cover;
         dice += FleetRuleTools.AttackAura(c, s, unit, target);
         if (cmd.AttackKind == "board") dice += SpecialOrders.BoardingBonus(c, s, unit.Id) + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.BoardingDice) - unit.CrewDamage;
@@ -88,7 +88,7 @@ public static class FleetCombat
     }
     internal static PendingCombat PrepareReaction(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit target, WeaponDefinition weapon, string kind, ref uint random)
     {
-        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.AttackDice + (CloseWeapon(c, unit, weapon) ? l.CloseDice : 0));
+        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + FleetPlanets.CombatLeaders(c, unit, weapon.Id).Sum(l => l.AttackDice + (CloseWeapon(c, unit, weapon) ? l.CloseDice : 0));
         if (!(kind == "cap" && FleetTerrain.Diffuse(s.Defense!.Threat))) dice += FleetRuleTools.AttackAura(c, s, unit, target);
         return new(unit.Side, unit.Id, target.Id, weapon.Id, false, Roll(Math.Max(1, dice), ref random), s.Defense!.Interrupt, Kind: kind);
     }
@@ -112,7 +112,7 @@ public static class FleetCombat
         int distance = new Hex(unit.Q, unit.R).Distance(new(target.Q, target.R));
         bool rear = defender.Footprint == 1 && FleetRuleTools.Class(defender) is "frigate" or "capital" && new Hex(unit.Q, unit.R).Distance(new Hex(target.Q, target.R).Neighbor(target.Facing + 3)) == distance - 1;
         bool front = new Hex(unit.Q, unit.R).Distance(new Hex(target.Q, target.R).Neighbor(target.Facing)) == distance - 1;
-        return Math.Max(0, defender.Armor + (FleetRuleTools.Has(target, "brace") ? 1 : 0) + (defender.ProwArmor && front ? 1 : 0)
+        return Math.Max(0, defender.Armor + FleetPlanets.Armor(c, target) + (FleetRuleTools.Has(target, "brace") ? 1 : 0) + (defender.ProwArmor && front ? 1 : 0)
             - (rear ? 1 : 0) - target.FocusFire - weapon.Penetrating - (combat.Power ? weapon.PowerPenetrating : 0));
     }
     public static bool CanCapture(ContentCatalog c, BattleState s)
@@ -130,6 +130,7 @@ public static class FleetCombat
         if (combat.Kind == "defense" && s.Hazard != null) return FleetTerrain.Defended(s, successes);
         if (combat.Kind == "defense" && FleetDefense.Projectile(s.Defense!.Threat))
             return new(true, $"Defensive fire: [{string.Join(", ", combat.Rolls)}], incoming attack -{successes} dice.", s with { Combat = null, Defense = s.Defense with { Reduction = s.Defense.Reduction + successes } });
+        if (FleetPlanets.IsPlanet(c, target)) return FleetPlanets.Damage(c, s, combat, successes, armor);
         int ones = FleetRuleTools.Class(defender) != "fighter" ? combat.Rolls.Count(d => d == 1) : 0;
         int focus = combat.Kind == "board" ? 0 : ones, crew = combat.Kind == "board" ? ones : 0;
         var survivor = target with { Models = target.Models - killed, FocusFire = Math.Max(0, target.FocusFire + focus - killed), CrewDamage = target.CrewDamage + crew,
@@ -173,6 +174,11 @@ public static class FleetCombat
         if (combat.Kind == "collision" && combat.Ghost != null && !next.Units.Any(u => u.Id == combat.Ghost.Id)) next = FleetClose.OfferOverrun(c, next, target, combat.Ghost, combat.Interrupt);
         return new(true, message, next);
     }
+    internal static CommandResult PlanetCollision(ContentCatalog c, BattleState s, PendingCombat attack, BattleUnit planet, int armor)
+    {
+        uint random = s.RandomState; var rolls = Roll(Math.Max(1, 2 * armor), ref random);
+        return WaitOrResolve(c, s with { RandomState = random, Combat = new(planet.Side, planet.Id, attack.Attacker, "collision", false, rolls, attack.Interrupt, Kind: "collision", Ghost: planet) });
+    }
     public static CommandResult Apply(ContentCatalog c, BattleState s, int side, BattleCommand cmd)
     {
         CommandResult Reject(string message) => new(false, message, s);
@@ -205,7 +211,7 @@ public static class FleetCombat
         else next = next with { FactionUsed0 = s.FactionUsed0 || side == 0, FactionUsed1 = s.FactionUsed1 || side == 1 };
         return new(true, $"Reroll [{string.Join(", ", rolls)}]. Confirm the result.", next);
     }
-    private static CommandResult Finish(ContentCatalog c, BattleState before, CommandResult result, PendingCombat combat) =>
+    internal static CommandResult Finish(ContentCatalog c, BattleState before, CommandResult result, PendingCombat combat) =>
         result.State.Finished && FleetObjectives.Enabled(c, result.State) ? result with { State = FleetObjectives.Close(result.State) with { Sequence = before.Sequence + 1 } } :
         result.State.Combat != null || result.State.Overrun != null ? result with { State = result.State with { Sequence = before.Sequence + 1 } }
             : combat.Kind == "terrain" ? FleetTerrain.AfterDamage(c, before, result) : combat.Kind == "defense" ? FleetDefense.AfterRoll(c, before, result) : combat.Kind is "cap" or "dogfight" or "terrain-dogfight" ? FleetCap.AfterVolley(c, before, result) : InterruptRules.CombatResolved(c, before, result.State, result.Message, combat.Interrupt);

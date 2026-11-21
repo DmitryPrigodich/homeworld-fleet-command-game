@@ -13,7 +13,7 @@ public partial class Main
     private string _transferLeaderId = "";
     private int _facingChoice = -1;
     private bool FleetBattle => _state != null && FleetRuleTools.Enabled(_content, _state);
-    private bool FleetDecision => _state?.Cards?.Counter != null || _state?.Reinforce != null && _state.Cards?.Response == null || _state?.Hazard != null || _state?.Combat != null || _state?.Defense != null || _state?.CapEntry != null || _state?.Overrun != null || _state?.Repairs is { Length: > 0 };
+    private bool FleetDecision => _state?.PlanetDamage != null || _state?.Cards?.Counter != null || _state?.Reinforce != null && _state.Cards?.Response == null || _state?.Hazard != null || _state?.Combat != null || _state?.Defense != null || _state?.CapEntry != null || _state?.Overrun != null || _state?.Repairs is { Length: > 0 };
     private string[] BotHand => (_state?.Cards?.Hand1 ?? []).Where(id => !HeroicCommands.IsHeroic(_state, id)).ToArray();
     private BattleCommand? BotAttack(BattleUnit unit, string target, bool interrupt = false)
     {
@@ -26,7 +26,7 @@ public partial class Main
         }
         return null;
     }
-    private bool BotExpected => _state!.Cards?.Counter is { } counter ? counter.Side == 0 : _state.CapEntry is { } entry ? entry.Side == 1 : _state.Overrun is { } overrun ? overrun.Side == 1 : _state.Repairs is { Length: > 0 } ? _state.Repairs[0].Side == 1 : _state.Combat is { } combat ? FleetCombat.DecisionSide(combat) == 1 : _state.Defense is { } defense ? defense.Side == 0 : _state.Cards?.Response != null ? InterruptRules.Responder(_state) == 1
+    private bool BotExpected => _state!.PlanetDamage is { } planet ? planet.Side == 1 : _state!.Cards?.Counter is { } counter ? counter.Side == 0 : _state.CapEntry is { } entry ? entry.Side == 1 : _state.Overrun is { } overrun ? overrun.Side == 1 : _state.Repairs is { Length: > 0 } ? _state.Repairs[0].Side == 1 : _state.Combat is { } combat ? FleetCombat.DecisionSide(combat) == 1 : _state.Defense is { } defense ? defense.Side == 0 : _state.Cards?.Response != null ? InterruptRules.Responder(_state) == 1
         : _state.Cards?.Phase is "initiative" or "cleanup" ? !_state.Cards.Ready1 : _state.ActiveSide == 1;
     private VBoxContainer ScrollBattlePanel(VBoxContainer outer)
     {
@@ -37,6 +37,7 @@ public partial class Main
     private bool DrawFleetPhase(Control parent)
     {
         if (!FleetBattle) return false;
+        if (DrawPlanetDamage(parent)) return true;
         if (_state!.Reinforce != null && _state.Cards?.Response == null && _state.Hazard == null && _state.Combat == null && _state.Defense == null) return DrawReinforcePhase(parent);
         if (_state!.CapEntry is { } entry)
         {
@@ -65,7 +66,7 @@ public partial class Main
             if (LocalCommandSide == repair.Side)
             {
                 if (unit.FocusFire > 0) Button(parent, "REMOVE FOCUS FIRE", () => Submit(new("repair-choice", Repair: "focus")));
-                foreach (string effect in (unit.Effects ?? []).Where(FleetRuleTools.Debuffs.Contains))
+                foreach (string effect in (unit.Effects ?? []).Where(FleetRuleTools.Debuffs.Contains).Concat(FleetPlanets.Crippled(unit, unit.ActiveFacility) ? new[] { "weapons" } : []).Distinct())
                 { string e = effect; Button(parent, "REMOVE: " + e, () => Submit(new("repair-choice", Repair: e))); }
                 Button(parent, "FINISH REPAIRS", () => Submit(new("repair-stop")));
             }
@@ -173,11 +174,11 @@ public partial class Main
         string[] kinds = ["ranged", "ram", "board"];
         var kind = new OptionButton(); kind.AddItem("Attack: shooting"); kind.AddItem("Attack: ramming"); kind.AddItem("Attack: boarding");
         kind.Select(Math.Max(0, Array.IndexOf(kinds, _attackKindChoice))); kind.ItemSelected += i => { _attackKindChoice = kinds[(int)i]; _action = "attack"; DrawBattle(); }; parent.AddChild(kind);
-        var weapons = FleetWeapons.Weapons(_content, _content.Ships[unit.Definition]);
+        var weapons = FleetWeapons.Weapons(_content, unit).Where(w => !w.DefenseOnly && (FleetPlanets.CanUseWeapon(_content, _state!, unit, w.Id) || _state!.Cards is { Pending: null, Response: null } && FleetPlanets.ActivationWeapon(_content, _state, unit, w.Id) != "")).ToArray();
         if (!weapons.Any(w => w.Id == _weaponChoice)) _weaponChoice = weapons.FirstOrDefault()?.Id ?? "";
         if (weapons.Length > 0)
         {
-            var dropdown = new OptionButton(); foreach (var w in weapons) dropdown.AddItem($"{w.Name} · {w.DicePerModel}D/{w.Range}");
+            var dropdown = new OptionButton { ClipText = true, FitToLongestItem = false }; foreach (var w in weapons) dropdown.AddItem($"{w.Name} · {w.DicePerModel}D/{w.Range}");
             dropdown.Select(Array.FindIndex(weapons, w => w.Id == _weaponChoice)); dropdown.ItemSelected += i => { _weaponChoice = weapons[(int)i].Id; DrawBattle(); }; parent.AddChild(dropdown);
         }
         var facing = new OptionButton(); facing.AddItem("Facing: follow path"); for (int i = 0; i < 6; i++) facing.AddItem("Facing: " + (i * 60) + "°");
@@ -185,7 +186,7 @@ public partial class Main
         if (_state!.Cards?.Response == null)
             Button(parent, "TURN IN PLACE", () => Submit(new("move", unit.Id, Q: unit.Q, R: unit.R, Facing: _facingChoice, AutoFacing: false)), _facingChoice < 0 || unit.Side != LocalCommandSide);
         string[] repairs = ["ask", "", "focus", "engines", "weapons", "bays"];
-        var repair = new OptionButton(); foreach (string r in repairs) repair.AddItem(r == "ask" ? "Repair: choose after rolling" : r == "" ? "Damage Control: skip" : "Damage Control: " + r);
+        var repair = new OptionButton { ClipText = true, FitToLongestItem = false }; foreach (string r in repairs) repair.AddItem(r == "ask" ? "Repair: choose after rolling" : r == "" ? "Damage Control: skip" : "Damage Control: " + r);
         repair.Select(Math.Max(0, Array.IndexOf(repairs, _repairChoice))); repair.ItemSelected += i => { _repairChoice = repairs[(int)i]; DrawBattle(); }; parent.AddChild(repair);
         if (_state.Cards is { Pending: null, Response: null } && SpecialOrders.Formation(_content, _state!, _selectedCard))
         {
@@ -201,7 +202,7 @@ public partial class Main
     }
     private void DrawCrewTransfer(Control parent, BattleUnit unit)
     {
-        if (unit.Side != LocalCommandSide || unit.Activated || unit.Hulk || _state!.Cards is not { Phase: "orders", Pending: null, Response: null }) return;
+        if (FleetPlanets.IsPlanet(_content, unit) || unit.Side != LocalCommandSide || unit.Activated || unit.Hulk || _state!.Cards is not { Phase: "orders", Pending: null, Response: null }) return;
         var targets = _state.Units.Where(u => u.Id != unit.Id && (u.Side == unit.Side || u.Hulk) && new Hex(unit.Q, unit.R).Distance(new(u.Q, u.R)) == 1).ToArray();
         if (targets.Length == 0) return;
         if (!targets.Any(u => u.Id == _transferTarget)) _transferTarget = targets[0].Id;

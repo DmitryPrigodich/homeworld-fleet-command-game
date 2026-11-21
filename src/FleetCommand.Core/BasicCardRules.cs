@@ -99,6 +99,7 @@ public static class BasicCardBattle
         }
         c.Maps[LaunchOrdersMapId] = c.Maps[LaunchOrdersMapId] with { Fleets = ["practice:launch-kushan", "practice:launch-taiidan"] };
         HeroicBattle.Register(c);
+        PlanetBattle.Register(c);
     }
 }
 
@@ -132,7 +133,7 @@ public sealed class BasicCardRules : IRuleModule
         return state with { RandomState = random, Cards = new(deck.ToArray(), hands[0].ToArray(), hands[1].ToArray(), discard.ToArray(), HandLimit0: cards.HandLimit0, HandLimit1: cards.HandLimit1, PlayLimit0: cards.PlayLimit0, PlayLimit1: cards.PlayLimit1, HeroicCards: cards.HeroicCards, HeroicUsed: cards.HeroicUsed) };
     }
     public UnitActions GetActions(ContentCatalog c, BattleState state, int side, string unitId) =>
-        state.Cards?.Counter != null || state.Reinforce != null && state.Cards?.Response == null || state.Hazard != null || state.Hazards is { Length: > 0 } || state.Combat != null || state.Defense != null || state.CapEntry != null || state.Overrun != null || state.Repairs is { Length: > 0 } ? UnitActions.Empty :
+        state.PlanetDamage != null || state.Cards?.Counter != null || state.Reinforce != null && state.Cards?.Response == null || state.Hazard != null || state.Hazards is { Length: > 0 } || state.Combat != null || state.Defense != null || state.CapEntry != null || state.Overrun != null || state.Repairs is { Length: > 0 } ? UnitActions.Empty :
         state.Cards?.Response != null ? InterruptRules.Actions(c, state, side, unitId) :
         state.Cards?.Pending != null ? SpecialOrders.Actions(c, state, side, unitId) :
         state.Cards is { Phase: "orders" } cards && (side == 0 ? cards.Hand0 : cards.Hand1).Length > 0
@@ -143,6 +144,7 @@ public sealed class BasicCardRules : IRuleModule
         var cards = state.Cards;
         if (state.Finished || side is < 0 or > 1 || cards == null || cards.IsView) return Reject("You cannot issue an order in this state.");
         if (new[] { command.Card }.Concat(command.Cards ?? []).Any(id => !HeroicCommands.CanUse(c, state, side, id))) return Reject("The matching Hero must still be in play and the Heroic card must be unused.");
+        if (state.PlanetDamage != null) return FleetPlanets.ChooseDamage(c, state, side, command);
         if (cards.Counter != null) return InterruptRules.ResolveCounter(c, state, side, command);
         if (command.Kind == "interrupt-repairs") return InterruptRules.Repair(c, state, side, command);
         if (state.Repairs is { Length: > 0 }) return FleetRepairs.Apply(c, state, side, command);

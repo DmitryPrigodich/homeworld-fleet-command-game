@@ -1345,6 +1345,19 @@
       "coolUnderPressure": 2,
       "afterburners": 1,
       "heroicCommand": "core:hero-rapid-reaction"
+    },
+    {
+      "id": "core:hero-taiidan-battery-coordinator",
+      "name": "Battery Coordinator",
+      "faction": "taiidan",
+      "classes": [
+        "planet"
+      ],
+      "stars": 3,
+      "hand": 3,
+      "play": 2,
+      "attackDice": 1,
+      "heroicCommand": "core:hero-planetary-overwatch"
     }
   ],
   "cards": [
@@ -1905,6 +1918,26 @@
         }
       ],
       "description": "During an enemy Move, the Hero may Move and then Attack only that moving enemy. No Play, activation or activation repair is spent. The Heroic card is used once per scenario."
+    },
+    {
+      "id": "core:hero-planetary-overwatch",
+      "name": "Planetary Overwatch",
+      "kind": "interrupt",
+      "interrupt": "heroic",
+      "heroicOwner": "core:hero-taiidan-battery-coordinator",
+      "interruptTriggers": [
+        "move",
+        "lightning",
+        "attack"
+      ],
+      "lines": [
+        {
+          "actions": [
+            "power"
+          ]
+        }
+      ],
+      "description": "During an enemy Move, Lightning Move or Attack, make a Power Attack with the Hero's assigned planet facility against only that acting enemy. No Play or facility activation is spent; use once per scenario."
     }
   ],
   "decks": [

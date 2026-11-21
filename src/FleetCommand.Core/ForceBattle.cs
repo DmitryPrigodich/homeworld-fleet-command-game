@@ -24,10 +24,11 @@ public static class ForceBattle
             var force = setup.Forces[side]; var report = reports[side];
             var placements = report.Units.Select(item =>
             {
-                var entry = item.Entry; string[] leaders = force.Leaders.Where(l => l.Unit == entry.Id).Select(l => l.Leader).ToArray();
+                var entry = item.Entry; var assignments = force.Leaders.Where(l => l.Unit == entry.Id).ToArray(); bool planet = FleetRuleTools.Class(content.Ships[entry.Ship]) == "planet";
+                string[] leaders = planet ? [] : assignments.Select(l => l.Leader).ToArray();
                 return new FleetUnit(entry.Ship, entry.Placement == "board" ? side == 0 ? entry.Column : setup.Width - 1 - entry.Column : -1, entry.Placement == "board" ? entry.Row : -1,
                     entry.Facing < 0 ? side == 0 ? 0 : 3 : entry.Facing, Leader: leaders.FirstOrDefault() ?? "", Reserve: entry.Placement == "reserve",
-                    EmbarkedOn: entry.Placement == "bay" ? Array.FindIndex(report.Units, u => u.Entry.Id == entry.Parent) : -1, AdditionalLeaders: leaders.Length > 1 ? leaders.Skip(1).ToArray() : null);
+                    EmbarkedOn: entry.Placement == "bay" ? Array.FindIndex(report.Units, u => u.Entry.Id == entry.Parent) : -1, AdditionalLeaders: leaders.Length > 1 ? leaders.Skip(1).ToArray() : null, FacilityLeaders: planet ? assignments.ToDictionary(l => l.Facility, l => l.Leader) : null);
             }).ToArray();
             if (placements.Where(p => !p.Reserve && p.EmbarkedOn < 0).Any(p => FleetFootprint.Cells(content.Ships[p.Ship], new(p.Q, p.R), p.Facing).Any(h => h.Q < 0 || h.Q >= setup.Width || h.R < 0 || h.R >= setup.Height || (side == 0 ? h.Q >= 2 : h.Q < setup.Width - 2)))) throw new InvalidDataException("The entire ship must fit inside the deployment zone.");
             runtime.Fleets[fleetIds[side]] = new(fleetIds[side], force.Name, placements);
@@ -38,6 +39,7 @@ public static class ForceBattle
         var types = content.Objects.Keys.Order(StringComparer.Ordinal).ToArray();
         if (setup.Objects > 0 && types.Length == 0) throw new InvalidDataException("No battlefield object definitions.");
         var objects = cells.Take(setup.Objects).Select(h => new MapObject(types[random.Next(types.Length)], h.Q, h.R)).ToArray();
+        objects = objects.Concat(fleetIds.SelectMany(id => runtime.Fleets[id].Units).Where(u => FleetRuleTools.Class(content.Ships[u.Ship]) == "planet").Select(u => new MapObject("core:planet", u.Q, u.R))).ToArray();
         int asteroids = objects.Count(o => FleetTerrain.Kind(content.Objects[o.Definition]) == "asteroid");
         int[] values = Enumerable.Range(0, asteroids).Select(i => new[] { 0, 2, 3 }[i % 3]).ToArray();
         var goals = Enumerable.Range(0, 2).SelectMany(side => new[] {

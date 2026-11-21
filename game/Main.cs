@@ -69,6 +69,7 @@ public partial class Main : Node3D
             if (_args.Contains("--smoke-heroes")) ConfigureHeroicContent();
             if (_args.Contains("--smoke-more-heroes")) ConfigureMoreHeroicContent();
             if (_args.Contains("--smoke-pilot-launch")) ConfigurePilotLaunchContent();
+            if (_args.Contains("--smoke-planets")) ConfigurePlanetContent(true);
             if (_args.Contains("--smoke-hero-reaction")) ConfigureHeroicReactionContent();
             if (_args.Contains("--capture-battle")) StartBattle("core:training", false);
             if (_args.Contains("--capture-generator")) GeneratorMenu();
@@ -81,7 +82,7 @@ public partial class Main : Node3D
             {
                 bool coop = _args.Contains("--smoke-coop");
                 if (coop) _campaign = FleetCommand.Core.Campaign.Start(_content, "core:patrol", ["host"]);
-                StartBattle(_args.Contains("--smoke-hero-reaction") ? HeroicBattle.ReactionNetworkMapId : _args.Contains("--smoke-pilot-launch") ? HeroicBattle.PilotLaunchMapId : _args.Contains("--smoke-more-heroes") ? HeroicBattle.AdvancedMapId : _args.Contains("--smoke-heroes") ? HeroicBattle.MapId : _args.Contains("--smoke-move-interrupt") ? BasicCardBattle.OrdersMapId : _args.Contains("--smoke-repair-interrupt") ? BasicCardBattle.OrdersMapId : _args.Contains("--smoke-counters") ? BasicCardBattle.OrdersMapId : _args.Contains("--smoke-ready-launch") ? BasicCardBattle.LaunchOrdersMapId : _args.Contains("--smoke-published-orders") ? BasicCardBattle.OrdersMapId : _args.Contains("--smoke-objectives") ? BasicCardBattle.ObjectivesMapId : _args.Contains("--smoke-logistics") ? BasicCardBattle.LogisticsMapId : _args.Contains("--smoke-economy") ? BasicCardBattle.EconomyMapId : _args.Contains("--smoke-terrain") ? TerrainCheckMap : _args.Contains("--smoke-tabletop") || _args.Contains("--smoke-defense") || _args.Contains("--smoke-cap") ? BasicCardBattle.TabletopMapId : _args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop);
+                StartBattle(_args.Contains("--smoke-planets") ? PlanetBattle.NetworkMapId : _args.Contains("--smoke-hero-reaction") ? HeroicBattle.ReactionNetworkMapId : _args.Contains("--smoke-pilot-launch") ? HeroicBattle.PilotLaunchMapId : _args.Contains("--smoke-more-heroes") ? HeroicBattle.AdvancedMapId : _args.Contains("--smoke-heroes") ? HeroicBattle.MapId : _args.Contains("--smoke-move-interrupt") ? BasicCardBattle.OrdersMapId : _args.Contains("--smoke-repair-interrupt") ? BasicCardBattle.OrdersMapId : _args.Contains("--smoke-counters") ? BasicCardBattle.OrdersMapId : _args.Contains("--smoke-ready-launch") ? BasicCardBattle.LaunchOrdersMapId : _args.Contains("--smoke-published-orders") ? BasicCardBattle.OrdersMapId : _args.Contains("--smoke-objectives") ? BasicCardBattle.ObjectivesMapId : _args.Contains("--smoke-logistics") ? BasicCardBattle.LogisticsMapId : _args.Contains("--smoke-economy") ? BasicCardBattle.EconomyMapId : _args.Contains("--smoke-terrain") ? TerrainCheckMap : _args.Contains("--smoke-tabletop") || _args.Contains("--smoke-defense") || _args.Contains("--smoke-cap") ? BasicCardBattle.TabletopMapId : _args.Contains("--smoke-cards") ? BasicCardBattle.MapId : "core:training", false, preserveCampaign: coop);
                 if (_args.Contains("--smoke-forces")) StartPrepared(new([ForceBattle.PracticeForce("kushan"), ForceBattle.PracticeForce("taiidan")]), false);
                 if (_args.Contains("--smoke-scenario")) { _settings = _settings with { Language = "ru" }; _locale.SetLanguage("ru"); StartBattle("core:first-contact", false); ConfigureFeatureBattle(false); }
                 if (_args.Contains("--smoke-large")) { StartBattle("practice:large", false); ConfigureFeatureBattle(true); }
@@ -94,6 +95,7 @@ public partial class Main : Node3D
                 if (_args.Contains("--smoke-heroes")) ConfigureHeroicBattle();
                 if (_args.Contains("--smoke-more-heroes")) ConfigureMoreHeroicBattle();
                 if (_args.Contains("--smoke-pilot-launch")) ConfigurePilotLaunchBattle();
+                if (_args.Contains("--smoke-planets")) ConfigurePlanetBattle(true);
                 if (_args.Contains("--smoke-hero-reaction")) ConfigureHeroicReactionBattle(true);
                 if (_args.Contains("--smoke-defense")) ConfigureDefenseBattle();
                 if (_args.Contains("--smoke-cap")) ConfigureCapBattle();
@@ -236,6 +238,7 @@ public partial class Main : Node3D
         if (_frames == 5 && _args.Contains("--check-heroes")) _ = CheckHeroic();
         if (_frames == 5 && _args.Contains("--check-more-heroes")) _ = CheckMoreHeroic();
         if (_frames == 5 && _args.Contains("--check-pilot-launch")) _ = CheckPilotLaunch();
+        if (_frames == 5 && _args.Contains("--check-planets")) _ = CheckPlanets();
         if (_frames == 5 && _args.Contains("--check-hero-reaction")) _ = CheckHeroicReaction();
         if (_frames == 5 && _args.Contains("--check-special")) _ = CheckSpecialCards();
         if (_frames == 5 && _args.Contains("--check-interrupt")) _ = CheckInterrupts();

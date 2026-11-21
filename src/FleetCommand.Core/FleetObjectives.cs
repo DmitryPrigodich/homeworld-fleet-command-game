@@ -37,7 +37,7 @@ public static class FleetObjectives
         return !next.Finished && Math.Max(next.Medals0, next.Medals1) >= c.Maps[s.Map].VictoryMedals ? Result(next, "medals") : next;
     }
     internal static BattleState AtLimit(ContentCatalog c, BattleState s) => Result(Refresh(c, s), "round-limit");
-    internal static BattleState Close(BattleState s) => s with { Combat = null, Defense = null, CapEntry = null, Overrun = null, Repairs = null, Hazard = null, Hazards = null, Reinforce = null,
+    internal static BattleState Close(BattleState s) => s with { PlanetDamage = null, Combat = null, Defense = null, CapEntry = null, Overrun = null, Repairs = null, Hazard = null, Hazards = null, Reinforce = null,
         Cards = s.Cards == null ? null : s.Cards with { Pending = null, Response = null, Counter = null, MoveInterrupt = null, HeroicInterrupt = null } };
     internal static BattleState RecordCapture(ContentCatalog c, BattleState s, string unit, int side)
     {

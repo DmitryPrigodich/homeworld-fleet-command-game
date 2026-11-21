@@ -64,6 +64,7 @@ public static partial class InterruptRules
         if ((turning || embarking) && (acting!.Hulk || acting.Side != side || state.ActiveSide != side || basic && (acting.Activated || (side == 0 ? state.Orders0 : state.Orders1) >= FleetRuleTools.PlayLimit(c, state, side))))
             return new(false, "The unit cannot receive a turn-in-place order.", state);
         var unit = state.Units.Single(u => u.Id == command.Unit);
+        if (basic && FleetPlanets.IsPlanet(c, unit) && (command.Kind != "attack" || !FleetPlanets.CanActivate(c, state, unit, command.Weapon))) return new(false, "Select a ready planet weapon facility for this Attack order.", state);
         var next = state;
         if (basic)
         {
@@ -75,6 +76,7 @@ public static partial class InterruptRules
                 Units = state.Units.Select(u => u.Id == unit.Id ? (FleetRuleTools.Enabled(c, state) ? FleetRuleTools.NewOrder(u) : u) with { Activated = true } : u).ToList()
             };
         }
+        if (basic) next = FleetPlanets.Activate(c, next, unit.Id, command.Weapon);
         Hex[] path = [];
         if (command.Kind == "move")
         {
@@ -96,9 +98,9 @@ public static partial class InterruptRules
         string activationMessage = "";
         if (basic && tabletop)
         {
-            next = FleetRuleTools.Medic(c, next, unit.Id, out activationMessage);
+            next = FleetPlanets.IsPlanet(c, unit) ? FleetRuleTools.ActivationControl(c, next, unit.Id, command.Repair, out activationMessage) : FleetRuleTools.Medic(c, next, unit.Id, out activationMessage);
             var activation = FleetTerrain.Activation(c, state, next, [unit.Id], "response-start", activationMessage);
-            if (activation.State.Hazard != null || activation.State.Combat != null || activation.State.Defense != null || activation.State.Cards?.Response == null) return activation;
+            if (activation.State.Repairs is { Length: > 0 } || activation.State.Hazard != null || activation.State.Combat != null || activation.State.Defense != null || activation.State.Cards?.Response == null) return activation;
             // An automatically resolved terrain attack already resumed the action.
             if (activation.State.Sequence != next.Sequence) return activation;
         }

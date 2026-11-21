@@ -115,6 +115,7 @@ public sealed class ContentCatalog
                 || w.Penetrating < 0 || w.RapidFire < 0 || w.PowerDice < 0 || w.PowerPenetrating < 0 || (w.Targets ?? []).Any(t => !FleetRuleTools.Classes.Contains(t)) || (w.RapidTargets ?? []).Any(t => !FleetRuleTools.Classes.Contains(t)))))
                 throw new InvalidDataException($"Invalid weapons: {s.Id}");
         }
+        FleetPlanets.ValidateDefinitions(this);
         foreach (var leader in Leaders.Values)
             if (leader.Hand < 0 || leader.Play < 0 || leader.Stars < 0 || leader.CoolUnderPressure < 0 || leader.AttackDice < 0 || leader.CloseDice < 0 || leader.Evasive is < 0 or > 20 || leader.DefensiveAura is < 0 or > 20 || leader.Afterburners is < 0 or > 20 || leader.BoardingDice is < 0 or > 20 || leader.Medic != 0 && leader.Medic is < 2 or > 6
                 || leader.AttackAura is < 0 or > 20 || leader.AttackAuraRange is < 0 or > 20 || leader.AttackAuraTargets != null && (leader.AttackAuraTargets.Length == 0 || leader.AttackAuraTargets.Distinct().Count() != leader.AttackAuraTargets.Length || leader.AttackAuraTargets.Any(t => !FleetRuleTools.Classes.Contains(t))) || leader.HeroicCommand == null
@@ -124,7 +125,7 @@ public sealed class ContentCatalog
         ForceBuilder.ValidateDefinitions(this);
         foreach (var f in Fleets.Values)
             foreach (var u in f.Units)
-                if (u.Cargo is < 0 or > 1000000 || !Ships.ContainsKey(u.Ship) || u.Facing is < 0 or > 5 || !FleetRuleTools.ValidLeader(this, new("", u.Ship, 0, u.Q, u.R, u.Facing, 1, Leader: u.Leader, AdditionalLeaders: u.AdditionalLeaders))) throw new InvalidDataException($"Invalid fleet unit: {f.Id}");
+                if (u.Cargo is < 0 or > 1000000 || !Ships.ContainsKey(u.Ship) || u.Facing is < 0 or > 5 || !FleetRuleTools.ValidLeader(this, new("", u.Ship, 0, u.Q, u.R, u.Facing, 1, Leader: u.Leader, AdditionalLeaders: u.AdditionalLeaders, FacilityLeaders: u.FacilityLeaders))) throw new InvalidDataException($"Invalid fleet unit: {f.Id}");
         foreach (var o in Objects.Values)
             if (o.MoveCost < 1 || o.AttackPenalty < 0 || o.Hazard is { } hazard && (hazard.Dice is < 0 or > 100 || hazard.Success is < 2 or > 6 || hazard.Penetrating < 0)) throw new InvalidDataException($"Invalid object: {o.Id}");
         foreach (var rule in Rules.Values)
@@ -148,12 +149,20 @@ public sealed class ContentCatalog
                     throw new InvalidDataException($"Invalid map object: {map.Id}");
                 if (Objects[objectPlacement.Definition].BlocksMovement) occupied.Add(new(objectPlacement.Q, objectPlacement.R));
             }
+            var militaryPlanets = new HashSet<Hex>();
             foreach (var f in map.Fleets)
             {
                 if (!Fleets.TryGetValue(f, out var fleet)) throw new InvalidDataException($"Missing fleet: {f}");
                 FleetLogistics.ValidatePlacements(this, fleet, Rules[map.Rules].Tabletop);
                 foreach (var unit in fleet.Units.Where(u => !u.Reserve && u.EmbarkedOn < 0))
+                {
+                    if (FleetRuleTools.Class(Ships[unit.Ship]) == "planet")
+                    {
+                        if (!Rules[map.Rules].Tabletop || !militaryPlanets.Add(new(unit.Q, unit.R)) || !map.Objects.Any(o => o.Q == unit.Q && o.R == unit.R && Objects[o.Definition].BlocksMovement && (o.Definition == "core:planet" || Objects[o.Definition].Kind == "planet"))) throw new InvalidDataException("Military planet requires its own physical planet token.");
+                        continue;
+                    }
                     if (Ships[unit.Ship].Footprint == 2 && !Rules[map.Rules].Tabletop || FleetFootprint.Cells(Ships[unit.Ship], new(unit.Q, unit.R), unit.Facing).Any(h => !Inside(h.Q, h.R) || !occupied.Add(h))) throw new InvalidDataException($"Invalid/overlapping deployment: {map.Id}");
+                }
             }
         }
         foreach (var campaign in Campaigns.Values)

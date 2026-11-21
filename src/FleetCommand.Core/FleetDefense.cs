@@ -17,7 +17,7 @@ public static class FleetDefense
         return Projectile(weapon.Kind) || weapon.Kind == "close" ? weapon.Kind : FleetRuleTools.Class(c.Ships[unit.Definition]) == "fighter" ? "fighter" : "";
     }
     public static WeaponDefinition[] Weapons(ContentCatalog c, BattleUnit defender) => defender.Hulk || FleetRuleTools.Has(defender, "weapons") ? []
-        : FleetWeapons.Weapons(c, c.Ships[defender.Definition]).Where(w => w.DefensiveFire).ToArray();
+        : FleetWeapons.Weapons(c, defender).Where(w => w.DefensiveFire).ToArray();
     public static bool Locked(BattleState s, BattleUnit defender, BattleCommand attack) => attack.AttackKind == "board"
         && defender.LastActionRound == s.Round && defender.LastAction == "board" && defender.LastTarget == attack.Unit;
     internal static CommandResult? Offer(ContentCatalog c, BattleState s, int side, BattleCommand attack, bool interrupt)
@@ -35,7 +35,7 @@ public static class FleetDefense
         int aura = FleetTerrain.Diffuse(frame.Threat) ? 0 : FleetRuleTools.AttackAura(c, s, unit, incoming);
         if (weapon.Barrage > 0) return Math.Max(1, (FleetTerrain.Diffuse(frame.Threat) ? frame.IncomingDice : incoming.Models) - unit.FocusFire + FleetRuleTools.DefensiveAura(c, s, unit) + aura);
         int support = s.Units.Count(u => u.Patrol == "" && u.Id != unit.Id && u.Side == unit.Side && FleetFootprint.Distance(c, u, unit) == 1 && Weapons(c, u).Length > 0);
-        return Math.Max(1, weapon.DicePerModel * unit.Models + support - unit.FocusFire + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.AttackDice) + FleetRuleTools.DefensiveAura(c, s, unit) + aura);
+        return Math.Max(1, weapon.DicePerModel * unit.Models + support - unit.FocusFire + FleetPlanets.CombatLeaders(c, unit, weapon.Id).Sum(l => l.AttackDice) + FleetRuleTools.DefensiveAura(c, s, unit) + aura);
     }
     public static CommandResult Apply(ContentCatalog c, BattleState s, int side, BattleCommand command)
     {
