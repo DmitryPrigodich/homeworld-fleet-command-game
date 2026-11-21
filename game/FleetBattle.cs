@@ -10,12 +10,14 @@ public partial class Main
     private string _phaseKey = "", _weaponChoice = "", _repairChoice = "ask", _repairOtherChoice = "ask", _attackKindChoice = "ranged", _transferTarget = "";
     private int _transferCrew;
     private bool _transferLeader;
+    private string _transferLeaderId = "";
     private int _facingChoice = -1;
     private bool FleetBattle => _state != null && FleetRuleTools.Enabled(_content, _state);
     private bool FleetDecision => _state?.Cards?.Counter != null || _state?.Reinforce != null && _state.Cards?.Response == null || _state?.Hazard != null || _state?.Combat != null || _state?.Defense != null || _state?.CapEntry != null || _state?.Overrun != null || _state?.Repairs is { Length: > 0 };
+    private string[] BotHand => (_state?.Cards?.Hand1 ?? []).Where(id => !HeroicCommands.IsHeroic(_state, id)).ToArray();
     private BattleCommand? BotAttack(BattleUnit unit, string target, bool interrupt = false)
     {
-        string card = interrupt ? _state!.Cards!.Hand1.FirstOrDefault(id => InterruptRules.IsAttack(_content, _state, id) && InterruptRules.Eligible(_content, _state, id, _state.Cards.Response!)) ?? "" : _state?.Cards?.Hand1.FirstOrDefault() ?? "";
+        string card = interrupt ? BotHand.FirstOrDefault(id => InterruptRules.IsAttack(_content, _state, id) && InterruptRules.Eligible(_content, _state!, id, _state!.Cards!.Response!)) ?? "" : BotHand.FirstOrDefault() ?? "";
         if (!FleetBattle) return new(interrupt ? "interrupt" : "attack", unit.Id, target, Card: card);
         foreach (string kind in new[] { "ranged", "board", "ram" })
         {
@@ -144,9 +146,10 @@ public partial class Main
         _phaseCards.IntersectWith(hand);
         Text(parent, cards.Phase == "initiative" ? "INITIATIVE" : "HAND CLEANUP", 16, _colors.Highlight);
         Text(parent, cards.Phase == "initiative" ? "Select cards: +1 each, total capped at 6." : "Select cards to discard. Your hand will then replenish to the new limit.", 13);
+        if (HeroicCommands.Pool(cards).Length > 0) Text(parent, "Heroic cards do not count towards Hand and are spent once per scenario.", 12, _colors.Muted);
         foreach (var card in hand)
         {
-            string id = card; var check = new CheckBox { Text = SpecialOrders.Name(_content, _state!, id), ButtonPressed = _phaseCards.Contains(id), Disabled = ready };
+            string id = card; var check = new CheckBox { Text = (HeroicCommands.IsHeroic(_state, id) ? "Heroic · " : "") + SpecialOrders.Name(_content, _state!, id), ButtonPressed = _phaseCards.Contains(id), Disabled = ready || !HeroicCommands.CanUse(_content, _state, side, card) };
             check.AddThemeFontSizeOverride("font_size", 13); parent.AddChild(check);
             check.Toggled += on => { if (on) _phaseCards.Add(id); else _phaseCards.Remove(id); };
         }
@@ -212,7 +215,14 @@ public partial class Main
         amount.ValueChanged += n => _transferCrew = (int)n; parent.AddChild(amount);
         var leader = new CheckBox { Text = unit.Leader == "" ? "Transfer leader" : "Transfer: " + _content.Leaders[unit.Leader].Name, ButtonPressed = _transferLeader, Disabled = FleetRuleTools.LeaderIds(unit).Length == 0 };
         leader.Toggled += on => _transferLeader = on; parent.AddChild(leader);
-        Button(parent, "TRANSFER CREW / LEADER", () => Submit(new("transfer-crew", unit.Id, _transferTarget, Amount: _transferCrew, TransferLeader: _transferLeader, Repair: _repairChoice)));
+        var leaderIds = FleetRuleTools.LeaderIds(unit);
+        if (!leaderIds.Contains(_transferLeaderId)) _transferLeaderId = leaderIds.FirstOrDefault() ?? "";
+        if (leaderIds.Length > 1)
+        {
+            var leaderPicker = new OptionButton(); foreach (string id in leaderIds) leaderPicker.AddItem("Transfer: " + _content.Leaders[id].Name);
+            leaderPicker.Select(Array.IndexOf(leaderIds, _transferLeaderId)); leaderPicker.ItemSelected += i => _transferLeaderId = leaderIds[(int)i]; parent.AddChild(leaderPicker);
+        }
+        Button(parent, "TRANSFER CREW / LEADER", () => Submit(new("transfer-crew", unit.Id, _transferTarget, Amount: _transferCrew, TransferLeader: _transferLeader, Repair: _repairChoice, Leader: _transferLeaderId)));
     }
     private void DrawCapExit(Control parent, BattleUnit unit)
     {

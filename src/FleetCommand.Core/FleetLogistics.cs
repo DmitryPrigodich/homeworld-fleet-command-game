@@ -41,7 +41,7 @@ public static class FleetLogistics
         return new(true, "Reinforce: card and Play spent. Choose placement; launching units does not activate their carrier.", s with
         {
             Sequence = s.Sequence + 1, Reinforce = new(side, cmd.Card, cmd.Unit, cmd.Target), Orders0 = s.Orders0 + (side == 0 ? 1 : 0), Orders1 = s.Orders1 + (side == 1 ? 1 : 0),
-            Cards = cards with { Hand0 = cards.Hand0.Where(id => id != cmd.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != cmd.Card).ToArray(), Discard = cards.Discard.Append(cmd.Card).ToArray() }
+            Cards = HeroicCommands.Spend(cards, cmd.Card)
         });
     }
     private static CommandResult Finish(ContentCatalog c, BattleState before, BattleState s, string message)
@@ -150,7 +150,7 @@ public static class FleetLogistics
         if (s.Reinforce is not { } frame) return;
         bool lostArrival = frame.Mode == "deploy" && s.Cards?.Response is { Command.Kind: "reinforce" } arrival && arrival.Command.Unit == frame.Source
             && (s.Combat is { Kind: "collision", Ghost: { } ghost } && ghost.Id == frame.Source || s.Overrun is { Interrupt: true });
-        if (!FleetRuleTools.Enabled(c, s) || s.Finished || frame.Side != s.ActiveSide || s.Cards is not { Phase: "orders", Pending: null } cards || cards.Response != null && cards.Response.Command.Kind != "reinforce" || !cards.Discard.Contains(frame.Card)
+        if (!FleetRuleTools.Enabled(c, s) || s.Finished || frame.Side != s.ActiveSide || s.Cards is not { Phase: "orders", Pending: null } cards || cards.Response != null && cards.Response.Command.Kind != "reinforce" || !HeroicCommands.Spent(cards, frame.Card)
             || (frame.Side == 0 ? s.Orders0 : s.Orders1) < 1 || frame.Mode is not ("deploy" or "launch" or "build") || (s.Overrun != null || s.CapEntry != null) && cards.Response == null || frame.Arrival == null || frame.Arrival.Length > 80
             || !all.Any(u => u.Id == frame.Source && u.Side == frame.Side) && !(frame.Mode == "deploy" && s.Hazard?.Job.Unit == frame.Source) && !lostArrival) throw new InvalidDataException("Invalid pending Reinforce.");
         var source = all.FirstOrDefault(u => u.Id == frame.Source); if (source == null && lostArrival) return;

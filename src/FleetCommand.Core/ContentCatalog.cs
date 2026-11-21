@@ -116,7 +116,8 @@ public sealed class ContentCatalog
                 throw new InvalidDataException($"Invalid weapons: {s.Id}");
         }
         foreach (var leader in Leaders.Values)
-            if (leader.Hand < 0 || leader.Play < 0 || leader.Stars < 0 || leader.CoolUnderPressure < 0 || leader.AttackDice < 0 || leader.CloseDice < 0 || leader.Classes == null
+            if (leader.Hand < 0 || leader.Play < 0 || leader.Stars < 0 || leader.CoolUnderPressure < 0 || leader.AttackDice < 0 || leader.CloseDice < 0 || leader.Evasive is < 0 or > 20 || leader.DefensiveAura is < 0 or > 20 || leader.HeroicCommand == null
+                || leader.HeroicCommand != "" && (!Cards.TryGetValue(leader.HeroicCommand, out var hero) || hero.HeroicOwner != leader.Id) || leader.Classes == null
                 || leader.Classes.Any(t => !FleetRuleTools.Classes.Contains(t))) throw new InvalidDataException($"Invalid leader: {leader.Id}");
         ForceBuilder.ValidateDefinitions(this);
         foreach (var f in Fleets.Values)

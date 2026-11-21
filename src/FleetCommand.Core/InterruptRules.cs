@@ -70,7 +70,7 @@ public static partial class InterruptRules
             var cards = state.Cards!;
             next = state with
             {
-                Cards = cards with { Hand0 = cards.Hand0.Where(id => id != command.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != command.Card).ToArray(), Discard = cards.Discard.Append(command.Card).ToArray() },
+                Cards = HeroicCommands.Spend(cards, command.Card),
                 Orders0 = state.Orders0 + (side == 0 ? 1 : 0), Orders1 = state.Orders1 + (side == 1 ? 1 : 0),
                 Units = state.Units.Select(u => u.Id == unit.Id ? (FleetRuleTools.Enabled(c, state) ? FleetRuleTools.NewOrder(u) : u) with { Activated = true } : u).ToList()
             };
@@ -240,7 +240,7 @@ public static partial class InterruptRules
             || pause.RemainingPath == null || pause.RemainingPath.Length > 2500 || pause.Command.Facing is < 0 or > 5
             || !state.Units.Any(u => u.Id == pause.Command.Unit && u.Side == pause.Side && (u.Activated || pause.ReactionMove)) && state.Combat == null && state.Overrun == null
             || pause.ReactionMove != (cards.MoveInterrupt != null)
-            || !pause.ReactionMove && (pause.Basic ? cards.Pending != null || !cards.Discard.Contains(pause.Command.Card) : cards.Pending == null || SpecialOrders.Actor(c, state, cards.Pending) != pause.Command.Unit))
+            || !pause.ReactionMove && (pause.Basic ? cards.Pending != null || !HeroicCommands.Spent(cards, pause.Command.Card) : cards.Pending == null || SpecialOrders.Actor(c, state, cards.Pending) != pause.Command.Unit))
             throw new InvalidDataException("Invalid response window.");
         var unit = state.Units.Find(u => u.Id == pause.Command.Unit); if (unit == null) return;
         var previous = pause.Transit ?? new Hex(unit.Q, unit.R);

@@ -59,7 +59,7 @@ public static class FleetEconomy
             || cmd.Amount < 1 || cmd.Amount > (cmd.Receive ? other.Cargo : actor.Cargo) || cmd.Amount > 1000000 - (cmd.Receive ? actor.Cargo : other.Cargo)) return new(false, "Transfer requires a ready unit, an adjacent allied ship and available resources.", s);
         var next = s with { Sequence = s.Sequence + 1, Units = s.Units.Select(u => u.Id == actor.Id ? FleetRuleTools.NewOrder(u) with { Activated = true } : u).ToList(),
             Orders0 = s.Orders0 + (side == 0 ? 1 : 0), Orders1 = s.Orders1 + (side == 1 ? 1 : 0),
-            Cards = cards with { Hand0 = cards.Hand0.Where(id => id != cmd.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != cmd.Card).ToArray(), Discard = cards.Discard.Append(cmd.Card).ToArray(),
+            Cards = HeroicCommands.Spend(cards, cmd.Card) with {
                 Pending = new(cmd.Card, side, [actor.Id], 0, BasicAction: "transfer-stars", Deferred: cmd) } };
         next = FleetRuleTools.DamageControl(c, next, actor.Id, cmd.Repair, out var repair);
         return FleetTerrain.Activation(c, s, next, [actor.Id], "order", repair);

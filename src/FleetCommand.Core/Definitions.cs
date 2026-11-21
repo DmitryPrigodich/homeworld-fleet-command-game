@@ -25,7 +25,7 @@ public sealed record ShipDefinition(string Id, string Name, string Faction, stri
 public sealed record WeaponDefinition(string Id, string Name, int DicePerModel, int Range, string Kind = "gun", string Arc = "all",
     string[]? Targets = null, int Penetrating = 0, int RapidFire = 0, int PowerDice = 0, int PowerPenetrating = 0, bool DefensiveFire = false, string[]? RapidTargets = null, int Barrage = 0);
 public sealed record LeaderDefinition(string Id, string Name, string Faction, string[] Classes, int Hand = 0, int Play = 0,
-    int Stars = 0, int CoolUnderPressure = 0, int AttackDice = 0, ForceTab[]? Tabs = null, int CloseDice = 0);
+    int Stars = 0, int CoolUnderPressure = 0, int AttackDice = 0, ForceTab[]? Tabs = null, int CloseDice = 0, string HeroicCommand = "", bool Staff = false, int Evasive = 0, int DefensiveAura = 0);
 public sealed record ForceTab(string Id, string Color, bool Required = false, string[]? Classes = null, string GrantedUnit = "");
 public sealed record AbilityDefinition(string Id, string Handler, int Value = 1);
 public sealed record FleetUnit(string Ship, int Q, int R, int Facing = 0, string Leader = "", int Cargo = 0, bool Reserve = false, int EmbarkedOn = -1, string[]? AdditionalLeaders = null);

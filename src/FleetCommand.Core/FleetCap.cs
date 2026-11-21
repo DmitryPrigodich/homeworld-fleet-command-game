@@ -14,7 +14,7 @@ public static class FleetCap
         var weapon = unit == null ? null : Weapons(c, unit).FirstOrDefault(w => command.Weapon == "" || w.Id == command.Weapon);
         if (frame.CapActive || frame.CapComplete || !Available(s, frame.Attack.Target) || unit == null || weapon == null || !hand.Contains(command.Card)) return new(false, "CAP requires an unused patrol, a weapon and a card from your hand.", s);
         var next = s with { Units = s.Units.Select(u => u.Id == unit.Id ? u with { CapUsed = true, Activated = true } : u).ToList(),
-            Cards = s.Cards! with { Hand0 = s.Cards.Hand0.Where(id => id != command.Card).ToArray(), Hand1 = s.Cards.Hand1.Where(id => id != command.Card).ToArray(), Discard = s.Cards.Discard.Append(command.Card).ToArray() },
+            Cards = HeroicCommands.Spend(s.Cards!, command.Card),
             Defense = frame with { Patroller = unit.Id, CapActive = true } };
         unit = next.Units.Single(u => u.Id == unit.Id); var attacker = FleetTerrain.Find(next, frame.Attack.Unit)!;
         CommandResult result;

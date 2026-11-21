@@ -27,7 +27,7 @@ This deck contains **54 physical copies / 20 supported types**, retaining the pu
 | Interrupt Attack | 3 | Attack the acting enemy during Move, Lightning Move or Reinforce |
 | Interrupt Move | 2 | One allied unit within 3 hexes of the acting enemy makes a Move |
 
-**Separate remaining work:** Heroic commands, attachments and exact remaining unit/leader profiles. See [CARD_INPUTS.md](CARD_INPUTS.md) for source/revision provenance.
+**Separate expansion work:** Four Heroic command/owner pairs are implemented; see [HEROIC_COMMANDS.md](HEROIC_COMMANDS.md). Remaining Heroic commands, attachments and exact remaining unit/leader profiles are tracked separately. See [CARD_INPUTS.md](CARD_INPUTS.md) for source/revision provenance.
 
 ## Playing the orders
 
@@ -37,7 +37,7 @@ For a Move-or-Attack step, choose MOVE or ATTACK on the right, then the green he
 
 Deploy Engineers has a separate repair picker before starting. It removes one whole Focus Fire token (up to two accumulated points) or the selected Crippled token, independently of activation Damage Control. The corrected card does not restore that token at turn end. Buffs apply at activation start, expire on a new order, and are removed by applicable Focus Fire/Crew Damage. Braced does not increase boarding armor; Lockdown explicitly does. Target-system effects require a success before armor reduction, ignore fighters and do not leak into an interrupt, CAP volley or defensive fire.
 
-Definitions, copy counts, descriptions and supported effect parameters are JSON mod data. Text previews and EN/RU catalogs provide the functional presentation. Original card pixels are optional and are not distributed. Saves retain the selected action, current step, first target and completed movement through response windows; ENet peers use protocol `fleet-cards-v7`.
+Definitions, copy counts, descriptions and supported effect parameters are JSON mod data. Text previews and EN/RU catalogs provide the functional presentation. Original card pixels are optional and are not distributed. Saves retain the selected action, current step, first target and completed movement through response windows; ENet peers use protocol `fleet-cards-v8`.
 
 ## Ready to Launch
 

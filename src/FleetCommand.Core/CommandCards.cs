@@ -6,7 +6,7 @@ public sealed record CardDefinition(string Id, string Name, string Kind, string 
     CardLine[]? Lines = null, bool StraightCourse = false, bool AdjacentOnLightning = false,
     string Interrupt = "", bool SameTarget = false, string SelfBuff = "", bool RepairAtStart = false,
     string AttackEffect = "", bool ExcludeFighters = false, bool RequireAfterburners = false, int BoardingDice = 0,
-    bool BoardAfterMove = false, string[]? InterruptTriggers = null, int InterruptRange = 0);
+    bool BoardAfterMove = false, string[]? InterruptTriggers = null, int InterruptRange = 0, string HeroicOwner = "");
 public sealed record DeckEntry(string Card, int Copies = 1, string[]? Instances = null);
 public sealed record DeckDefinition(string Id, string Name, DeckEntry[] Entries);
 
@@ -30,7 +30,7 @@ public static class CommandCards
     }
 
     public static CardDefinition? Find(ContentCatalog c, BattleState? state, string instance) =>
-        Instances(Deck(c, state)).TryGetValue(instance, out var id) ? c.Cards[id] : null;
+        Instances(Deck(c, state)).TryGetValue(instance, out var id) ? c.Cards[id] : HeroicCommands.Find(c, state, instance);
     public static string Name(ContentCatalog c, BattleState? state, string instance) => Find(c, state, instance)?.Name ?? "Unknown card";
     public static string Description(ContentCatalog c, BattleState? state, string instance) => Find(c, state, instance)?.Description ?? "";
 
@@ -51,6 +51,8 @@ public static class CommandCards
                 || card.StraightCourse && (lines.Length != 1 || lines[0].Actions.Any(a => a != "move"))
                 || card.AdjacentOnLightning && (lines.Length != 2 || lines[0].Actions.Contains("lightning") || !lines[1].Actions.Contains("lightning"))
                 || card.SameTarget && (lines.Length != 2 || lines.Any(l => l.Actions.Count(a => a is "attack" or "power" or "board") != 1))
+                || card.HeroicOwner == null || card.HeroicOwner != "" && (card.Kind != "order" || !c.Leaders.TryGetValue(card.HeroicOwner, out var owner) || owner.HeroicCommand != card.Id)
+                || card.SelfBuff == "hero-evasive" && card.HeroicOwner == ""
                 || card.SelfBuff != "" && !FleetRuleTools.Buffs.Contains(card.SelfBuff)
                 || card.AttackEffect != "" && !FleetRuleTools.Debuffs.Contains(card.AttackEffect)
                 || card.Kind != "order" && (card.SelfBuff != "" || card.AttackEffect != "" || card.RepairAtStart || card.ExcludeFighters || card.RequireAfterburners)
@@ -62,7 +64,7 @@ public static class CommandCards
         foreach (var deck in c.Decks.Values)
         {
             if (string.IsNullOrWhiteSpace(deck.Name) || deck.Entries == null || deck.Entries.Length is < 1 or > 512
-                || deck.Entries.Any(e => e == null || !c.Cards.ContainsKey(e.Card) || e.Copies is < 1 or > 512
+                || deck.Entries.Any(e => e == null || !c.Cards.ContainsKey(e.Card) || c.Cards[e.Card].HeroicOwner != "" || e.Copies is < 1 or > 512
                     || e.Instances != null && e.Instances.Length != e.Copies)
                 || deck.Entries.Sum(e => (long)e.Copies) > 512)
                 throw new InvalidDataException($"Invalid command deck: {deck.Id}");

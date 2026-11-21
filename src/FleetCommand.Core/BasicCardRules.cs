@@ -5,7 +5,7 @@ public sealed record CardRound(string[] Deck, string[] Hand0, string[] Hand1, st
     bool IsView = false, int HiddenHandCount = 0, int DeckCount = 0, PendingOrder? Pending = null,
     string[]? Interrupts0 = null, string[]? Interrupts1 = null, PendingResponse? Response = null,
     int HandLimit0 = 2, int HandLimit1 = 2, int PlayLimit0 = 1, int PlayLimit1 = 1, string[]? Bids0 = null, string[]? Bids1 = null,
-    PendingCounter? Counter = null, string[]? UsedInterrupts0 = null, string[]? UsedInterrupts1 = null, PendingMoveInterrupt? MoveInterrupt = null);
+    PendingCounter? Counter = null, string[]? UsedInterrupts0 = null, string[]? UsedInterrupts1 = null, PendingMoveInterrupt? MoveInterrupt = null, HeroicCard[]? HeroicCards = null, string[]? HeroicUsed = null);
 
 public static class BasicCardBattle
 {
@@ -98,14 +98,15 @@ public static class BasicCardBattle
             c.Fleets[fleet] = c.Fleets["practice:" + faction + "-logistics"] with { Id = fleet, Units = c.Fleets["practice:" + faction + "-logistics"].Units.Select(u => u.Ship == "practice:" + faction + "-wing" ? u with { Ship = ship } : u).ToArray() };
         }
         c.Maps[LaunchOrdersMapId] = c.Maps[LaunchOrdersMapId] with { Fleets = ["practice:launch-kushan", "practice:launch-taiidan"] };
+        HeroicBattle.Register(c);
     }
 }
 
 public sealed class BasicCardRules : IRuleModule
 {
     public string Id => "cards-basic-v1";
-    public static BattleState Initialize(BattleState state, ContentCatalog c) => Draw(state with
-    { Cards = new(CommandCards.Instances(CommandCards.Deck(c, state)).Keys.ToArray(), [], [], []) }, true, c);
+    public static BattleState Initialize(BattleState state, ContentCatalog c) => HeroicCommands.Initialize(c, Draw(state with
+    { Cards = new(CommandCards.Instances(CommandCards.Deck(c, state)).Keys.ToArray(), [], [], []) }, true, c));
     private static int Roll(ref uint random) { random ^= random << 13; random ^= random >> 17; random ^= random << 5; return (int)(random % 6) + 1; }
     internal static BattleState Draw(BattleState state, bool shuffle = false, ContentCatalog? c = null)
     {
@@ -113,7 +114,7 @@ public sealed class BasicCardRules : IRuleModule
         var deck = cards.Deck.ToList(); var discard = cards.Discard.Concat(cards.Interrupts0 ?? []).Concat(cards.Interrupts1 ?? []).ToList();
         var hands = new[] { cards.Hand0.ToList(), cards.Hand1.ToList() };
         int[] limits = [cards.HandLimit0, cards.HandLimit1];
-        int needed = Enumerable.Range(0, 2).Sum(i => Math.Max(0, limits[i] - hands[i].Count));
+        int needed = Enumerable.Range(0, 2).Sum(i => Math.Max(0, limits[i] - HeroicCommands.HandCount(cards, hands[i])));
         bool tabletop = c != null && FleetRuleTools.Enabled(c, state);
         void Shuffle()
         { for (int i = deck.Count - 1; i > 0; i--) { Roll(ref random); int j = (int)(random % (i + 1)); (deck[i], deck[j]) = (deck[j], deck[i]); } }
@@ -122,13 +123,13 @@ public sealed class BasicCardRules : IRuleModule
             deck.AddRange(discard); discard.Clear();
             Shuffle();
         }
-        for (int side = 0; side < 2; side++) while (hands[side].Count < limits[side])
+        for (int side = 0; side < 2; side++) while (HeroicCommands.HandCount(cards, hands[side]) < limits[side])
         {
             if (deck.Count == 0 && tabletop && discard.Count > 0) { deck.AddRange(discard); discard.Clear(); Shuffle(); }
             if (deck.Count == 0) break;
             hands[side].Add(deck[0]); deck.RemoveAt(0);
         }
-        return state with { RandomState = random, Cards = new(deck.ToArray(), hands[0].ToArray(), hands[1].ToArray(), discard.ToArray(), HandLimit0: cards.HandLimit0, HandLimit1: cards.HandLimit1, PlayLimit0: cards.PlayLimit0, PlayLimit1: cards.PlayLimit1) };
+        return state with { RandomState = random, Cards = new(deck.ToArray(), hands[0].ToArray(), hands[1].ToArray(), discard.ToArray(), HandLimit0: cards.HandLimit0, HandLimit1: cards.HandLimit1, PlayLimit0: cards.PlayLimit0, PlayLimit1: cards.PlayLimit1, HeroicCards: cards.HeroicCards, HeroicUsed: cards.HeroicUsed) };
     }
     public UnitActions GetActions(ContentCatalog c, BattleState state, int side, string unitId) =>
         state.Cards?.Counter != null || state.Reinforce != null && state.Cards?.Response == null || state.Hazard != null || state.Hazards is { Length: > 0 } || state.Combat != null || state.Defense != null || state.CapEntry != null || state.Overrun != null || state.Repairs is { Length: > 0 } ? UnitActions.Empty :
@@ -141,6 +142,7 @@ public sealed class BasicCardRules : IRuleModule
         CommandResult Reject(string text) => new(false, text, state);
         var cards = state.Cards;
         if (state.Finished || side is < 0 or > 1 || cards == null || cards.IsView) return Reject("You cannot issue an order in this state.");
+        if (new[] { command.Card }.Concat(command.Cards ?? []).Any(id => !HeroicCommands.CanUse(c, state, side, id))) return Reject("The matching Hero must still be in play and the Heroic card must be unused.");
         if (cards.Counter != null) return InterruptRules.ResolveCounter(c, state, side, command);
         if (command.Kind == "interrupt-repairs") return InterruptRules.Repair(c, state, side, command);
         if (state.Repairs is { Length: > 0 }) return FleetRepairs.Apply(c, state, side, command);
@@ -164,9 +166,8 @@ public sealed class BasicCardRules : IRuleModule
             var discards = command.Cards ?? [];
             if (discards.Distinct().Count() != discards.Length || discards.Any(id => !hand.Contains(id))) return Reject("You may only discard your own cards.");
             var budgets = FleetRuleTools.Budgets(c, state);
-            if (hand.Length - discards.Length > (side == 0 ? budgets.HandLimit0 : budgets.HandLimit1)) return Reject("Discard excess cards: your hand limit has decreased.");
-            cards = cards with { Hand0 = side == 0 ? cards.Hand0.Except(discards).ToArray() : cards.Hand0, Hand1 = side == 1 ? cards.Hand1.Except(discards).ToArray() : cards.Hand1,
-                Ready0 = cards.Ready0 || side == 0, Ready1 = cards.Ready1 || side == 1, Discard = cards.Discard.Concat(discards).ToArray() };
+            if (HeroicCommands.HandCount(cards, hand.Except(discards)) > (side == 0 ? budgets.HandLimit0 : budgets.HandLimit1)) return Reject("Discard excess cards: your hand limit has decreased.");
+            cards = HeroicCommands.Spend(cards, discards) with { Ready0 = cards.Ready0 || side == 0, Ready1 = cards.Ready1 || side == 1 };
             var next = state with { Cards = cards, Sequence = state.Sequence + 1 };
             return new(true, "Hand retention confirmed.", cards.Ready0 && cards.Ready1 ? Draw(next, c: c) : next);
         }
@@ -184,8 +185,7 @@ public sealed class BasicCardRules : IRuleModule
             uint random = state.RandomState;
             int a = Math.Min(6, Roll(ref random) + bids0.Length);
             int b = Math.Min(6, Roll(ref random) + bids1.Length);
-            cards = cards with { Hand0 = cards.Hand0.Except(spent).ToArray(), Hand1 = cards.Hand1.Except(spent).ToArray(),
-                Discard = cards.Discard.Concat(spent).ToArray(), Ready0 = false, Ready1 = false, Bid0 = "", Bid1 = "", Bids0 = null, Bids1 = null, Phase = a == b ? "initiative" : "orders" };
+            cards = HeroicCommands.Spend(cards, spent) with { Ready0 = false, Ready1 = false, Bid0 = "", Bid1 = "", Bids0 = null, Bids1 = null, Phase = a == b ? "initiative" : "orders" };
             return new(true, $"Initiative: {a} : {b}. " + (a == b ? "Tie: fresh bids and reroll." : $"First order goes to side {(a > b ? 1 : 2)}."),
                 next with { Cards = cards, RandomState = random, ActiveSide = a > b ? 0 : 1,
                     ValorOwner = FleetRuleTools.Enabled(c, state) && a != b && state.ValorOwner == -1 ? a > b ? 1 : 0 : state.ValorOwner });
@@ -202,7 +202,7 @@ public sealed class BasicCardRules : IRuleModule
         if (!result.Accepted) return result;
         if (command.Kind != "pass")
             cards = side == 0 ? cards with { Hand0 = cards.Hand0.Where(id => id != command.Card).ToArray() } : cards with { Hand1 = cards.Hand1.Where(id => id != command.Card).ToArray() };
-        if (command.Kind != "pass") cards = cards with { Discard = cards.Discard.Append(command.Card).ToArray() };
+        if (command.Kind != "pass") cards = HeroicCommands.Spend(cards, command.Card);
         var after = result.State with { Cards = cards };
         if (after.Round != state.Round && !after.Finished) after = NextRound(c, after);
         return result with { State = after };
@@ -223,10 +223,12 @@ public sealed class BasicCardRules : IRuleModule
         if (cards.Phase is not ("initiative" or "orders" or "cleanup") || cards.Deck == null || cards.Hand0 == null || cards.Hand1 == null || cards.Discard == null
             || cards.HandLimit0 is < 1 or > 100 || cards.HandLimit1 is < 1 or > 100 || cards.PlayLimit0 is < 1 or > 100 || cards.PlayLimit1 is < 1 or > 100)
             throw new InvalidDataException("Invalid card round.");
+        HeroicCommands.Validate(c, state);
         var instances = CommandCards.Instances(CommandCards.Deck(c, state));
-        var all = cards.Deck.Concat(cards.Hand0).Concat(cards.Hand1).Concat(cards.Discard).Concat(cards.Interrupts0 ?? []).Concat(cards.Interrupts1 ?? []).ToArray();
+        foreach (var hero in HeroicCommands.Pool(cards)) if (!instances.TryAdd(hero.Id, c.Leaders[hero.Leader].HeroicCommand)) throw new InvalidDataException("Heroic instance collides with the shared deck.");
+        var all = cards.Deck.Concat(cards.Hand0).Concat(cards.Hand1).Concat(cards.Discard).Concat(cards.Interrupts0 ?? []).Concat(cards.Interrupts1 ?? []).Concat(cards.HeroicUsed ?? []).ToArray();
         if (all.Distinct().Count() != all.Length || all.Any(id => !instances.ContainsKey(id))
-            || (!cards.IsView && all.Length != instances.Count) || cards.Phase != "cleanup" && (cards.Hand0.Length > cards.HandLimit0 || cards.Hand1.Length > cards.HandLimit1)
+            || (!cards.IsView && all.Length != instances.Count) || cards.Phase != "cleanup" && (HeroicCommands.HandCount(cards, cards.Hand0) > cards.HandLimit0 || HeroicCommands.HandCount(cards, cards.Hand1) > cards.HandLimit1)
             || (cards.Bid0 != "" && !cards.Hand0.Contains(cards.Bid0)) || (cards.Bid1 != "" && !cards.Hand1.Contains(cards.Bid1)))
             throw new InvalidDataException("Invalid card ownership or deck conservation.");
         if ((cards.Bids0 ?? []).Any(id => !cards.Hand0.Contains(id)) || (cards.Bids1 ?? []).Any(id => !cards.Hand1.Contains(id))

@@ -48,6 +48,7 @@ public partial class Main
         Button(box, "RULES / DEVELOPMENT MODE", () => { StartBattle(BasicCardBattle.TabletopMapId, true); QueueBot(); });
         Button(box, "COMMAND ORDERS AND EFFECTS", () => { StartBattle(BasicCardBattle.OrdersMapId, true); QueueBot(); });
         Button(box, "LAUNCH ORDERS", () => { StartBattle(BasicCardBattle.LaunchOrdersMapId, true); QueueBot(); });
+        Button(box, "HEROES AND HEROIC COMMANDS", () => { StartBattle(HeroicBattle.MapId, true); QueueBot(); });
         Text(box, "Base command deck: 54 cards / 20 types.", 13, _colors.Muted);
         Button(box, "OBJECTIVES AND MEDALS", () => { StartBattle(BasicCardBattle.ObjectivesMapId, true); QueueBot(); });
         Button(box, "BAYS AND REINFORCEMENTS", () => { StartBattle(BasicCardBattle.LogisticsMapId, true); QueueBot(); });

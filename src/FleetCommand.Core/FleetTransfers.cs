@@ -13,11 +13,14 @@ public static class FleetTransfers
         if (cmd.Amount < 0 || cmd.Amount > target.CrewDamage || cmd.Amount == 0 && !cmd.TransferLeader || cmd.Amount > 0 && c.Ships[unit.Definition].Crew <= 0
             || unit.CrewDamage + cmd.Amount > c.Ships[unit.Definition].Armor || target.CrewDamage - cmd.Amount > c.Ships[target.Definition].Armor)
             return Reject("After transfer, Crew Damage on both units must not exceed their armor.");
-        if (cmd.TransferLeader && (FleetRuleTools.LeaderIds(unit).Length == 0 || !FleetRuleTools.ValidLeader(c, FleetRuleTools.WithLeaders(target, FleetRuleTools.LeaderIds(target).Append(FleetRuleTools.LeaderIds(unit)[0]))))) return Reject("The leader cannot be assigned to this target.");
+        string moving = cmd.Leader == "" ? FleetRuleTools.LeaderIds(unit).FirstOrDefault() ?? "" : cmd.Leader;
+        if (cmd.TransferLeader && (!FleetRuleTools.LeaderIds(unit).Contains(moving)
+            || !FleetRuleTools.ValidLeader(c, FleetRuleTools.WithLeaders(target, FleetRuleTools.LeaderIds(target).Append(moving)))
+            || !FleetRuleTools.ValidLeader(c, FleetRuleTools.WithLeaders(unit, FleetRuleTools.LeaderIds(unit).Where(id => id != moving)))))
+            return Reject("The leader cannot be transferred without breaking its assignment or Staff requirements.");
         var next = s with { Sequence = s.Sequence + 1, Units = s.Units.Select(u => u.Id == unit.Id ? FleetRuleTools.NewOrder(u) with { Activated = true } : u).ToList(),
             Orders0 = s.Orders0 + (side == 0 ? 1 : 0), Orders1 = s.Orders1 + (side == 1 ? 1 : 0),
-            Cards = cards with { Hand0 = cards.Hand0.Where(id => id != cmd.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != cmd.Card).ToArray(),
-                Discard = cards.Discard.Append(cmd.Card).ToArray(), Pending = new(cmd.Card, side, [unit.Id], 0, BasicAction: "transfer-crew", Deferred: cmd) } };
+            Cards = HeroicCommands.Spend(cards, cmd.Card) with { Pending = new(cmd.Card, side, [unit.Id], 0, BasicAction: "transfer-crew", Deferred: cmd) } };
         next = FleetRuleTools.DamageControl(c, next, unit.Id, cmd.Repair, out var repairMessage);
         return FleetTerrain.Activation(c, s, next, [unit.Id], "order", repairMessage);
     }
@@ -27,10 +30,10 @@ public static class FleetTransfers
         if (cmd.Kind == "transfer-stars") return FleetEconomy.CompleteTransfer(c, before, next, message);
         var sender = next.Units.Single(u => u.Id == cmd.Unit); var target = next.Units.Single(u => u.Id == cmd.Target);
         int side = sender.Side;
-        string moving = cmd.TransferLeader ? FleetRuleTools.LeaderIds(sender)[0] : "";
-        var updatedSender = sender with { CrewDamage = sender.CrewDamage + cmd.Amount, Effects = cmd.Amount > 0 ? (sender.Effects ?? []).Except(FleetRuleTools.Buffs).ToArray() : sender.Effects };
+        string moving = cmd.TransferLeader ? cmd.Leader == "" ? FleetRuleTools.LeaderIds(sender)[0] : cmd.Leader : "";
+        var updatedSender = sender with { CrewDamage = sender.CrewDamage + cmd.Amount, Effects = cmd.Amount > 0 ? (sender.Effects ?? []).Except(FleetRuleTools.DamageBuffs).ToArray() : sender.Effects };
         var updatedTarget = target with { CrewDamage = target.CrewDamage - cmd.Amount, Side = target.Hulk ? side : target.Side };
-        if (cmd.TransferLeader) { updatedSender = FleetRuleTools.WithLeaders(updatedSender, FleetRuleTools.LeaderIds(sender).Skip(1)); updatedTarget = FleetRuleTools.WithLeaders(updatedTarget, FleetRuleTools.LeaderIds(target).Append(moving)); }
+        if (cmd.TransferLeader) { updatedSender = FleetRuleTools.WithLeaders(updatedSender, FleetRuleTools.LeaderIds(sender).Where(id => id != moving)); updatedTarget = FleetRuleTools.WithLeaders(updatedTarget, FleetRuleTools.LeaderIds(target).Append(moving)); }
         next = next with { Cards = next.Cards with { Pending = next.Cards.Pending with { Deferred = null } }, Units = next.Units.Select(u => u.Id == sender.Id ? updatedSender : u.Id == target.Id ? FleetClose.CheckHulk(c, updatedTarget) : u).ToList() };
         return SpecialOrders.Advance(c, before, next, side, message + $" Crew transferred: target Crew Damage -{cmd.Amount}, sender +{cmd.Amount}.");
     }

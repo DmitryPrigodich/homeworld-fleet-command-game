@@ -7,6 +7,9 @@ public sealed record CommanderAppearance(int Side, string Name, string Color, st
 
 public static class FleetPresentation
 {
+    public static string EffectName(string effect) => effect switch
+    { "hero-evasive" => "Evading", "evasive" => "Evasive", "brace" => "Braced", "lockdown" => "Lockdown", "engines" => "Crippled engines", "weapons" => "Crippled weapons", "bays" => "Crippled bays", _ => effect };
+
     public const string NeutralColor = "#87929c";
     public static readonly string[] PlayerColors = ["#39a4c5", "#ee873c", "#68ca77", "#b787e6", "#e1c44a", "#ed647f", "#527fe3", "#36cab7"];
     public static readonly string[] Emblems = ["auto", "kushan", "taiidan", "kiith-sjet", "kiith-naabal", "kiith-manaan", "kiith-paktu", "kiith-soban"];

@@ -92,7 +92,7 @@ public static partial class SpecialOrders
         string[] units = Formation(c, state, command.Card) ? [command.Unit, command.OtherUnit] : [command.Unit];
         if (units.Distinct().Count() != units.Length || units.All(id => id == "") || units.Any(id => (id != "" || !partialFormation) && !state.Units.Any(u => u.Id == id && u.Side == side && !u.Activated && !u.Hulk))) return Reject("Assign different ready units to the action lines you want to use.");
         var order = new PendingOrder(command.Card, side, units, partialFormation && command.Unit == "" ? CommandCards.Find(c, state, command.Card)!.Lines![0].Actions.Length : 0);
-        cards = cards with { Hand0 = cards.Hand0.Where(id => id != command.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != command.Card).ToArray(), Discard = cards.Discard.Append(command.Card).ToArray(), Pending = order };
+        cards = HeroicCommands.Spend(cards, command.Card) with { Pending = order };
         var next = state with { Cards = cards,
             Units = state.Units.Select(u => units.Contains(u.Id) ? (FleetRuleTools.Enabled(c, state) ? FleetRuleTools.NewOrder(u) : u) with { Activated = true } : u).ToList(),
             Orders0 = state.Orders0 + (side == 0 ? 1 : 0), Orders1 = state.Orders1 + (side == 1 ? 1 : 0), Sequence = state.Sequence + 1 };
@@ -111,8 +111,7 @@ public static partial class SpecialOrders
             return new(false, "Basic order unavailable.", state);
         var next = state with { Units = state.Units.Select(u => u.Id == unit.Id ? FleetRuleTools.NewOrder(u) with { Activated = true } : u).ToList(),
             Orders0 = state.Orders0 + (side == 0 ? 1 : 0), Orders1 = state.Orders1 + (side == 1 ? 1 : 0), Sequence = state.Sequence + 1,
-            Cards = cards with { Hand0 = cards.Hand0.Where(id => id != command.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != command.Card).ToArray(),
-                Discard = cards.Discard.Append(command.Card).ToArray(), Pending = new(command.Card, side, [unit.Id], 0, BasicAction: command.Target) } };
+            Cards = HeroicCommands.Spend(cards, command.Card) with { Pending = new(command.Card, side, [unit.Id], 0, BasicAction: command.Target) } };
         next = FleetRuleTools.DamageControl(c, next, unit.Id, command.Repair, out var message);
         return FleetTerrain.Activation(c, state, next, [unit.Id], "order", "Basic order started. " + message);
     }
@@ -178,7 +177,7 @@ public static partial class SpecialOrders
         if ((order.BasicAction == "" ? !Supported(c, state, order.Card) : order.BasicAction is not ("move" or "attack" or "harvest" or "transfer-crew" or "transfer-stars")) || order.Side is < 0 or > 1 || state.ActiveSide != order.Side || state.Cards.Phase != "orders" || state.Finished
             || order.Units == null || order.Units.Length != (order.BasicAction == "" && Formation(c, state, order.Card) ? 2 : 1) || order.Units.Distinct().Count() != order.Units.Length
             || order.Units.Any(id => state.Units.Any(u => u.Id == id && (u.Side != order.Side || !u.Activated)))
-            || order.Step < 0 || order.Step >= Steps(c, state, order) || order.Direction is < -1 or > 5 || !state.Cards.Discard.Contains(order.Card)
+            || order.Step < 0 || order.Step >= Steps(c, state, order) || order.Direction is < -1 or > 5 || !HeroicCommands.Spent(state.Cards, order.Card)
             || order.Choice is not ("" or "move" or "attack") || order.Choice != "" && (order.BasicAction != "" || Step(c, state, order).Action != "choice")
             || order.FirstTarget == null || order.FirstTarget.Length > 80 || order.FirstTarget != "" && (order.BasicAction != "" || !CommandCards.Find(c, state, order.Card)!.SameTarget))
             throw new InvalidDataException("Invalid pending special order.");

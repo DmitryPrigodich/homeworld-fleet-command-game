@@ -73,7 +73,7 @@ public partial class Main
         }
         if (_state?.Cards is not { Phase: "orders", Pending: null, Response: null } cards || command.Kind is "pass" or "special" or "faction") return command;
         var hand = LocalCommandSide == 0 ? cards.Hand0 : cards.Hand1;
-        return command with { Card = hand.Contains(_selectedCard) ? _selectedCard : hand.FirstOrDefault() ?? "" };
+        return command with { Card = hand.Contains(_selectedCard) && HeroicCommands.CanUse(_content, _state, LocalCommandSide, _selectedCard) ? _selectedCard : hand.FirstOrDefault(id => HeroicCommands.CanUse(_content, _state, LocalCommandSide, id)) ?? "" };
     }
     private void DrawCards(Control parent)
     {
@@ -139,16 +139,19 @@ public partial class Main
         }
         int side = LocalCommandSide;
         var hand = side == 0 ? cards.Hand0 : cards.Hand1;
-        if (!hand.Contains(_selectedCard)) _selectedCard = hand.FirstOrDefault() ?? "";
+        if (!hand.Contains(_selectedCard) || !HeroicCommands.CanUse(_content, _state, side, _selectedCard)) _selectedCard = hand.FirstOrDefault(id => HeroicCommands.CanUse(_content, _state, side, id)) ?? "";
         Text(parent, cards.Phase == "initiative" ? "INITIATIVE / bid 0–1 card" : "HAND / basic orders", 13, _colors.Highlight);
         bool ready = side == 0 ? cards.Ready0 : cards.Ready1;
         if (cards.Phase == "initiative")
             Button(parent, ready ? "BID CONFIRMED" : "READY / NO BID", () => Submit(new("initiative")), ready);
-        foreach (string id in hand)
+        bool heroHeading = false;
+        foreach (string id in hand.OrderBy(id => HeroicCommands.IsHeroic(_state, id)))
         {
+            if (HeroicCommands.IsHeroic(_state, id) && !heroHeading)
+            { heroHeading = true; Text(parent, "HEROIC COMMANDS / ONCE PER SCENARIO", 13, _colors.Highlight); Text(parent, "These cards do not count towards Hand. The matching Hero must remain in play.", 12, _colors.Muted); }
             string title = SpecialOrders.Name(_content, _state!, id);
             var button = Button(parent, cards.Phase == "initiative" ? "BID: " + title : (_selectedCard == id ? "▶ " : "") + title,
-                () => { if (cards.Phase == "initiative") Submit(new("initiative", Card: id)); else { _selectedCard = id; DrawBattle(); } }, cards.Phase == "initiative" && ready);
+                () => { if (cards.Phase == "initiative") Submit(new("initiative", Card: id)); else { _selectedCard = id; DrawBattle(); } }, cards.Phase == "initiative" && ready || !HeroicCommands.CanUse(_content, _state, side, id));
             button.CustomMinimumSize = new(0, 30); button.AddThemeFontSizeOverride("font_size", 13);
         }
         if (cards.Phase == "orders" && SpecialOrders.Supported(_content, _state!, _selectedCard))

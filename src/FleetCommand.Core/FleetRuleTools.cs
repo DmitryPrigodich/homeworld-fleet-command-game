@@ -3,7 +3,8 @@ namespace FleetCommand.Core;
 public static class FleetRuleTools
 {
     public static readonly string[] Classes = ["fighter", "corvette", "platform", "frigate", "capital", "station"];
-    public static readonly string[] Buffs = ["brace", "evasive", "lockdown"];
+    public static readonly string[] DamageBuffs = ["brace", "evasive", "lockdown"];
+    public static readonly string[] Buffs = [.. DamageBuffs, "hero-evasive"];
     public static readonly string[] Debuffs = ["engines", "weapons", "bays"];
     public static bool Enabled(ContentCatalog c, BattleState s) => c.Rules[c.Maps[s.Map].Rules].Tabletop;
     public static string Faction(ContentCatalog c, BattleState s, int side) => c.Fleets[c.Maps[s.Map].Fleets[side]].Units.Select(u => c.Ships[u.Ship].Faction).FirstOrDefault() ?? "";
@@ -23,8 +24,13 @@ public static class FleetRuleTools
         if (unit.Leader == null || (unit.AdditionalLeaders ?? []).Any(id => string.IsNullOrWhiteSpace(id))) return false;
         var ids = LeaderIds(unit);
         return ids.Distinct().Count() == ids.Length && c.Ships.TryGetValue(unit.Definition, out var ship)
-            && ids.All(id => c.Leaders.TryGetValue(id, out var leader) && leader.Faction == ship.Faction && leader.Classes.Contains(Class(ship)));
+            && ids.All(id => c.Leaders.TryGetValue(id, out var leader) && leader.Faction == ship.Faction && leader.Classes.Contains(Class(ship)))
+            && (!ids.Any(id => c.Leaders[id].Staff) || ids.Any(id => !c.Leaders[id].Staff))
+            && (!ids.Any(id => c.Leaders[id].HeroicCommand != "") || ids.Count(id => !c.Leaders[id].Staff) <= 1);
     }
+    public static int Evasion(ContentCatalog c, BattleUnit unit) => c.Ships[unit.Definition].Evasive + AssignedLeaders(c, unit).Sum(l => l.Evasive)
+        + (Has(unit, "evasive") ? 1 : 0) + (Has(unit, "hero-evasive") ? 1 : 0);
+    public static int DefensiveAura(ContentCatalog c, BattleState s, BattleUnit unit) => s.Units.Where(u => u.Side == unit.Side && !u.Hulk && FleetFootprint.Distance(c, u, unit) <= 1).SelectMany(u => AssignedLeaders(c, u)).Sum(l => l.DefensiveAura);
     public static BattleUnit NewOrder(BattleUnit u) => u with { Effects = (u.Effects ?? []).Except(Buffs).ToArray() };
     public static int PlayLimit(ContentCatalog c, BattleState s, int side) => Enabled(c, s) && s.Cards != null
         ? side == 0 ? s.Cards.PlayLimit0 : s.Cards.PlayLimit1 : c.Rules[c.Maps[s.Map].Rules].OrdersPerSide;

@@ -9,6 +9,7 @@ public static partial class SpecialOrders
         order.BasicAction == "" && Step(c, s, order).Action == "choice" ? s with { Cards = s.Cards! with { Pending = order with { Choice = action } } } : s;
     public static bool CanAssign(ContentCatalog c, BattleState s, CardDefinition card, BattleUnit? unit) => unit != null
         && (FleetLaunchOrders.IsLaunch(card) ? FleetLaunchOrders.CanAssign(c, s, unit) : unit.Embarked == "")
+        && (card.HeroicOwner == "" || FleetRuleTools.LeaderIds(unit).Contains(card.HeroicOwner))
         && (!card.ExcludeFighters || FleetRuleTools.Class(c.Ships[unit.Definition]) != "fighter")
         && (!card.RequireAfterburners || Lightning(c.Ships[unit.Definition]) > 0)
         && (FleetRuleTools.Enabled(c, s) || card.SelfBuff == "" && card.AttackEffect == "" && !card.RepairAtStart
@@ -32,7 +33,7 @@ public static partial class SpecialOrders
             else if (repair != "") unit = unit with { Effects = (unit.Effects ?? []).Where(e => e != repair).ToArray() };
             if (repair != "") message += "Card repair: removed " + repair + ". ";
         }
-        if (card.SelfBuff != "") { unit = unit with { Effects = (unit.Effects ?? []).Append(card.SelfBuff).Distinct().ToArray() }; message += "Card effect: " + card.SelfBuff + ". "; }
+        if (card.SelfBuff != "") { unit = unit with { Effects = (unit.Effects ?? []).Append(card.SelfBuff).Distinct().ToArray() }; message += "Card effect: " + FleetPresentation.EffectName(card.SelfBuff) + ". "; }
         return s with { Units = s.Units.Select(u => u.Id == actor ? unit : u).ToList() };
     }
     internal static string AttackEffect(ContentCatalog c, BattleState s, string actor) => s.Cards?.Pending is { BasicAction: "" } order

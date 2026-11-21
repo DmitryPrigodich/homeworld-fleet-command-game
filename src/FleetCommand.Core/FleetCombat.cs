@@ -35,7 +35,7 @@ public static class FleetCombat
         bool projectile = combat.Kind is "defense" or "cap" && FleetTerrain.Diffuse(s.Defense!.Threat);
         string targetClass = projectile ? s.Defense!.Threat : FleetRuleTools.Class(defender);
         int rapid = weapon.RapidTargets == null || weapon.RapidTargets.Contains(targetClass) ? weapon.RapidFire : 0;
-        int evasive = projectile ? s.Defense!.Threat == "drone" && s.Defense.Attack.Power ? 1 : 0 : defender.Evasive + (FleetRuleTools.Has(target, "evasive") ? 1 : 0);
+        int evasive = projectile ? s.Defense!.Threat == "drone" && s.Defense.Attack.Power ? 1 : 0 : FleetRuleTools.Evasion(c, target);
         int rerolls = combat.Kind == "collision" || weapon.Barrage > 0 ? 0 : rapid - evasive;
         var next = s with { Combat = combat with { AbilityRerolls = Math.Abs(rerolls), RerollSide = rerolls < 0 ? target.Side : unit.Side } };
         int count = Math.Min(Math.Abs(rerolls), EligibleDice(c, next).Length);
@@ -52,13 +52,14 @@ public static class FleetCombat
         if (!Allowed(c, s, unit, target, cmd) || !FleetRuleTools.Debuffs.Contains(cmd.Effect)) return new(false, "The selected attack is unavailable.", s);
         return FleetDefense.Offer(c, s, side, cmd, interrupt) ?? RollAttack(c, s, side, cmd, interrupt);
     }
+    private static bool CloseWeapon(ContentCatalog c, BattleUnit unit, WeaponDefinition weapon) => weapon.Kind is "close" or "fighter" || FleetDefense.Projectile(weapon.Kind) || FleetRuleTools.Class(c.Ships[unit.Definition]) == "fighter";
     public static int AttackDice(ContentCatalog c, BattleState s, BattleCommand cmd)
     {
         var unit = FleetTerrain.Find(s, cmd.Unit)!; var target = FleetTerrain.Find(s, cmd.Target)!;
         var ship = c.Ships[unit.Definition];
         var weapon = cmd.AttackKind == "ranged" ? FleetWeapons.Select(c, s, unit, target!, cmd.Weapon)!
             : new WeaponDefinition(cmd.AttackKind, cmd.AttackKind, cmd.AttackKind == "board" ? ship.Crew : ship.Ram, 1, Kind: "close");
-        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + (cmd.Power ? weapon.PowerDice : 0) + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.AttackDice + (cmd.AttackKind is "ram" or "board" ? l.CloseDice : 0));
+        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + (cmd.Power ? weapon.PowerDice : 0) + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.AttackDice + (cmd.AttackKind is "ram" or "board" || CloseWeapon(c, unit, weapon) ? l.CloseDice : 0));
         if (cmd.AttackKind == "ranged") dice -= FleetWeapons.Attack(c, s, unit, target, weapon.Id).Cover;
         if (cmd.AttackKind == "board") dice += SpecialOrders.BoardingBonus(c, s, unit.Id) - unit.CrewDamage;
         if (cmd.AttackKind == "ram" && FleetRuleTools.Strike(ship)) dice += SpecialOrders.Lightning(ship);
@@ -86,7 +87,7 @@ public static class FleetCombat
     }
     internal static PendingCombat PrepareReaction(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit target, WeaponDefinition weapon, string kind, ref uint random)
     {
-        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.AttackDice);
+        int dice = weapon.Barrage > 0 ? target.Models : weapon.DicePerModel * unit.Models + FleetRuleTools.AssignedLeaders(c, unit).Sum(l => l.AttackDice + (CloseWeapon(c, unit, weapon) ? l.CloseDice : 0));
         return new(unit.Side, unit.Id, target.Id, weapon.Id, false, Roll(Math.Max(1, dice), ref random), s.Defense!.Interrupt, Kind: kind);
     }
     internal static CommandResult ReactionStart(ContentCatalog c, BattleState s, PendingCombat combat) => WaitOrResolve(c, Abilities(c, s with { Combat = combat }));
@@ -130,7 +131,7 @@ public static class FleetCombat
         int ones = FleetRuleTools.Class(defender) != "fighter" ? combat.Rolls.Count(d => d == 1) : 0;
         int focus = combat.Kind == "board" ? 0 : ones, crew = combat.Kind == "board" ? ones : 0;
         var survivor = target with { Models = target.Models - killed, FocusFire = Math.Max(0, target.FocusFire + focus - killed), CrewDamage = target.CrewDamage + crew,
-            Effects = ones > 0 ? (target.Effects ?? []).Except(FleetRuleTools.Buffs).ToArray() : target.Effects };
+            Effects = ones > 0 ? (target.Effects ?? []).Except(FleetRuleTools.DamageBuffs).ToArray() : target.Effects };
         string orderEffect = combat.Interrupt || combat.Kind is not ("ranged" or "ram" or "board") ? "" : SpecialOrders.AttackEffect(c, s, unit.Id);
         bool systemCrippled = orderEffect != "" && successes > 0 && FleetRuleTools.Class(defender) != "fighter";
         if (systemCrippled)
@@ -144,7 +145,7 @@ public static class FleetCombat
             next = FleetObjectives.RecordCapture(c, next, target.Id, unit.Side);
             // Retain the last ship instead of removing the unit; activation state is retained.
             survivor = survivor with { Side = unit.Side, Models = 1, CrewDamage = Math.Min(survivor.CrewDamage, defender.Armor) };
-            next = next with { Units = next.Units.Select(u => u.Id == unit.Id ? FleetClose.CheckHulk(c, u with { CrewDamage = u.CrewDamage + 1, Effects = (u.Effects ?? []).Except(FleetRuleTools.Buffs).ToArray() }) : u).ToList() };
+            next = next with { Units = next.Units.Select(u => u.Id == unit.Id ? FleetClose.CheckHulk(c, u with { CrewDamage = u.CrewDamage + 1, Effects = (u.Effects ?? []).Except(FleetRuleTools.DamageBuffs).ToArray() }) : u).ToList() };
         }
         if (survivor.Models > 0) next.Units.Add(FleetClose.CheckHulk(c, survivor));
         else next = FleetClose.Award(c, next, target, combat.Side);

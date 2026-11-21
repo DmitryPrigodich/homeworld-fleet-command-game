@@ -59,6 +59,12 @@ public static class ForceBuilder
             if (limit?.Leaders != null && !limit.Leaders.Contains(leader.Id)) errors.Add($"{leader.Name}: unavailable in this scenario.");
             foreach (var tab in leader.Tabs ?? []) slots.Add(new("leader:" + leader.Id + ":" + tab.Id, leader.Name, tab));
         }
+        foreach (var group in plan.Leaders.GroupBy(l => l.Unit))
+        {
+            var assigned = units.FirstOrDefault(u => u.Entry.Id == group.Key);
+            if (assigned != null && !FleetRuleTools.ValidLeader(c, FleetRuleTools.WithLeaders(new("", assigned.Entry.Ship, 0, 0, 0, 0, 1), group.Select(l => l.Leader))))
+                errors.Add("Staff requires an existing non-Staff leader; a Hero does not allow additional ordinary leaders.");
+        }
         foreach (var item in units.Where(u => !u.Free)) foreach (var tab in c.Ships[item.Entry.Ship].Tabs ?? [])
             slots.Add(new("unit:" + item.Entry.Id + ":" + tab.Id, c.Ships[item.Entry.Ship].Name + " · " + item.Entry.Id, tab, tab.GrantedUnit == "" ? "" : item.Entry.Id + "~" + tab.Id));
         if (2L + plan.Leaders.Sum(l => (long)c.Leaders[l.Leader].Hand) > 100 || 1L + plan.Leaders.Sum(l => (long)c.Leaders[l.Leader].Play) > 100

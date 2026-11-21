@@ -1038,6 +1038,97 @@
       "play": 1,
       "stars": 1,
       "closeDice": 1
+    },
+    {
+      "id": "core:hero-taiidan-hot-shot-pilot",
+      "name": "Hot Shot Pilot",
+      "faction": "taiidan",
+      "classes": [
+        "fighter"
+      ],
+      "hand": 2,
+      "play": 1,
+      "stars": 3,
+      "closeDice": 3,
+      "evasive": 1,
+      "heroicCommand": "core:hero-best-of-the-best"
+    },
+    {
+      "id": "core:hero-kushan-station-overseer",
+      "name": "Station Overseer",
+      "faction": "kushan",
+      "classes": [
+        "station"
+      ],
+      "hand": 3,
+      "play": 2,
+      "stars": 2,
+      "coolUnderPressure": 1,
+      "defensiveAura": 1,
+      "heroicCommand": "core:hero-prepare-to-be-boarded",
+      "tabs": [
+        {
+          "id": "station",
+          "color": "yellow",
+          "required": true,
+          "classes": [
+            "station"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "core:hero-kushan-strategist",
+      "name": "Strategist",
+      "faction": "kushan",
+      "classes": [
+        "capital"
+      ],
+      "hand": 4,
+      "play": 2,
+      "stars": 5,
+      "coolUnderPressure": 1,
+      "defensiveAura": 1,
+      "heroicCommand": "core:hero-fire-and-maneuver",
+      "tabs": [
+        {
+          "id": "capital1",
+          "color": "yellow",
+          "required": true,
+          "classes": [
+            "capital"
+          ]
+        },
+        {
+          "id": "capital2",
+          "color": "yellow",
+          "classes": [
+            "capital"
+          ]
+        },
+        {
+          "id": "frigate",
+          "color": "yellow",
+          "classes": [
+            "frigate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "core:hero-taiidan-master-engineer",
+      "name": "Master Engineer",
+      "faction": "taiidan",
+      "classes": [
+        "station",
+        "frigate"
+      ],
+      "hand": 2,
+      "play": 1,
+      "stars": 2,
+      "coolUnderPressure": 1,
+      "staff": true,
+      "heroicCommand": "core:hero-i-can-fix-it"
     }
   ],
   "cards": [
@@ -1353,6 +1444,69 @@
       ],
       "interruptRange": 3,
       "description": "During an enemy Move, Lightning Move or Reinforce, one allied unit within 3 hexes of the acting enemy may Move. No attack, Play or activation. Once per round."
+    },
+    {
+      "id": "core:hero-best-of-the-best",
+      "name": "Best of the Best",
+      "kind": "order",
+      "description": "Hot Shot Pilot: gain Evading at the start of this order, then Move and Power Attack. Evading lasts until a new order, including through Focus Fire and Crew Damage.",
+      "heroicOwner": "core:hero-taiidan-hot-shot-pilot",
+      "selfBuff": "hero-evasive",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "power"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "core:hero-fire-and-maneuver",
+      "name": "Fire and Maneuver",
+      "kind": "order",
+      "description": "Strategist: gain Braced at the start of this order, then Move and Power Attack.",
+      "heroicOwner": "core:hero-kushan-strategist",
+      "selfBuff": "brace",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "power"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "core:hero-prepare-to-be-boarded",
+      "name": "Prepare to Be Boarded",
+      "kind": "order",
+      "description": "Station Overseer: gain Lockdown at the start of this order and make a Power Attack. Lockdown ends on a new order, Crew Damage or Focus Fire.",
+      "heroicOwner": "core:hero-kushan-station-overseer",
+      "selfBuff": "lockdown",
+      "lines": [
+        {
+          "actions": [
+            "power"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "core:hero-i-can-fix-it",
+      "name": "I Can Fix It",
+      "kind": "order",
+      "description": "Master Engineer: remove one chosen Crippled or Focus Fire token at the start of this order, then Move and Attack.",
+      "heroicOwner": "core:hero-taiidan-master-engineer",
+      "repairAtStart": true,
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "attack"
+          ]
+        }
+      ]
     }
   ],
   "decks": [

@@ -20,8 +20,7 @@ public static class FleetLaunchOrders
             return new(false, "Ready to Launch requires a ready embarked unit, a free exit and available Launch Tubes.", s);
         var next = s with { Sequence = s.Sequence + 1, Orders0 = s.Orders0 + (side == 0 ? 1 : 0), Orders1 = s.Orders1 + (side == 1 ? 1 : 0),
             Reserves = s.Reserves!.Select(u => u.Id == child.Id ? FleetRuleTools.NewOrder(u) with { Activated = true } : u).ToList(),
-            Cards = cards with { Hand0 = cards.Hand0.Where(id => id != cmd.Card).ToArray(), Hand1 = cards.Hand1.Where(id => id != cmd.Card).ToArray(),
-                Discard = cards.Discard.Append(cmd.Card).ToArray(), Pending = new(cmd.Card, side, [child.Id], 0) } };
+            Cards = HeroicCommands.Spend(cards, cmd.Card) with { Pending = new(cmd.Card, side, [child.Id], 0) } };
         return new(true, "Ready to Launch: card and Play spent. Choose a green exit hex for the assigned squadron.", next);
     }
     public static CommandResult Place(ContentCatalog c, BattleState s, int side, BattleCommand cmd)

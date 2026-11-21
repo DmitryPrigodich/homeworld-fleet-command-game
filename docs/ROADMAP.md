@@ -2,7 +2,7 @@
 
 ## Current priority: mechanics before scenario content
 
-Finish the PC game in this order: shared mechanics, campaign systems/content, then map, scenario and campaign editors. Scenario-specific content and editors should consume the shared mechanisms. The next mechanics work is remaining order/interrupt effects, neutral objective interactions and the expansion systems documented below. Do not treat all of this as blocked by missing photographs: implement sufficiently specified book rules, and use exact card faces for card-specific timing, conditions and profiles. See [CARD_INPUTS.md](CARD_INPUTS.md) for the card audit and minimal photo list.
+Finish the PC game in this order: shared mechanics, campaign systems/content, then map, scenario and campaign editors. Scenario-specific content and editors should consume the shared mechanisms. The next mechanics work is remaining Heroic/attachment effects, neutral objective interactions and the expansion systems documented below. Do not treat all of this as blocked by missing photographs: implement sufficiently specified book rules, and use exact card faces for card-specific timing, conditions and profiles. See [CARD_INPUTS.md](CARD_INPUTS.md) for the card audit and minimal photo list.
 
 Keep future native tablet and browser clients possible through plain rule/data/command boundaries. No engine migration, tablet export or web client is part of the current implementation stage. Touch interaction, platform storage/import and browser transport belong to client adapters. Ship editing/addition UX is deferred for a separate discussion; existing data mods remain supported.
 
@@ -31,7 +31,8 @@ Keep future native tablet and browser clients possible through plain rule/data/c
 - [x] Data-defined command card types, action lines, explicit movement restrictions and per-ruleset decks; custom deck save/replay, UI and network checks.
 - [x] Thirteen additional base orders/effects, 54-card supported deck, choice/target/movement continuation, EN/RU controls, UI and ENet checks; see COMMAND_ORDERS.md.
 - [x] Complete the base command deck: all 54 cards / 20 types, including four interrupt types.
-- [ ] Integrate exact remaining attachment/leader profiles and Heroic abilities. Initiative and leader budgets already have shared handlers.
+- [x] First four Heroic commands and published owners: once-per-scenario uncounted hands, owner binding, start effects, Staff, leader transfer, EN/RU, UI and ENet.
+- [ ] Remaining ten Heroic commands/interrupts and remaining attachment/leader profiles. Initiative and leader budgets already have shared handlers.
 
 - [x] Freeze US Digital + Errata 1.7 reference priority and record timing interpretations in RULES_COVERAGE.md.
 - [x] Leader/faction budgets, multi-card bids, cleanup, post-roll decisions and repair; remaining Heroic/attachment/profile data still incomplete.

@@ -151,6 +151,7 @@ public partial class Main
             if (def.Footprint == 2) Text(right, "The hull occupies 2 hexes. Click to place the bow; each end can travel at most 2 hexes. Choose facing below.", 13, _colors.Muted);
             if (_state.Scenario?.Tokens.Any(t => t.Unit == selected.Id) == true) Text(right, "ON BOARD: INTELLIGENCE", 14, _colors.Highlight);
             foreach (var leader in FleetRuleTools.AssignedLeaders(_content, selected)) Text(right, "Leader: " + leader.Name, 14, _colors.Highlight);
+            if (selected.Effects is { Length: > 0 }) Text(right, "Active effects: " + string.Join(", ", selected.Effects.Select(FleetPresentation.EffectName)), 13, _colors.Highlight);
         }
         DrawRepairInterrupt(right);
         if (_tutorial == null || _tutorial.Step is TutorialStep.Move or TutorialStep.EndTurn or TutorialStep.Attack)
@@ -224,12 +225,12 @@ public partial class Main
         if (_state.Cards?.Counter is { } counter)
         {
             if (counter.Side != 0) return;
-            string card = _state.Cards.Hand1.FirstOrDefault(id => InterruptRules.IsCounter(_content, _state, id)) ?? "";
+            string card = BotHand.FirstOrDefault(id => InterruptRules.IsCounter(_content, _state, id)) ?? "";
             ApplyCommand(1, card == "" ? new("decline-counter") : new("counter", Card: card)); return;
         }
         if (_state.Cards is { Phase: "orders" } && InterruptRules.Available(_content, _state, 1, "repairs"))
         {
-            string card = _state.Cards.Hand1.FirstOrDefault(id => InterruptRules.IsRepair(_content, _state, id)) ?? "";
+            string card = BotHand.FirstOrDefault(id => InterruptRules.IsRepair(_content, _state, id)) ?? "";
             var target = InterruptRules.RepairTargets(_content, _state, 1).FirstOrDefault();
             if (card != "" && target != null) { ApplyCommand(1, new("interrupt-repairs", target.Id, Card: card, Repair: target.FocusFire > 0 ? "focus" : "fighter")); return; }
         }
@@ -255,12 +256,12 @@ public partial class Main
         {
             if (defense.Side != 0) return;
             var patrol = FleetCap.Patrol(_state, defense.Attack.Target);
-            if (!defense.CapComplete && patrol != null && FleetCap.Available(_state, defense.Attack.Target) && FleetCap.Weapons(_content, patrol).Length > 0 && _state.Cards!.Hand1.Length > 0)
-                ApplyCommand(1, new("cap", Card: _state.Cards.Hand1[0], Weapon: FleetCap.Weapons(_content, patrol)[0].Id));
+            if (!defense.CapComplete && patrol != null && FleetCap.Available(_state, defense.Attack.Target) && FleetCap.Weapons(_content, patrol).Length > 0 && BotHand.Length > 0)
+                ApplyCommand(1, new("cap", Card: BotHand[0], Weapon: FleetCap.Weapons(_content, patrol)[0].Id));
             else ApplyCommand(1, FleetDefense.Weapons(_content, _state.Units.Single(u => u.Id == defense.Attack.Target)).Length > 0 ? new("defend") : new("decline-defense"));
             return;
         }
-        if (_state.Cards?.Phase == "cleanup") { ApplyCommand(1, new("cleanup", Cards: _state.Cards.Hand1.Skip(_state.Cards.HandLimit1).ToArray())); return; }
+        if (_state.Cards?.Phase == "cleanup") { ApplyCommand(1, new("cleanup", Cards: BotHand.Skip(_state.Cards.HandLimit1).ToArray())); return; }
         if (_state.Cards?.Response != null)
         {
             if (InterruptRules.Responder(_state) != 1) return;
@@ -272,7 +273,7 @@ public partial class Main
             var unit = _state.Units.FirstOrDefault(u => _engine.GetActions(_state, 1, u.Id).AttackTargets.Length > 0);
             var attack = unit == null ? null : BotAttack(unit, _state.Cards.Response.Command.Unit, interrupt: true);
             if (attack != null) { ApplyCommand(1, attack); return; }
-            string card = _state.Cards.Hand1.FirstOrDefault(id => InterruptRules.IsMove(_content, _state, id) && InterruptRules.Eligible(_content, _state, id, _state.Cards.Response)) ?? "";
+            string card = BotHand.FirstOrDefault(id => InterruptRules.IsMove(_content, _state, id) && InterruptRules.Eligible(_content, _state, id, _state.Cards.Response)) ?? "";
             var mover = _state.Units.FirstOrDefault(u => _engine.GetActions(_state, 1, u.Id).MoveCells.Length > 0);
             if (card != "" && mover != null) { var h = _engine.GetActions(_state, 1, mover.Id).MoveCells[0]; ApplyCommand(1, new("interrupt-move", mover.Id, Q: h.Q, R: h.R, Card: card)); }
             else ApplyCommand(1, new("decline"));
@@ -292,12 +293,12 @@ public partial class Main
             else ApplyCommand(1, reinforce.Mode == "deploy" && cells.Length > 0 ? new("deploy", Q: cells[0].Q, R: cells[0].R) : new("finish-reinforce"));
             return;
         }
-        if (_state.Cards is { Pending: null, Response: null } && FleetLogistics.CanReinforce(_content, _state, 1) && _state.Cards.Hand1.Length > 0)
+        if (_state.Cards is { Pending: null, Response: null } && FleetLogistics.CanReinforce(_content, _state, 1) && BotHand.Length > 0)
         {
             var reserve = _state.Reserves?.FirstOrDefault(u => u.Side == 1 && u.Embarked == "" && !u.Activated);
-            if (reserve != null && FleetLogistics.DeployCells(_content, _state, 1).Length > 0) { ApplyCommand(1, new("begin-reinforce", reserve.Id, "deploy", Card: _state.Cards.Hand1[0])); return; }
+            if (reserve != null && FleetLogistics.DeployCells(_content, _state, 1).Length > 0) { ApplyCommand(1, new("begin-reinforce", reserve.Id, "deploy", Card: BotHand[0])); return; }
             var carrier = _state.Units.FirstOrDefault(u => u.Side == 1 && FleetLogistics.CanLaunch(_content, _state, u) && FleetLogistics.Children(_state, u.Id).Any(child => !child.Activated) && FleetLogistics.Adjacent(_content, _state, u).Length > 0);
-            if (carrier != null) { ApplyCommand(1, new("begin-reinforce", carrier.Id, "launch", Card: _state.Cards.Hand1[0])); return; }
+            if (carrier != null) { ApplyCommand(1, new("begin-reinforce", carrier.Id, "launch", Card: BotHand[0])); return; }
         }
         if (_state.Cards?.Pending is { } order)
         {
@@ -325,13 +326,13 @@ public partial class Main
         foreach (var unit in _state.Units.Where(u => u.Side == 1 && !u.Activated && !u.Hulk).ToArray())
         {
             var enemies = _state.Units.Where(u => u.Side == 0).ToArray();
-            if (FleetBattle && _state.Cards!.Hand1.Length > 0 && HasHarvestTarget(unit))
-            { ApplyCommand(1, new("begin-order", unit.Id, "harvest", Card: _state.Cards.Hand1[0], Repair: "ask")); return; }
+            if (FleetBattle && BotHand.Length > 0 && HasHarvestTarget(unit))
+            { ApplyCommand(1, new("begin-order", unit.Id, "harvest", Card: BotHand[0], Repair: "ask")); return; }
 
-            if (FleetBattle && _state.Cards!.Hand1.Length > 0 && (unit.FocusFire > 0 || (unit.Effects ?? []).Any(FleetRuleTools.Debuffs.Contains)))
+            if (FleetBattle && BotHand.Length > 0 && (unit.FocusFire > 0 || (unit.Effects ?? []).Any(FleetRuleTools.Debuffs.Contains)))
             {
                 string action = FleetRuleTools.Has(unit, "weapons") || _engine.GetActions(_state, 1, unit.Id).AttackTargets.Length > 0 ? "attack" : "move";
-                ApplyCommand(1, new("begin-order", unit.Id, action, Card: _state.Cards.Hand1[0], Repair: "ask")); return;
+                ApplyCommand(1, new("begin-order", unit.Id, action, Card: BotHand[0], Repair: "ask")); return;
             }
             if (_state.Map == "core:first-contact" && TryScenarioBotMove(unit)) return;
             foreach (var target in enemies.OrderBy(u => u.Models))
@@ -344,7 +345,7 @@ public partial class Main
                 .OrderBy(h => enemies.Length == 0 ? 0 : enemies.Min(e => h.Distance(new(e.Q, e.R)))).ThenBy(h => h.Distance(new(unit.Q, unit.R)));
             foreach (var h in cells)
             {
-                var cmd = new BattleCommand("move", unit.Id, Q: h.Q, R: h.R, Facing: 3, Card: _state.Cards?.Hand1.FirstOrDefault() ?? "");
+                var cmd = new BattleCommand("move", unit.Id, Q: h.Q, R: h.R, Facing: 3, Card: BotHand.FirstOrDefault() ?? "");
                 if (_engine.Apply(_state, 1, cmd).Accepted) { ApplyCommand(1, cmd); return; }
             }
         }
