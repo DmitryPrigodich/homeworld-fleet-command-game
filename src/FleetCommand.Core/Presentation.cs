@@ -10,6 +10,18 @@ public static class FleetPresentation
     public static string EffectName(string effect) => effect switch
     { "hero-evasive" => "Evading", "evasive" => "Evasive", "brace" => "Braced", "lockdown" => "Lockdown", "engines" => "Crippled engines", "weapons" => "Crippled weapons", "bays" => "Crippled bays", _ => effect };
 
+    public static string LeaderAbilities(LeaderDefinition leader)
+    {
+        var parts = new List<string>();
+        if (leader.Medic > 0) parts.Add($"Medic {leader.Medic}+: one die per Crew Damage token on activation");
+        if (leader.BoardingDice > 0) parts.Add($"Boarding dice +{leader.BoardingDice}");
+        if (leader.CloseDice > 0) parts.Add($"Close attack dice +{leader.CloseDice}");
+        if (leader.Evasive > 0) parts.Add($"Evasive +{leader.Evasive}");
+        if (leader.AttackAura > 0) parts.Add($"Attack aura +{leader.AttackAura} / range {leader.AttackAuraRange}: " + (leader.AttackAuraTargets == null ? "any target" : string.Join(", ", leader.AttackAuraTargets)));
+        if (leader.DefensiveAura > 0) parts.Add($"Defensive aura +{leader.DefensiveAura} / range 1");
+        return string.Join("\n", parts);
+    }
+
     public const string NeutralColor = "#87929c";
     public static readonly string[] PlayerColors = ["#39a4c5", "#ee873c", "#68ca77", "#b787e6", "#e1c44a", "#ed647f", "#527fe3", "#36cab7"];
     public static readonly string[] Emblems = ["auto", "kushan", "taiidan", "kiith-sjet", "kiith-naabal", "kiith-manaan", "kiith-paktu", "kiith-soban"];

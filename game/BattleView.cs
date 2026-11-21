@@ -150,7 +150,8 @@ public partial class Main
             Text(right, $"Move {def.Move} / Range {def.Range}\nArmor {def.Armor} / Dice {def.DicePerModel} × {selected.Models}\nFocus Fire: {selected.FocusFire}", 15);
             if (def.Footprint == 2) Text(right, "The hull occupies 2 hexes. Click to place the bow; each end can travel at most 2 hexes. Choose facing below.", 13, _colors.Muted);
             if (_state.Scenario?.Tokens.Any(t => t.Unit == selected.Id) == true) Text(right, "ON BOARD: INTELLIGENCE", 14, _colors.Highlight);
-            foreach (var leader in FleetRuleTools.AssignedLeaders(_content, selected)) Text(right, "Leader: " + leader.Name, 14, _colors.Highlight);
+            foreach (var leader in FleetRuleTools.AssignedLeaders(_content, selected))
+            { Text(right, "Leader: " + leader.Name, 14, _colors.Highlight); string abilities = FleetPresentation.LeaderAbilities(leader); if (abilities != "") Text(right, abilities, 12, _colors.Muted); }
             if (selected.Effects is { Length: > 0 }) Text(right, "Active effects: " + string.Join(", ", selected.Effects.Select(FleetPresentation.EffectName)), 13, _colors.Highlight);
         }
         DrawRepairInterrupt(right);

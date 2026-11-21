@@ -100,7 +100,7 @@ public static class FleetLogistics
         if (frame.Mode == "deploy" && FleetFootprint.Cells(c.Ships[arriving.Definition], destination, cmd.Facing).Any(h => !DeployCells(c, s, side).Contains(h))) return Reject("The entire ship must fit inside the deployment zone.");
         arriving = FleetRuleTools.NewOrder(arriving) with { Q = cmd.Q, R = cmd.R, Facing = cmd.Facing, Embarked = "", Activated = true };
         next = next with { Reinforce = frame with { Arrival = arriving.Id }, Units = next.Units.Append(arriving).Select(u => parent != null && u.Id == parent.Id ? u with { Launches = u.Launches + 1 } : u).ToList() };
-        next = FleetRuleTools.DamageControl(c, next, arriving.Id, cmd.Repair, out var repair);
+        next = FleetRuleTools.ActivationControl(c, next, arriving.Id, cmd.Repair, out var repair);
         return FleetTerrain.Activation(c, s, next, [arriving.Id], "reinforce", $"Unit placed: {FleetPresentation.UnitName(c, next, arriving)}. " + repair);
     }
     public static bool CanEmbark(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit parent) => FleetRuleTools.Strike(c.Ships[unit.Definition]) && unit.Id != parent.Id

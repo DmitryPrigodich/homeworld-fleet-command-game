@@ -32,7 +32,7 @@ public static class FleetLaunchOrders
         var arriving = child with { Q = cmd.Q, R = cmd.R, Facing = cmd.Facing, Embarked = "" };
         var next = s with { Cards = s.Cards with { Pending = order with { Step = 1, LaunchArrival = true } }, Reserves = s.Reserves!.Where(u => u.Id != child.Id).ToList(),
             Units = s.Units.Select(u => u.Id == child.Embarked ? u with { Launches = u.Launches + 1 } : u).Append(arriving).ToList() };
-        next = FleetRuleTools.DamageControl(c, next, arriving.Id, cmd.Repair, out var repair);
+        next = FleetRuleTools.ActivationControl(c, next, arriving.Id, cmd.Repair, out var repair);
         return FleetTerrain.Activation(c, s, next, [arriving.Id], "launch-order", "Squadron launched; continue with Lightning Move and Attack. " + repair);
     }
     internal static CommandResult Resume(ContentCatalog c, BattleState before, BattleState s, string message)

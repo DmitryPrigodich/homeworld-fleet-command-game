@@ -92,14 +92,16 @@ public static partial class InterruptRules
         var response = new PendingResponse(side, command, basic, path, steps?.Select(p => p.Facing).ToArray(), MoveStart: c.Ships[unit.Definition].Footprint == 2 && command.Kind == "move" ? new(new(unit.Q, unit.R), unit.Facing) : null,
             MoveBudget: tabletop && command.Kind == "move" ? FleetMovement.Allowance(geometry, unit) : -1);
         next = next with { Cards = next.Cards! with { Response = response } };
+        string activationMessage = "";
         if (basic && tabletop)
         {
-            var activation = FleetTerrain.Activation(c, state, next, [unit.Id], "response-start", "");
+            next = FleetRuleTools.Medic(c, next, unit.Id, out activationMessage);
+            var activation = FleetTerrain.Activation(c, state, next, [unit.Id], "response-start", activationMessage);
             if (activation.State.Hazard != null || activation.State.Combat != null || activation.State.Defense != null || activation.State.Cards?.Response == null) return activation;
             // An automatically resolved terrain attack already resumed the action.
             if (activation.State.Sequence != next.Sequence) return activation;
         }
-        return Continue(c, state, next, "", offerAttack: true);
+        return Continue(c, state, next, activationMessage, offerAttack: true);
     }
     // Resolve only the effect. Preserve the real turn, activation flags, Play and round.
     private static CommandResult Attack(ContentCatalog c, BattleState state, int side, BattleCommand command, bool interrupt = false)

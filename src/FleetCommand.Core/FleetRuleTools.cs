@@ -42,6 +42,22 @@ public static class FleetRuleTools
         return cards with { HandLimit0 = 2 + Sum(0, true), HandLimit1 = 2 + Sum(1, true), PlayLimit0 = 1 + Sum(0, false), PlayLimit1 = 1 + Sum(1, false) };
     }
     public static int Roll(ref uint random) { random ^= random << 13; random ^= random >> 17; random ^= random << 5; return (int)(random % 6) + 1; }
+    public static int AttackAura(ContentCatalog c, BattleState s, BattleUnit unit, BattleUnit target) => s.Units.Where(u => u.Side == unit.Side && !u.Hulk)
+        .SelectMany(u => AssignedLeaders(c, u).Where(l => l.AttackAura > 0 && FleetFootprint.Distance(c, u, unit) <= l.AttackAuraRange
+            && (l.AttackAuraTargets == null || l.AttackAuraTargets.Contains(Class(c.Ships[target.Definition]))))).Sum(l => l.AttackAura);
+    internal static BattleState Medic(ContentCatalog c, BattleState s, string id, out string message)
+    {
+        message = ""; var unit = s.Units.Single(u => u.Id == id); if (unit.Hulk || unit.CrewDamage == 0) return s;
+        var medics = AssignedLeaders(c, unit).Where(l => l.Medic > 0).ToArray(); if (medics.Length == 0) return s;
+        uint random = s.RandomState; var rolls = new List<int>(); int removed = 0;
+        foreach (var medic in medics) for (int token = 0; token < unit.CrewDamage; token++) { int roll = Roll(ref random); rolls.Add(roll); if (roll >= medic.Medic) removed++; }
+        removed = Math.Min(removed, unit.CrewDamage); message = $"Medic [{string.Join(", ", rolls)}]: Crew Damage removed {removed}. ";
+        return s with { RandomState = random, Units = s.Units.Select(u => u.Id == id ? u with { CrewDamage = u.CrewDamage - removed } : u).ToList() };
+    }
+    public static BattleState ActivationControl(ContentCatalog c, BattleState s, string id, string choice, out string message)
+    {
+        s = Medic(c, s, id, out var medic); s = DamageControl(c, s, id, choice, out var repair); message = medic + repair; return s;
+    }
     public static BattleState DamageControl(ContentCatalog c, BattleState s, string id, string choice, out string message, bool advance = false)
     {
         message = ""; var unit = s.Units.Single(u => u.Id == id);

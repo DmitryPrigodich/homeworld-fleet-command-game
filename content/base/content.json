@@ -1129,6 +1129,158 @@
       "coolUnderPressure": 1,
       "staff": true,
       "heroicCommand": "core:hero-i-can-fix-it"
+    },
+    {
+      "id": "core:hero-kushan-medical-chief",
+      "name": "Medical Chief",
+      "faction": "kushan",
+      "classes": [
+        "frigate",
+        "station",
+        "capital"
+      ],
+      "stars": 2,
+      "hand": 1,
+      "play": 1,
+      "staff": true,
+      "medic": 5,
+      "heroicCommand": "core:hero-patch-em-up"
+    },
+    {
+      "id": "core:hero-kushan-master-of-arms",
+      "name": "Master of Arms",
+      "faction": "kushan",
+      "classes": [
+        "frigate"
+      ],
+      "stars": 3,
+      "hand": 3,
+      "play": 2,
+      "coolUnderPressure": 1,
+      "attackAura": 1,
+      "attackAuraTargets": [
+        "frigate",
+        "capital",
+        "station"
+      ],
+      "tabs": [
+        {
+          "id": "slot1",
+          "color": "yellow",
+          "required": true,
+          "classes": [
+            "frigate"
+          ]
+        }
+      ],
+      "heroicCommand": "core:hero-power-and-precision"
+    },
+    {
+      "id": "core:hero-taiidan-hunter",
+      "name": "Hunter",
+      "faction": "taiidan",
+      "classes": [
+        "capital"
+      ],
+      "stars": 4,
+      "hand": 6,
+      "play": 3,
+      "coolUnderPressure": 1,
+      "attackAura": 1,
+      "tabs": [
+        {
+          "id": "slot1",
+          "color": "yellow",
+          "required": true,
+          "classes": [
+            "capital"
+          ]
+        },
+        {
+          "id": "slot2",
+          "color": "yellow",
+          "required": false,
+          "classes": [
+            "capital"
+          ]
+        },
+        {
+          "id": "slot3",
+          "color": "yellow",
+          "required": false,
+          "classes": [
+            "frigate"
+          ]
+        }
+      ],
+      "heroicCommand": "core:hero-no-escape"
+    },
+    {
+      "id": "core:hero-kushan-fighter-ace",
+      "name": "Fighter Ace",
+      "faction": "kushan",
+      "classes": [
+        "fighter"
+      ],
+      "stars": 3,
+      "hand": 2,
+      "play": 1,
+      "closeDice": 3,
+      "evasive": 1,
+      "heroicCommand": "core:hero-lead-the-attack"
+    },
+    {
+      "id": "core:hero-taiidan-veteran-captain",
+      "name": "Veteran Captain",
+      "faction": "taiidan",
+      "classes": [
+        "frigate"
+      ],
+      "stars": 3,
+      "hand": 3,
+      "play": 2,
+      "coolUnderPressure": 1,
+      "attackAura": 1,
+      "attackAuraTargets": [
+        "frigate",
+        "capital",
+        "station"
+      ],
+      "tabs": [
+        {
+          "id": "slot1",
+          "color": "yellow",
+          "required": true,
+          "classes": [
+            "frigate"
+          ]
+        }
+      ],
+      "heroicCommand": "core:hero-frigate-attack"
+    },
+    {
+      "id": "core:hero-kushan-grizzled-veteran",
+      "name": "Grizzled Veteran",
+      "faction": "kushan",
+      "classes": [
+        "frigate"
+      ],
+      "stars": 3,
+      "hand": 2,
+      "play": 1,
+      "coolUnderPressure": 1,
+      "boardingDice": 2,
+      "tabs": [
+        {
+          "id": "slot1",
+          "color": "yellow",
+          "required": true,
+          "classes": [
+            "frigate"
+          ]
+        }
+      ],
+      "heroicCommand": "core:hero-lightning-strike"
     }
   ],
   "cards": [
@@ -1507,6 +1659,122 @@
           ]
         }
       ]
+    },
+    {
+      "id": "core:hero-patch-em-up",
+      "name": "Patch 'Em Up",
+      "kind": "order",
+      "heroicOwner": "core:hero-kushan-medical-chief",
+      "description": "At the start of this order remove one Crew Damage token, then Move and Attack.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "attack"
+          ]
+        }
+      ],
+      "crewRepairAtStart": true
+    },
+    {
+      "id": "core:hero-power-and-precision",
+      "name": "Power and Precision",
+      "kind": "order",
+      "heroicOwner": "core:hero-kushan-master-of-arms",
+      "description": "Move and Power Attack. One success before armor cripples weapons on a non-fighter target.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "power"
+          ]
+        }
+      ],
+      "attackEffect": "weapons"
+    },
+    {
+      "id": "core:hero-no-escape",
+      "name": "No Escape",
+      "kind": "order",
+      "heroicOwner": "core:hero-taiidan-hunter",
+      "description": "Move and Power Attack. One success before armor cripples engines on a non-fighter target.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "power"
+          ]
+        }
+      ],
+      "attackEffect": "engines"
+    },
+    {
+      "id": "core:hero-lead-the-attack",
+      "name": "Lead the Attack",
+      "kind": "order",
+      "heroicOwner": "core:hero-kushan-fighter-ace",
+      "description": "The Hero moves and makes a Power Attack. A second fighter makes a Lightning Move and attacks the same enemy target.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "power"
+          ]
+        },
+        {
+          "actions": [
+            "lightning",
+            "attack"
+          ],
+          "classes": [
+            "fighter"
+          ]
+        }
+      ],
+      "sameTarget": true
+    },
+    {
+      "id": "core:hero-frigate-attack",
+      "name": "Frigate Attack",
+      "kind": "order",
+      "heroicOwner": "core:hero-taiidan-veteran-captain",
+      "description": "The Hero moves and makes a Power Attack. A second frigate moves and attacks.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "power"
+          ]
+        },
+        {
+          "actions": [
+            "move",
+            "attack"
+          ],
+          "classes": [
+            "frigate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "core:hero-lightning-strike",
+      "name": "Lightning Strike",
+      "kind": "order",
+      "heroicOwner": "core:hero-kushan-grizzled-veteran",
+      "description": "After each completed Move or Lightning Move the Hero may board an adjacent enemy with +2 dice. A skipped movement grants no boarding action; normal boarding limits still apply.",
+      "lines": [
+        {
+          "actions": [
+            "move",
+            "board",
+            "lightning",
+            "board"
+          ]
+        }
+      ],
+      "boardingDice": 2,
+      "boardAfterMove": true
     }
   ],
   "decks": [

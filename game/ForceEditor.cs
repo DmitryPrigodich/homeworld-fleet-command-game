@@ -134,6 +134,7 @@ public partial class Main
                 Button(middle, "REMOVE: " + choice.Leader, () => { ChangeForce(p => p with { Leaders = p.Leaders.Where(l => l.Leader != choice.Leader).ToArray() }); ForceMenu(network); }); continue;
             }
             Text(middle, $"{leader.Name} · {leader.Stars} ★\nHand +{leader.Hand}, orders +{leader.Play}, repair +{leader.CoolUnderPressure}, attack +{leader.AttackDice}", 15);
+            string abilities = FleetPresentation.LeaderAbilities(leader); if (abilities != "") Text(middle, abilities, 13, _colors.Muted);
             var targets = expanded.Where(u => leader.Classes.Contains(FleetRuleTools.Class(_content.Ships[u.Entry.Ship]))).ToArray();
             Picker(middle, "Assign to a unit", new[] { "Unassigned" }.Concat(targets.Select(u => u.Entry.Id + (u.Free ? " · assigned" : ""))).ToArray(), Array.FindIndex(targets, u => u.Entry.Id == choice.Unit) + 1,
                 i => ChangeForce(p => p with { Leaders = p.Leaders.Select(l => l.Leader == choice.Leader ? l with { Unit = i == 0 ? "" : targets[i - 1].Entry.Id } : l).ToArray() }));

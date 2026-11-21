@@ -7,12 +7,13 @@ public static partial class SpecialOrders
         && CommandCards.Find(c, s, order.Card)!.SameTarget && Step(c, s, order).Line == 1;
     private static BattleState ChooseAction(ContentCatalog c, BattleState s, PendingOrder order, string action) =>
         order.BasicAction == "" && Step(c, s, order).Action == "choice" ? s with { Cards = s.Cards! with { Pending = order with { Choice = action } } } : s;
-    public static bool CanAssign(ContentCatalog c, BattleState s, CardDefinition card, BattleUnit? unit) => unit != null
+    public static bool CanAssign(ContentCatalog c, BattleState s, CardDefinition card, BattleUnit? unit, int line = 0) => unit != null
         && (FleetLaunchOrders.IsLaunch(card) ? FleetLaunchOrders.CanAssign(c, s, unit) : unit.Embarked == "")
-        && (card.HeroicOwner == "" || FleetRuleTools.LeaderIds(unit).Contains(card.HeroicOwner))
+        && (card.HeroicOwner == "" || line != 0 || FleetRuleTools.LeaderIds(unit).Contains(card.HeroicOwner))
+        && (card.Lines == null || line >= 0 && line < card.Lines.Length && (card.Lines[line].Classes == null || card.Lines[line].Classes!.Contains(FleetRuleTools.Class(c.Ships[unit.Definition]))))
         && (!card.ExcludeFighters || FleetRuleTools.Class(c.Ships[unit.Definition]) != "fighter")
         && (!card.RequireAfterburners || Lightning(c.Ships[unit.Definition]) > 0)
-        && (FleetRuleTools.Enabled(c, s) || card.SelfBuff == "" && card.AttackEffect == "" && !card.RepairAtStart
+        && (FleetRuleTools.Enabled(c, s) || card.SelfBuff == "" && card.AttackEffect == "" && !card.RepairAtStart && !card.CrewRepairAtStart
             && !(card.Lines ?? []).SelectMany(l => l.Actions).Any(a => a is "power" or "choice" or "board"));
     private static string CardRepair(BattleUnit unit, string choice) => choice == "auto"
         ? unit.FocusFire > 0 ? "focus" : FleetRuleTools.Debuffs.FirstOrDefault(e => FleetRuleTools.Has(unit, e)) ?? "" : choice;
@@ -24,8 +25,9 @@ public static partial class SpecialOrders
     private static BattleState ApplyStartEffect(BattleState s, CardDefinition card, string actor, string repair, out string message)
     {
         message = "";
-        if (card.SelfBuff == "" && !card.RepairAtStart) return s;
+        if (card.SelfBuff == "" && !card.RepairAtStart && !card.CrewRepairAtStart) return s;
         var unit = s.Units.Single(u => u.Id == actor);
+        if (card.CrewRepairAtStart && unit.CrewDamage > 0) { unit = unit with { CrewDamage = unit.CrewDamage - 1 }; message += "Card repair: removed one Crew Damage token. "; }
         if (card.RepairAtStart)
         {
             repair = CardRepair(unit, repair);

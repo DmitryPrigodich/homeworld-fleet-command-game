@@ -171,9 +171,10 @@ public partial class Main
                 string[] modes = ["both", "first", "second"]; var lines = new OptionButton(); lines.AddItem("Both order lines"); lines.AddItem("First line only"); lines.AddItem("Second line only");
                 lines.Select(Array.IndexOf(modes, _formationLines)); lines.ItemSelected += i => { _formationLines = modes[(int)i]; DrawBattle(); }; parent.AddChild(lines);
             }
+            if (cardDefinition.Lines is { Length: 2 } && cardDefinition.Lines[1].Classes is { } secondClasses) Text(parent, "Second line: " + string.Join(", ", secondClasses.Select(c => c.ToUpperInvariant())), 12, _colors.Muted);
             if (SpecialOrders.Formation(_content, _state!, _selectedCard) && selected != null && (!FleetBattle || _formationLines == "both"))
             {
-                var others = _state.Units.Where(u => u.Side == side && !u.Activated && !u.Hulk && u.Id != selected.Id).ToArray();
+                var others = _state.Units.Where(u => u.Side == side && !u.Activated && !u.Hulk && u.Id != selected.Id && SpecialOrders.CanAssign(_content, _state, cardDefinition, u, 1)).ToArray();
                 if (!others.Any(u => u.Id == _secondOrderUnit)) _secondOrderUnit = others.FirstOrDefault()?.Id ?? "";
                 var other = new OptionButton();
                 foreach (var u in others) other.AddItem("Second: " + FleetPresentation.UnitName(_content, _state, u));
@@ -182,7 +183,8 @@ public partial class Main
             }
             var play = Button(parent, "SPECIAL ORDER", () => Submit(new("special", FleetBattle && SpecialOrders.Formation(_content, _state!, _selectedCard) && _formationLines == "second" ? "" : _selected,
                 Card: _selectedCard, OtherUnit: FleetBattle && SpecialOrders.Formation(_content, _state!, _selectedCard) && _formationLines == "first" ? "" : FleetBattle && SpecialOrders.Formation(_content, _state!, _selectedCard) && _formationLines == "second" ? _selected : _secondOrderUnit,
-                Repair: _repairChoice, OtherRepair: _repairOtherChoice, CardRepair: _cardRepairChoice)), selected == null || side != _state.ActiveSide || !SpecialOrders.CanAssign(_content, _state, cardDefinition, selected));
+                Repair: _repairChoice, OtherRepair: _repairOtherChoice, CardRepair: _cardRepairChoice)), selected == null || side != _state.ActiveSide || !SpecialOrders.CanAssign(_content, _state, cardDefinition, selected, FleetBattle && SpecialOrders.Formation(_content, _state, _selectedCard) && _formationLines == "second" ? 1 : 0)
+                || SpecialOrders.Formation(_content, _state, _selectedCard) && (!FleetBattle || _formationLines == "both") && string.IsNullOrEmpty(_secondOrderUnit));
             play.CustomMinimumSize = new(0, 32);
         }
         Text(parent, $"Hand {(side == 0 ? cards.HandLimit0 : cards.HandLimit1)} / Play {(side == 0 ? cards.PlayLimit0 : cards.PlayLimit1)} · Move / Attack / Harvest", 11, _colors.Muted);

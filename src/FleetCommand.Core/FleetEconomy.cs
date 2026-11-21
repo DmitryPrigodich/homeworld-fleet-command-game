@@ -61,7 +61,7 @@ public static class FleetEconomy
             Orders0 = s.Orders0 + (side == 0 ? 1 : 0), Orders1 = s.Orders1 + (side == 1 ? 1 : 0),
             Cards = HeroicCommands.Spend(cards, cmd.Card) with {
                 Pending = new(cmd.Card, side, [actor.Id], 0, BasicAction: "transfer-stars", Deferred: cmd) } };
-        next = FleetRuleTools.DamageControl(c, next, actor.Id, cmd.Repair, out var repair);
+        next = FleetRuleTools.ActivationControl(c, next, actor.Id, cmd.Repair, out var repair);
         return FleetTerrain.Activation(c, s, next, [actor.Id], "order", repair);
     }
     internal static CommandResult CompleteTransfer(ContentCatalog c, BattleState before, BattleState s, string message)

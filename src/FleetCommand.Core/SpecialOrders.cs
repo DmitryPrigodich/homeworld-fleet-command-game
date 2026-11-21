@@ -87,10 +87,11 @@ public static partial class SpecialOrders
         var unit = state.Units.Find(u => u.Id == (command.Unit == "" && partialFormation ? command.OtherUnit : command.Unit));
         if (!Supported(c, state, command.Card) || !(side == 0 ? cards.Hand0 : cards.Hand1).Contains(command.Card)) return Reject("Select an available special card.");
         var definition = CommandCards.Find(c, state, command.Card)!;
-        if (!CanAssign(c, state, definition, unit) || definition.RepairAtStart && unit != null && !ValidCardRepair(unit, command.CardRepair)) return Reject("This card cannot be assigned to that unit or repair choice.");
+        if (!CanAssign(c, state, definition, unit, command.Unit == "" && partialFormation ? 1 : 0) || definition.RepairAtStart && unit != null && !ValidCardRepair(unit, command.CardRepair)) return Reject("This card cannot be assigned to that unit or repair choice.");
         if (state.ActiveSide != side || unit == null || unit.Side != side || unit.Activated || unit.Hulk || (side == 0 ? state.Orders0 : state.Orders1) >= FleetRuleTools.PlayLimit(c, state, side)) return Reject("This unit cannot receive an order.");
         string[] units = Formation(c, state, command.Card) ? [command.Unit, command.OtherUnit] : [command.Unit];
         if (units.Distinct().Count() != units.Length || units.All(id => id == "") || units.Any(id => (id != "" || !partialFormation) && !state.Units.Any(u => u.Id == id && u.Side == side && !u.Activated && !u.Hulk))) return Reject("Assign different ready units to the action lines you want to use.");
+        if (units.Where((id, line) => id != "" && !CanAssign(c, state, definition, state.Units.Find(u => u.Id == id), line)).Any()) return Reject("Assign a compatible unit to each printed action line.");
         var order = new PendingOrder(command.Card, side, units, partialFormation && command.Unit == "" ? CommandCards.Find(c, state, command.Card)!.Lines![0].Actions.Length : 0);
         cards = HeroicCommands.Spend(cards, command.Card) with { Pending = order };
         var next = state with { Cards = cards,
@@ -99,7 +100,7 @@ public static partial class SpecialOrders
         string message = Name(c, state, command.Card) + ": order started and units assigned. ";
         next = ApplyStartEffect(next, definition, unit!.Id, command.CardRepair, out var cardMessage); message += cardMessage;
         if (FleetRuleTools.Enabled(c, state)) for (int i = 0; i < units.Length; i++)
-        { if (units[i] == "") continue; next = FleetRuleTools.DamageControl(c, next, units[i], i == 0 ? command.Repair : command.OtherRepair, out var repair); message += repair; }
+        { if (units[i] == "") continue; next = FleetRuleTools.ActivationControl(c, next, units[i], i == 0 ? command.Repair : command.OtherRepair, out var repair); message += repair; }
         return FleetTerrain.Activation(c, state, next, units, "order", message);
     }
     public static CommandResult BeginBasic(ContentCatalog c, BattleState state, int side, BattleCommand command)
@@ -112,7 +113,7 @@ public static partial class SpecialOrders
         var next = state with { Units = state.Units.Select(u => u.Id == unit.Id ? FleetRuleTools.NewOrder(u) with { Activated = true } : u).ToList(),
             Orders0 = state.Orders0 + (side == 0 ? 1 : 0), Orders1 = state.Orders1 + (side == 1 ? 1 : 0), Sequence = state.Sequence + 1,
             Cards = HeroicCommands.Spend(cards, command.Card) with { Pending = new(command.Card, side, [unit.Id], 0, BasicAction: command.Target) } };
-        next = FleetRuleTools.DamageControl(c, next, unit.Id, command.Repair, out var message);
+        next = FleetRuleTools.ActivationControl(c, next, unit.Id, command.Repair, out var message);
         return FleetTerrain.Activation(c, state, next, [unit.Id], "order", "Basic order started. " + message);
     }
     public static CommandResult Apply(ContentCatalog c, BattleState state, int side, BattleCommand command)
@@ -168,6 +169,7 @@ public static partial class SpecialOrders
             var result = SkirmishRules.FinishOrder(c, original, next, side, message + " Order complete.");
             return result with { State = result.State.Round != original.Round && !result.State.Finished ? BasicCardRules.NextRound(c, result.State) : result.State };
         }
+        if (Action(c, next, order) is "move" or "lightning") order = order with { Moved = false };
         return new(true, message, next with { Cards = next.Cards! with { Pending = order }, Sequence = original.Sequence + 1 });
     }
     public static void Validate(ContentCatalog c, BattleState state, bool suspended = false)
@@ -181,6 +183,14 @@ public static partial class SpecialOrders
             || order.Choice is not ("" or "move" or "attack") || order.Choice != "" && (order.BasicAction != "" || Step(c, state, order).Action != "choice")
             || order.FirstTarget == null || order.FirstTarget.Length > 80 || order.FirstTarget != "" && (order.BasicAction != "" || !CommandCards.Find(c, state, order.Card)!.SameTarget))
             throw new InvalidDataException("Invalid pending special order.");
+        if (order.BasicAction == "")
+        {
+            var definition = CommandCards.Find(c, state, order.Card)!;
+            if (order.Units.Where((id, line) => state.Units.Find(u => u.Id == id) is { } actor
+                && (definition.Lines![line].Classes is { } classes && !classes.Contains(FleetRuleTools.Class(c.Ships[actor.Definition]))
+                    || line == 0 && definition.HeroicOwner != "" && !FleetRuleTools.LeaderIds(actor).Contains(definition.HeroicOwner))).Any())
+                throw new InvalidDataException("Invalid assigned unit for a printed action line.");
+        }
         if (order.LaunchArrival && (order.BasicAction != "" || order.Step != 1 || !FleetLaunchOrders.IsLaunch(CommandCards.Find(c, state, order.Card)!))) throw new InvalidDataException("Invalid pending launch arrival.");
         if (Action(c, state, order) == "launch")
         {

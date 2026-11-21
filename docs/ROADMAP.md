@@ -32,7 +32,8 @@ Keep future native tablet and browser clients possible through plain rule/data/c
 - [x] Thirteen additional base orders/effects, 54-card supported deck, choice/target/movement continuation, EN/RU controls, UI and ENet checks; see COMMAND_ORDERS.md.
 - [x] Complete the base command deck: all 54 cards / 20 types, including four interrupt types.
 - [x] First four Heroic commands and published owners: once-per-scenario uncounted hands, owner binding, start effects, Staff, leader transfer, EN/RU, UI and ENet.
-- [ ] Remaining ten Heroic commands/interrupts and remaining attachment/leader profiles. Initiative and leader budgets already have shared handlers.
+- [x] Six additional Heroic commands/owners: Medic and Crew repair, system crippling, two-unit typed lines, Marines, attack auras, UI/save/ENet. Ten of fourteen photographed command types are functional.
+- [ ] Remaining four Heroic commands: Supreme Pilot, Launch All Fighters, Rapid Reaction, Planetary Overwatch; remaining attachment/leader profiles. Initiative and leader budgets already have shared handlers.
 
 - [x] Freeze US Digital + Errata 1.7 reference priority and record timing interpretations in RULES_COVERAGE.md.
 - [x] Leader/faction budgets, multi-card bids, cleanup, post-roll decisions and repair; remaining Heroic/attachment/profile data still incomplete.

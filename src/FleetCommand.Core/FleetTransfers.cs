@@ -21,7 +21,7 @@ public static class FleetTransfers
         var next = s with { Sequence = s.Sequence + 1, Units = s.Units.Select(u => u.Id == unit.Id ? FleetRuleTools.NewOrder(u) with { Activated = true } : u).ToList(),
             Orders0 = s.Orders0 + (side == 0 ? 1 : 0), Orders1 = s.Orders1 + (side == 1 ? 1 : 0),
             Cards = HeroicCommands.Spend(cards, cmd.Card) with { Pending = new(cmd.Card, side, [unit.Id], 0, BasicAction: "transfer-crew", Deferred: cmd) } };
-        next = FleetRuleTools.DamageControl(c, next, unit.Id, cmd.Repair, out var repairMessage);
+        next = FleetRuleTools.ActivationControl(c, next, unit.Id, cmd.Repair, out var repairMessage);
         return FleetTerrain.Activation(c, s, next, [unit.Id], "order", repairMessage);
     }
     internal static CommandResult Complete(ContentCatalog c, BattleState before, BattleState next, string message)
